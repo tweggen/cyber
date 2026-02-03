@@ -1,0 +1,4 @@
+# Bootstrap data
+notebook-data/
+__pycache__/
+*.pyc
