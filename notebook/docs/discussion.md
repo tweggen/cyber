@@ -1,7 +1,7 @@
 # Knowledge Exchange Platform - Discussion Summary
 
 ## Participants
-Timo (mathematician, game engine developer of Karawan) and Claude, February 2026.
+Timo (software engineer) and Claude, February 2026.
 
 ## Genesis
 The discussion began from a prior proposal for a knowledge platform and evolved through philosophical reasoning into a concrete architectural sketch. The key breakthroughs came from Timo's insights, with Claude serving as a structured reasoning partner.
