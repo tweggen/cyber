@@ -1,0 +1,26 @@
+[package]
+name = "notebook-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Core types, traits, and cryptographic primitives for the Knowledge Exchange Platform"
+
+[dependencies]
+# Serialization (added by agent-types for Task 0-2)
+serde.workspace = true
+serde_json.workspace = true
+
+# UUID for EntryId and NotebookId (added by agent-types for Task 0-2)
+uuid.workspace = true
+
+# Date/time for Entry timestamps (added by agent-types for Task 0-2)
+chrono.workspace = true
+
+# Cryptography (added by agent-crypto for Task 0-4)
+ed25519-dalek.workspace = true
+blake3.workspace = true
+base64.workspace = true
+rand.workspace = true
+
+[dev-dependencies]

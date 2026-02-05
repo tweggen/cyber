@@ -1,0 +1,27 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: apache/age:PG16_latest
+    container_name: notebook-postgres
+    environment:
+      POSTGRES_USER: notebook
+      POSTGRES_PASSWORD: notebook_dev
+      POSTGRES_DB: notebook
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      - ./migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U notebook -d notebook"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local

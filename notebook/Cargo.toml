@@ -1,0 +1,60 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/notebook-core",
+    "crates/notebook-server",
+    "crates/notebook-store",
+    "crates/notebook-entropy",
+    "cli",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+authors = ["Knowledge Exchange Platform Contributors"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/cyber/notebook"
+
+[workspace.dependencies]
+# Internal crates
+notebook-core = { path = "crates/notebook-core" }
+notebook-store = { path = "crates/notebook-store" }
+notebook-entropy = { path = "crates/notebook-entropy" }
+
+# Serialization (added by agent-types for Task 0-2)
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# UUID generation and parsing (added by agent-types for Task 0-2)
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# Date/time handling (added by agent-types for Task 0-2)
+chrono = { version = "0.4", features = ["serde"] }
+
+# Cryptography (added by agent-crypto for Task 0-4)
+ed25519-dalek = { version = "2", features = ["rand_core"] }
+blake3 = "1"
+base64 = "0.22"
+rand = "0.8"
+hex = "0.4"
+
+# HTTP server (added by agent-server for Task 1-6)
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "request-id", "util"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+thiserror = "2"
+http = "1"
+
+# SSE support (added by agent-events for Task 4-3)
+axum-extra = { version = "0.10", features = ["typed-header"] }
+futures = "0.3"
+
+# Benchmarking (added by agent-perf for Task 5-5)
+criterion = { version = "0.5", features = ["html_reports"] }
+tempfile = "3"
+
+# HTTP client for integration tests (added by agent-test-exchange for Task 5-3)
+reqwest = { version = "0.12", features = ["json"] }

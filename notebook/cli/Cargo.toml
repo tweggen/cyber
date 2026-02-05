@@ -1,0 +1,37 @@
+[package]
+name = "notebook-cli"
+version = "0.1.0"
+edition = "2024"
+authors = ["Knowledge Exchange Platform Contributors"]
+license = "MIT OR Apache-2.0"
+description = "Command-line interface for the Knowledge Exchange Platform"
+repository = "https://github.com/cyber/notebook"
+
+[[bin]]
+name = "notebook"
+path = "src/main.rs"
+
+[dependencies]
+# CLI argument parsing
+clap = { version = "4", features = ["derive", "env"] }
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json"] }
+
+# Async runtime
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+
+# Serialization
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# Types
+uuid = { version = "1", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+thiserror = "2"
+anyhow = "1"
+
+# Human-readable output
+colored = "2"

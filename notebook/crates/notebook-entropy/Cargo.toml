@@ -1,0 +1,52 @@
+[package]
+name = "notebook-entropy"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+description = "Entropy calculation and integration cost metrics for the Knowledge Exchange Platform"
+
+[dependencies]
+notebook-core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+# Unicode word segmentation for tokenization (Task 2-1)
+unicode-segmentation = "1.11"
+
+# Async runtime for propagation worker (Task 2-4)
+tokio = { workspace = true }
+
+# UUIDs for propagation job IDs (Task 2-4)
+uuid = { workspace = true }
+
+# Logging for propagation worker (Task 2-4)
+tracing = { workspace = true }
+
+# Full-text search (Task 3-2)
+tantivy = "0.22"
+
+[dev-dependencies]
+serde_json = { workspace = true }
+tokio = { workspace = true }
+tempfile = { workspace = true }
+criterion = { workspace = true }
+rand = { workspace = true }
+
+# Benchmark configurations (added by agent-perf for Task 5-5)
+[[bench]]
+name = "write_throughput"
+harness = false
+
+[[bench]]
+name = "browse_latency"
+harness = false
+
+[[bench]]
+name = "search_performance"
+harness = false
+
+[[bench]]
+name = "graph_traversal"
+harness = false
