@@ -325,10 +325,12 @@ mod tests {
         let mut corpus = CorpusStats::new();
         corpus.add_document(&["cat".into(), "dog".into()]);
         corpus.add_document(&["cat".into(), "bird".into()]);
+        corpus.add_document(&["fish".into(), "bird".into()]);
 
         let tokens = vec!["cat".into(), "cat".into(), "dog".into()];
         let vector = TfIdfVector::from_tokens(&tokens, &corpus);
 
+        // "cat" appears in 2/3 docs → IDF > 0; "dog" in 1/3 → IDF > 0
         assert!(vector.weights.contains_key("cat"));
         assert!(vector.weights.contains_key("dog"));
     }
@@ -337,6 +339,7 @@ mod tests {
     fn cosine_similarity_identical() {
         let mut corpus = CorpusStats::new();
         corpus.add_document(&["cat".into(), "dog".into()]);
+        corpus.add_document(&["bird".into(), "fish".into()]);
 
         let tokens = vec!["cat".into(), "dog".into()];
         let v1 = TfIdfVector::from_tokens(&tokens, &corpus);

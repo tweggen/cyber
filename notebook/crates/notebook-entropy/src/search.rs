@@ -38,7 +38,6 @@ use tantivy::schema::{
     Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, STORED, STRING,
 };
 use tantivy::schema::document::Value;
-use tantivy::tokenizer::SimpleTokenizer;
 use tantivy::{doc, Index, IndexReader, IndexWriter, ReloadPolicy, Term};
 use thiserror::Error;
 
@@ -143,11 +142,6 @@ impl SearchIndex {
         )
         .map_err(|e| SearchError::IndexError(format!("failed to open/create index: {}", e)))?;
 
-        // Register tokenizers
-        index
-            .tokenizers()
-            .register("simple", SimpleTokenizer::default());
-
         // Create the writer
         let writer = index
             .writer(WRITER_HEAP_SIZE)
@@ -184,7 +178,7 @@ impl SearchIndex {
 
         // content: tokenized and stored for snippets
         let text_indexing = TextFieldIndexing::default()
-            .set_tokenizer("simple")
+            .set_tokenizer("default")
             .set_index_option(IndexRecordOption::WithFreqsAndPositions);
         let text_options = TextOptions::default()
             .set_indexing_options(text_indexing)
@@ -194,7 +188,7 @@ impl SearchIndex {
         // topic: tokenized for search
         let topic_options = TextOptions::default().set_indexing_options(
             TextFieldIndexing::default()
-                .set_tokenizer("simple")
+                .set_tokenizer("default")
                 .set_index_option(IndexRecordOption::WithFreqsAndPositions),
         );
         let topic = schema_builder.add_text_field("topic", topic_options);
