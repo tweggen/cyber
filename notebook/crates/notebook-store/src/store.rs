@@ -77,6 +77,8 @@ impl StoreConfig {
 #[derive(Debug, Clone)]
 pub struct Store {
     pool: PgPool,
+    /// Whether Apache AGE graph extension is available.
+    age_available: bool,
 }
 
 impl Store {
@@ -98,12 +100,48 @@ impl Store {
             schema::run_migrations(&pool).await?;
         }
 
-        Ok(Self { pool })
+        // Detect AGE availability: schema version >= 3 means graph functions exist
+        let age_available = match schema::get_schema_version(&pool).await {
+            Ok(version) => {
+                let available = version >= 3;
+                if available {
+                    tracing::info!("Apache AGE detected — graph queries enabled");
+                } else {
+                    tracing::info!(
+                        "Apache AGE not available (schema version {}) — using SQL fallbacks",
+                        version
+                    );
+                }
+                available
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to detect schema version: {} — using SQL fallbacks",
+                    e
+                );
+                false
+            }
+        };
+
+        Ok(Self {
+            pool,
+            age_available,
+        })
     }
 
     /// Create a store from an existing connection pool.
+    ///
+    /// Defaults to `age_available: false` since we cannot detect without querying.
     pub fn from_pool(pool: PgPool) -> Self {
-        Self { pool }
+        Self {
+            pool,
+            age_available: false,
+        }
+    }
+
+    /// Whether Apache AGE graph extension is available.
+    pub fn age_available(&self) -> bool {
+        self.age_available
     }
 
     /// Get a reference to the connection pool.
@@ -383,9 +421,11 @@ impl Store {
         .fetch_one(&self.pool)
         .await?;
 
-        // Add graph vertex (best effort - don't fail if graph operations fail)
-        if let Err(e) = self.add_entry_to_graph(&row).await {
-            tracing::warn!("Failed to add entry to graph: {}", e);
+        // Add graph vertex (only if AGE is available; best effort)
+        if self.age_available {
+            if let Err(e) = self.add_entry_to_graph(&row).await {
+                tracing::warn!("Failed to add entry to graph: {}", e);
+            }
         }
 
         Ok(row)

@@ -13,6 +13,10 @@ pub const SCHEMA_MIGRATION: &str = include_str!("../../../migrations/002_schema.
 /// Embedded migration SQL for the graph schema (003_graph.sql).
 pub const GRAPH_MIGRATION: &str = include_str!("../../../migrations/003_graph.sql");
 
+/// Embedded migration SQL for the coherence links table (004_coherence_links.sql).
+pub const COHERENCE_LINKS_MIGRATION: &str =
+    include_str!("../../../migrations/004_coherence_links.sql");
+
 /// Run all pending migrations against the database.
 ///
 /// This function is idempotent - it can be run multiple times safely.
@@ -45,6 +49,15 @@ pub async fn run_migrations(pool: &PgPool) -> StoreResult<()> {
             e
         ),
     }
+
+    // Run coherence links migration (pure SQL, always succeeds)
+    tracing::debug!("Running coherence links migration (004_coherence_links.sql)...");
+    sqlx::raw_sql(COHERENCE_LINKS_MIGRATION)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            StoreError::MigrationError(format!("Coherence links migration failed: {}", e))
+        })?;
 
     tracing::info!("Migrations completed successfully");
     Ok(())
@@ -141,5 +154,15 @@ mod tests {
         assert!(GRAPH_MIGRATION.contains("create_elabel"));
         assert!(GRAPH_MIGRATION.contains("add_entry_vertex"));
         assert!(GRAPH_MIGRATION.contains("add_reference_edge"));
+    }
+
+    #[test]
+    fn test_coherence_links_migration_embedded() {
+        // Verify the coherence links migration SQL is properly embedded
+        assert!(COHERENCE_LINKS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS coherence_links"));
+        assert!(COHERENCE_LINKS_MIGRATION.contains("entry_id_1"));
+        assert!(COHERENCE_LINKS_MIGRATION.contains("entry_id_2"));
+        assert!(COHERENCE_LINKS_MIGRATION.contains("similarity"));
+        assert!(COHERENCE_LINKS_MIGRATION.contains("coherence_links_ordering"));
     }
 }

@@ -9,8 +9,6 @@
 //!
 //! Owned by: agent-storage
 
-use std::collections::HashSet;
-
 use notebook_core::{
     ActivityContext, AuthorId, CausalPosition, Entry, EntryId, IntegrationCost, Notebook,
     NotebookId, Participant, Permissions,
@@ -159,8 +157,8 @@ impl Repository {
     /// Get the transitive closure of references with cycle detection.
     ///
     /// Returns all entries reachable via references, with their depth
-    /// from the starting entry. Uses the graph database for efficient
-    /// traversal with cycle detection.
+    /// from the starting entry. Uses AGE graph queries when available,
+    /// otherwise falls back to SQL recursive CTEs transparently.
     pub async fn get_reference_closure(
         &self,
         id: EntryId,
@@ -168,74 +166,26 @@ impl Repository {
     ) -> StoreResult<Vec<(Entry, u32)>> {
         let depth = max_depth.unwrap_or(self.max_depth) as i32;
 
-        // Try graph-based traversal first
-        let graph_result = self.store.graph().find_reference_closure(id.0, depth).await;
+        let ids_with_depth = self
+            .store
+            .graph()
+            .find_reference_closure(id.0, depth)
+            .await?;
 
-        match graph_result {
-            Ok(ids_with_depth) => {
-                let mut entries = Vec::with_capacity(ids_with_depth.len());
-                for (ref_id, d) in ids_with_depth {
-                    match self.store.get_entry(ref_id).await {
-                        Ok(row) => {
-                            let entry = self.entry_row_to_entry(&row).await?;
-                            entries.push((entry, d as u32));
-                        }
-                        Err(StoreError::EntryNotFound(_)) => {
-                            // Entry in graph but not in table - graph is stale
-                            tracing::warn!("Entry {} in graph but not in table", ref_id);
-                        }
-                        Err(e) => return Err(e),
-                    }
+        let mut entries = Vec::with_capacity(ids_with_depth.len());
+        for (ref_id, d) in ids_with_depth {
+            match self.store.get_entry(ref_id).await {
+                Ok(row) => {
+                    let entry = self.entry_row_to_entry(&row).await?;
+                    entries.push((entry, d as u32));
                 }
-                Ok(entries)
-            }
-            Err(e) => {
-                // Graph failed, fall back to recursive SQL traversal
-                tracing::warn!("Graph query failed, using SQL fallback: {}", e);
-                self.get_reference_closure_sql(id, max_depth.unwrap_or(self.max_depth)).await
-            }
-        }
-    }
-
-    /// SQL-based fallback for reference closure with visited set.
-    async fn get_reference_closure_sql(
-        &self,
-        id: EntryId,
-        max_depth: u32,
-    ) -> StoreResult<Vec<(Entry, u32)>> {
-        let mut visited: HashSet<Uuid> = HashSet::new();
-        let mut result: Vec<(Entry, u32)> = Vec::new();
-        let mut queue: Vec<(Uuid, u32)> = vec![(id.0, 0)];
-
-        while let Some((current_id, depth)) = queue.pop() {
-            if depth > max_depth || visited.contains(&current_id) {
-                continue;
-            }
-            visited.insert(current_id);
-
-            let entry_row = match self.store.get_entry(current_id).await {
-                Ok(row) => row,
-                Err(StoreError::EntryNotFound(_)) => continue,
+                Err(StoreError::EntryNotFound(_)) => {
+                    tracing::warn!("Entry {} in graph/index but not in table", ref_id);
+                }
                 Err(e) => return Err(e),
-            };
-
-            // Add entry to result (skip the starting entry at depth 0)
-            if depth > 0 {
-                let entry = self.entry_row_to_entry(&entry_row).await?;
-                result.push((entry, depth));
-            }
-
-            // Queue references for traversal
-            for ref_id in &entry_row.references {
-                if !visited.contains(ref_id) {
-                    queue.push((*ref_id, depth + 1));
-                }
             }
         }
-
-        // Sort by depth for consistent ordering
-        result.sort_by_key(|(_, d)| *d);
-        Ok(result)
+        Ok(entries)
     }
 
     // ========================================================================
