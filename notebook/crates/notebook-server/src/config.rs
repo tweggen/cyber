@@ -72,7 +72,8 @@ mod tests {
     #[test]
     fn test_default_values() {
         // This test requires DATABASE_URL to be set
-        env::set_var("DATABASE_URL", "postgres://test:test@localhost/test");
+        // SAFETY: This test is not run in parallel with other tests that read DATABASE_URL.
+        unsafe { env::set_var("DATABASE_URL", "postgres://test:test@localhost/test") };
 
         let config = ServerConfig::from_env().unwrap();
 
@@ -80,6 +81,7 @@ mod tests {
         assert_eq!(config.log_level, "info");
         assert_eq!(config.cors_allowed_origins, "*");
 
-        env::remove_var("DATABASE_URL");
+        // SAFETY: This test is not run in parallel with other tests that read DATABASE_URL.
+        unsafe { env::remove_var("DATABASE_URL") };
     }
 }

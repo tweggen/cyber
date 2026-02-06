@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS entries (
     author_id BYTEA NOT NULL REFERENCES authors(id),
     signature BYTEA NOT NULL,
     revision_of UUID REFERENCES entries(id),
-    references UUID[] NOT NULL DEFAULT ARRAY[]::UUID[],
+    "references" UUID[] NOT NULL DEFAULT ARRAY[]::UUID[],
     sequence BIGINT NOT NULL,
     created TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     integration_cost JSONB NOT NULL,
@@ -101,7 +101,7 @@ CREATE INDEX IF NOT EXISTS idx_entries_revision_of
 
 -- Reference array containment queries (find entries referencing X)
 CREATE INDEX IF NOT EXISTS idx_entries_references
-    ON entries USING GIN (references);
+    ON entries USING GIN ("references");
 
 -- Author's entries (for activity context computation)
 CREATE INDEX IF NOT EXISTS idx_entries_notebook_author

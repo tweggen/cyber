@@ -360,12 +360,12 @@ impl Store {
             r#"
             INSERT INTO entries (
                 id, notebook_id, content, content_type, topic,
-                author_id, signature, revision_of, references,
+                author_id, signature, revision_of, "references",
                 sequence, integration_cost
             )
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
             RETURNING id, notebook_id, content, content_type, topic,
-                      author_id, signature, revision_of, references,
+                      author_id, signature, revision_of, "references",
                       sequence, created, integration_cost
             "#,
         )
@@ -408,7 +408,7 @@ impl Store {
         sqlx::query_as::<_, EntryRow>(
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
             WHERE id = $1
@@ -430,7 +430,7 @@ impl Store {
         let mut sql = String::from(
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
             WHERE notebook_id = $1
@@ -491,10 +491,10 @@ impl Store {
         Ok(sqlx::query_as::<_, EntryRow>(
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
-            WHERE $1 = ANY(references)
+            WHERE $1 = ANY("references")
             ORDER BY sequence
             "#,
         )
@@ -509,7 +509,7 @@ impl Store {
             r#"
             WITH RECURSIVE revision_chain AS (
                 SELECT id, notebook_id, content, content_type, topic,
-                       author_id, signature, revision_of, references,
+                       author_id, signature, revision_of, "references",
                        sequence, created, integration_cost, 1 as depth
                 FROM entries
                 WHERE revision_of = $1
@@ -517,14 +517,14 @@ impl Store {
                 UNION ALL
 
                 SELECT e.id, e.notebook_id, e.content, e.content_type, e.topic,
-                       e.author_id, e.signature, e.revision_of, e.references,
+                       e.author_id, e.signature, e.revision_of, e."references",
                        e.sequence, e.created, e.integration_cost, rc.depth + 1
                 FROM entries e
                 JOIN revision_chain rc ON e.revision_of = rc.id
                 WHERE rc.depth < 100  -- Prevent infinite loops
             )
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM revision_chain
             ORDER BY depth

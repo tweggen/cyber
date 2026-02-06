@@ -42,7 +42,7 @@ impl BatchEntryQuery {
         let rows = sqlx::query_as::<_, EntryRow>(
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
             WHERE id = ANY($1)
@@ -127,7 +127,7 @@ impl TopicQuery {
             format!(
                 r#"
                 SELECT id, notebook_id, content, content_type, topic,
-                       author_id, signature, revision_of, references,
+                       author_id, signature, revision_of, "references",
                        sequence, created, integration_cost
                 FROM entries
                 WHERE notebook_id = $1 AND topic = $2 AND sequence > $3
@@ -140,7 +140,7 @@ impl TopicQuery {
             format!(
                 r#"
                 SELECT id, notebook_id, content, content_type, topic,
-                       author_id, signature, revision_of, references,
+                       author_id, signature, revision_of, "references",
                        sequence, created, integration_cost
                 FROM entries
                 WHERE notebook_id = $1 AND topic = $2 AND sequence > $3
@@ -152,7 +152,7 @@ impl TopicQuery {
             format!(
                 r#"
                 SELECT id, notebook_id, content, content_type, topic,
-                       author_id, signature, revision_of, references,
+                       author_id, signature, revision_of, "references",
                        sequence, created, integration_cost
                 FROM entries
                 WHERE notebook_id = $1 AND topic = $2
@@ -165,7 +165,7 @@ impl TopicQuery {
             format!(
                 r#"
                 SELECT id, notebook_id, content, content_type, topic,
-                       author_id, signature, revision_of, references,
+                       author_id, signature, revision_of, "references",
                        sequence, created, integration_cost
                 FROM entries
                 WHERE notebook_id = $1 AND topic = $2
@@ -228,7 +228,7 @@ impl AuthorEntriesQuery {
         let query = if self.after_sequence.is_some() && self.limit.is_some() {
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
             WHERE notebook_id = $1 AND author_id = $2 AND sequence > $3
@@ -238,7 +238,7 @@ impl AuthorEntriesQuery {
         } else if self.after_sequence.is_some() {
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
             WHERE notebook_id = $1 AND author_id = $2 AND sequence > $3
@@ -247,7 +247,7 @@ impl AuthorEntriesQuery {
         } else if self.limit.is_some() {
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
             WHERE notebook_id = $1 AND author_id = $2
@@ -257,7 +257,7 @@ impl AuthorEntriesQuery {
         } else {
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
             WHERE notebook_id = $1 AND author_id = $2
@@ -311,14 +311,14 @@ impl OrphanEntriesQuery {
         let query = if self.limit.is_some() {
             r#"
             SELECT e.id, e.notebook_id, e.content, e.content_type, e.topic,
-                   e.author_id, e.signature, e.revision_of, e.references,
+                   e.author_id, e.signature, e.revision_of, e."references",
                    e.sequence, e.created, e.integration_cost
             FROM entries e
             WHERE e.notebook_id = $1
               AND e.revision_of IS NULL
               AND NOT EXISTS (
                   SELECT 1 FROM entries e2
-                  WHERE e2.notebook_id = $1 AND e.id = ANY(e2.references)
+                  WHERE e2.notebook_id = $1 AND e.id = ANY(e2."references")
               )
             ORDER BY e.sequence
             LIMIT $2
@@ -326,14 +326,14 @@ impl OrphanEntriesQuery {
         } else {
             r#"
             SELECT e.id, e.notebook_id, e.content, e.content_type, e.topic,
-                   e.author_id, e.signature, e.revision_of, e.references,
+                   e.author_id, e.signature, e.revision_of, e."references",
                    e.sequence, e.created, e.integration_cost
             FROM entries e
             WHERE e.notebook_id = $1
               AND e.revision_of IS NULL
               AND NOT EXISTS (
                   SELECT 1 FROM entries e2
-                  WHERE e2.notebook_id = $1 AND e.id = ANY(e2.references)
+                  WHERE e2.notebook_id = $1 AND e.id = ANY(e2."references")
               )
             ORDER BY e.sequence
             "#
@@ -371,10 +371,10 @@ impl BrokenReferencesQuery {
         let entries: Vec<EntryRow> = sqlx::query_as(
             r#"
             SELECT id, notebook_id, content, content_type, topic,
-                   author_id, signature, revision_of, references,
+                   author_id, signature, revision_of, "references",
                    sequence, created, integration_cost
             FROM entries
-            WHERE notebook_id = $1 AND cardinality(references) > 0
+            WHERE notebook_id = $1 AND cardinality("references") > 0
             ORDER BY sequence
             "#,
         )
@@ -448,7 +448,7 @@ impl NotebookStatsQuery {
                 COUNT(*)::bigint as total_entries,
                 COUNT(DISTINCT author_id)::bigint as unique_authors,
                 COUNT(DISTINCT topic)::bigint as unique_topics,
-                AVG(cardinality(references))::float8 as avg_references,
+                AVG(cardinality("references"))::float8 as avg_references,
                 COUNT(DISTINCT revision_of)::bigint as revision_chains
             FROM entries
             WHERE notebook_id = $1
