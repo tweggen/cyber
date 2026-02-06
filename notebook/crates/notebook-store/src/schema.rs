@@ -35,12 +35,16 @@ pub async fn run_migrations(pool: &PgPool) -> StoreResult<()> {
         .await
         .map_err(|e| StoreError::MigrationError(format!("Schema migration failed: {}", e)))?;
 
-    // Run graph migration
+    // Run graph migration (requires Apache AGE extension - non-fatal if unavailable)
     tracing::debug!("Running graph migration (003_graph.sql)...");
-    sqlx::raw_sql(GRAPH_MIGRATION)
-        .execute(pool)
-        .await
-        .map_err(|e| StoreError::MigrationError(format!("Graph migration failed: {}", e)))?;
+    match sqlx::raw_sql(GRAPH_MIGRATION).execute(pool).await {
+        Ok(_) => tracing::info!("Graph migration completed successfully"),
+        Err(e) => tracing::warn!(
+            "Graph migration skipped (Apache AGE not available): {}. \
+             Graph traversal features will be disabled.",
+            e
+        ),
+    }
 
     tracing::info!("Migrations completed successfully");
     Ok(())

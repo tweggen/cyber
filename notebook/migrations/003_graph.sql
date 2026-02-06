@@ -31,7 +31,7 @@ CREATE OR REPLACE FUNCTION add_entry_vertex(
     p_topic TEXT,
     p_author_id TEXT,
     p_sequence BIGINT
-) RETURNS void AS $$
+) RETURNS void AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -57,14 +57,14 @@ BEGIN
 
     EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 -- Create helper function to add reference edges
 -- Called for each reference when an entry is inserted
 CREATE OR REPLACE FUNCTION add_reference_edge(
     p_from_entry_id UUID,
     p_to_entry_id UUID
-) RETURNS void AS $$
+) RETURNS void AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -82,13 +82,13 @@ BEGIN
 
     EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 -- Create helper function to add revision_of edge
 CREATE OR REPLACE FUNCTION add_revision_edge(
     p_new_entry_id UUID,
     p_old_entry_id UUID
-) RETURNS void AS $$
+) RETURNS void AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -106,14 +106,14 @@ BEGIN
 
     EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 -- Create helper function to add coherence edge (bidirectional semantic link)
 CREATE OR REPLACE FUNCTION add_coherence_edge(
     p_entry_id_1 UUID,
     p_entry_id_2 UUID,
     p_similarity FLOAT
-) RETURNS void AS $$
+) RETURNS void AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -132,13 +132,13 @@ BEGIN
 
     EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 -- Function to find all entries reachable from a given entry via references
 CREATE OR REPLACE FUNCTION find_reference_closure(
     p_entry_id UUID,
     p_max_depth INT DEFAULT 10
-) RETURNS TABLE(entry_id TEXT, depth INT) AS $$
+) RETURNS TABLE(entry_id TEXT, depth INT) AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -156,12 +156,12 @@ BEGIN
 
     RETURN QUERY EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 -- Function to find revision chain for an entry
 CREATE OR REPLACE FUNCTION find_revision_chain(
     p_entry_id UUID
-) RETURNS TABLE(entry_id TEXT, depth INT) AS $$
+) RETURNS TABLE(entry_id TEXT, depth INT) AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -179,12 +179,12 @@ BEGIN
 
     RETURN QUERY EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 -- Function to find entries citing a given entry
 CREATE OR REPLACE FUNCTION find_citations(
     p_entry_id UUID
-) RETURNS TABLE(citing_entry_id TEXT) AS $$
+) RETURNS TABLE(citing_entry_id TEXT) AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -201,13 +201,13 @@ BEGIN
 
     RETURN QUERY EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 -- Function to find coherent entries (semantically related)
 CREATE OR REPLACE FUNCTION find_coherent_entries(
     p_entry_id UUID,
     p_min_similarity FLOAT DEFAULT 0.5
-) RETURNS TABLE(related_entry_id TEXT, similarity FLOAT) AS $$
+) RETURNS TABLE(related_entry_id TEXT, similarity FLOAT) AS $fn$
 DECLARE
     cypher_query TEXT;
 BEGIN
@@ -227,7 +227,7 @@ BEGIN
 
     RETURN QUERY EXECUTE cypher_query;
 END;
-$$ LANGUAGE plpgsql;
+$fn$ LANGUAGE plpgsql;
 
 COMMENT ON FUNCTION add_entry_vertex IS 'Create graph vertex for a new entry';
 COMMENT ON FUNCTION add_reference_edge IS 'Create reference edge between entries';
