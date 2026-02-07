@@ -321,65 +321,6 @@ impl<U: CostUpdater + 'static> PropagationWorker<U> {
         self.queue.len()
     }
 
-    /// Checks if a job has already been processed.
-    fn is_completed(&self, job_id: &Uuid) -> bool {
-        self.completed_jobs
-            .lock()
-            .map(|set| set.contains(job_id))
-            .unwrap_or(false)
-    }
-
-    /// Marks a job as completed.
-    fn mark_completed(&self, job_id: Uuid) {
-        if let Ok(mut set) = self.completed_jobs.lock() {
-            set.insert(job_id);
-        }
-    }
-
-    /// Processes a single job.
-    fn process_job(&self, job: PropagationJob) {
-        let job_id = job.job_id;
-        let start = std::time::Instant::now();
-
-        // Idempotency check
-        if self.is_completed(&job_id) {
-            debug!("Skipping already-completed job {}", job_id);
-            if let Ok(mut stats) = self.stats.lock() {
-                stats.jobs_skipped += 1;
-            }
-            return;
-        }
-
-        // Process the job
-        match self.updater.update_cumulative_cost(
-            job.notebook_id,
-            &job.affected_entry_ids,
-            job.cost_delta,
-        ) {
-            Ok(count) => {
-                let elapsed = start.elapsed();
-                info!(
-                    "Processed propagation job {} in {:?}: {} entries updated",
-                    job_id, elapsed, count
-                );
-
-                // Mark as completed and update stats
-                self.mark_completed(job_id);
-                if let Ok(mut stats) = self.stats.lock() {
-                    stats.jobs_processed += 1;
-                    stats.entries_updated += count as u64;
-                }
-            }
-            Err(e) => {
-                warn!("Failed to process job {}: {}", job_id, e);
-                if let Ok(mut stats) = self.stats.lock() {
-                    stats.jobs_failed += 1;
-                }
-                // Note: In MVP, failed jobs are not retried
-            }
-        }
-    }
-
     /// Starts the background worker.
     ///
     /// Spawns a tokio task that polls the queue and processes jobs.
@@ -469,6 +410,66 @@ impl<U: CostUpdater + 'static> PropagationWorker<U> {
     pub fn shutdown(&mut self) {
         if let Some(tx) = self.shutdown_tx.take() {
             let _ = tx.send(true);
+        }
+    }
+}
+
+#[cfg(test)]
+impl<U: CostUpdater + 'static> PropagationWorker<U> {
+    /// Checks if a job has already been processed (test-only helper).
+    fn is_completed(&self, job_id: &Uuid) -> bool {
+        self.completed_jobs
+            .lock()
+            .map(|set| set.contains(job_id))
+            .unwrap_or(false)
+    }
+
+    /// Marks a job as completed (test-only helper).
+    fn mark_completed(&self, job_id: Uuid) {
+        if let Ok(mut set) = self.completed_jobs.lock() {
+            set.insert(job_id);
+        }
+    }
+
+    /// Processes a single job synchronously (test-only helper).
+    fn process_job(&self, job: PropagationJob) {
+        let job_id = job.job_id;
+        let start = std::time::Instant::now();
+
+        // Idempotency check
+        if self.is_completed(&job_id) {
+            debug!("Skipping already-completed job {}", job_id);
+            if let Ok(mut stats) = self.stats.lock() {
+                stats.jobs_skipped += 1;
+            }
+            return;
+        }
+
+        // Process the job
+        match self.updater.update_cumulative_cost(
+            job.notebook_id,
+            &job.affected_entry_ids,
+            job.cost_delta,
+        ) {
+            Ok(count) => {
+                let elapsed = start.elapsed();
+                info!(
+                    "Processed propagation job {} in {:?}: {} entries updated",
+                    job_id, elapsed, count
+                );
+
+                self.mark_completed(job_id);
+                if let Ok(mut stats) = self.stats.lock() {
+                    stats.jobs_processed += 1;
+                    stats.entries_updated += count as u64;
+                }
+            }
+            Err(e) => {
+                warn!("Failed to process job {}: {}", job_id, e);
+                if let Ok(mut stats) = self.stats.lock() {
+                    stats.jobs_failed += 1;
+                }
+            }
         }
     }
 }

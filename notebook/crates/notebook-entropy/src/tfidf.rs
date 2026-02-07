@@ -166,7 +166,7 @@ pub fn tokenize(text: &str) -> Vec<String> {
     let stop_words: HashSet<&str> = STOP_WORDS.iter().copied().collect();
 
     text.unicode_words()
-        .map(|word| normalize_token(word))
+        .map(normalize_token)
         .filter(|token| token.len() >= MIN_TOKEN_LENGTH && !stop_words.contains(token.as_str()))
         .collect()
 }

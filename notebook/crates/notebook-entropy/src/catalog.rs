@@ -221,11 +221,11 @@ impl CatalogGenerator {
     fn extract_summary(&self, cluster: &Cluster, entry_map: &HashMap<EntryId, &Entry>) -> String {
         // Find first text entry
         for entry_id in &cluster.entry_ids {
-            if let Some(entry) = entry_map.get(entry_id) {
-                if entry.content_type.starts_with("text/") {
-                    let text = String::from_utf8_lossy(&entry.content);
-                    return self.extract_first_sentence(&text);
-                }
+            if let Some(entry) = entry_map.get(entry_id)
+                && entry.content_type.starts_with("text/")
+            {
+                let text = String::from_utf8_lossy(&entry.content);
+                return self.extract_first_sentence(&text);
             }
         }
 
@@ -250,10 +250,11 @@ impl CatalogGenerator {
         let mut end_pos = MAX_SUMMARY_CHARS.min(text.len());
 
         for marker in &end_markers {
-            if let Some(pos) = text.find(marker) {
-                if pos < end_pos && pos > 0 {
-                    end_pos = pos + 1; // Include the punctuation
-                }
+            if let Some(pos) = text.find(marker)
+                && pos < end_pos
+                && pos > 0
+            {
+                end_pos = pos + 1; // Include the punctuation
             }
         }
 
@@ -267,10 +268,10 @@ impl CatalogGenerator {
             && !summary.ends_with('?')
         {
             // Try to truncate at word boundary
-            if let Some(last_space) = summary.rfind(' ') {
-                if last_space > summary.len() / 2 {
-                    summary.truncate(last_space);
-                }
+            if let Some(last_space) = summary.rfind(' ')
+                && last_space > summary.len() / 2
+            {
+                summary.truncate(last_space);
             }
             summary.push_str("...");
         }

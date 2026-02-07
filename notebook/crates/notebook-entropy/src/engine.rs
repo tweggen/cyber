@@ -79,9 +79,7 @@ impl IntegrationCostEngine {
     ///
     /// If the notebook doesn't have a snapshot, creates an empty one.
     fn get_or_create_snapshot(&mut self, notebook_id: NotebookId) -> &mut CoherenceSnapshot {
-        self.snapshots
-            .entry(notebook_id)
-            .or_insert_with(CoherenceSnapshot::new)
+        self.snapshots.entry(notebook_id).or_default()
     }
 
     /// Returns the coherence snapshot for a notebook if it exists.
@@ -159,43 +157,34 @@ impl IntegrationCostEngine {
         entry: &Entry,
         notebook_id: NotebookId,
     ) -> Result<IntegrationCost, EntropyError> {
-        let snapshot = self.snapshots.get(&notebook_id);
+        if let Some(snapshot) = self.snapshots.get(&notebook_id) {
+            // Clone for tentative analysis
+            let mut preview_snapshot = snapshot.clone();
+            let before_state = CostState::capture(snapshot, entry);
 
-        match snapshot {
-            Some(snapshot) => {
-                // Clone for tentative analysis
-                let mut preview_snapshot = snapshot.clone();
-                let before_state = CostState::capture(snapshot, entry);
+            let assigned_cluster = preview_snapshot.add_entry(entry);
+            let after_state = CostState::capture(&preview_snapshot, entry);
 
-                let assigned_cluster = preview_snapshot.add_entry(entry);
-                let after_state = CostState::capture(&preview_snapshot, entry);
+            let entries_revised = compute_entries_revised(&before_state, &after_state);
+            let references_broken =
+                compute_references_broken(entry, &preview_snapshot, &before_state, &after_state);
+            let catalog_shift = compute_catalog_shift(&before_state, &after_state);
+            let orphan = compute_orphan(entry, assigned_cluster, &before_state);
 
-                let entries_revised = compute_entries_revised(&before_state, &after_state);
-                let references_broken = compute_references_broken(
-                    entry,
-                    &preview_snapshot,
-                    &before_state,
-                    &after_state,
-                );
-                let catalog_shift = compute_catalog_shift(&before_state, &after_state);
-                let orphan = compute_orphan(entry, assigned_cluster, &before_state);
-
-                Ok(IntegrationCost {
-                    entries_revised,
-                    references_broken,
-                    catalog_shift,
-                    orphan,
-                })
-            }
-            None => {
-                // No snapshot means first entry - minimal cost
-                Ok(IntegrationCost {
-                    entries_revised: 0,
-                    references_broken: 0,
-                    catalog_shift: 0.5, // First entry shifts catalog from nothing
-                    orphan: entry.references.is_empty(),
-                })
-            }
+            Ok(IntegrationCost {
+                entries_revised,
+                references_broken,
+                catalog_shift,
+                orphan,
+            })
+        } else {
+            // No snapshot means first entry - minimal cost
+            Ok(IntegrationCost {
+                entries_revised: 0,
+                references_broken: 0,
+                catalog_shift: 0.5, // First entry shifts catalog from nothing
+                orphan: entry.references.is_empty(),
+            })
         }
     }
 
@@ -272,10 +261,10 @@ fn compute_entries_revised(before: &CostState, after: &CostState) -> u32 {
 
     // Check entries that existed before
     for (entry_id, old_cluster) in &before.entry_clusters {
-        if let Some(new_cluster) = after.entry_clusters.get(entry_id) {
-            if old_cluster != new_cluster {
-                revised += 1;
-            }
+        if let Some(new_cluster) = after.entry_clusters.get(entry_id)
+            && old_cluster != new_cluster
+        {
+            revised += 1;
         }
         // Entry no longer tracked - shouldn't happen normally
     }
@@ -295,13 +284,13 @@ fn compute_references_broken(
     // Check references from the new entry
     if let Some(entry_cluster) = after.entry_clusters.get(&entry.id) {
         for ref_id in &entry.references {
-            if let Some(ref_cluster) = after.entry_clusters.get(ref_id) {
-                if ref_cluster != entry_cluster {
-                    // Reference crosses cluster boundary
-                    // This is only "broken" if it was internal before
-                    // For a new entry, all cross-cluster refs count
-                    broken += 1;
-                }
+            if let Some(ref_cluster) = after.entry_clusters.get(ref_id)
+                && ref_cluster != entry_cluster
+            {
+                // Reference crosses cluster boundary
+                // This is only "broken" if it was internal before
+                // For a new entry, all cross-cluster refs count
+                broken += 1;
             }
         }
     }

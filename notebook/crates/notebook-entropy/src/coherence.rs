@@ -10,8 +10,8 @@
 //! This model is used by the entropy engine to compute integration costs.
 
 use crate::clustering::{
-    Cluster, ClusterId, ClusteringConfig, DEFAULT_SIMILARITY_THRESHOLD, ReferenceGraph,
-    calculate_reference_density, cluster_entries, find_best_cluster,
+    Cluster, ClusterId, ClusteringConfig, ReferenceGraph, calculate_reference_density,
+    cluster_entries, find_best_cluster,
 };
 use crate::tfidf::{CorpusStats, TfIdfVector, tokenize};
 use notebook_core::types::{CausalPosition, Entry, EntryId};
@@ -223,7 +223,7 @@ impl CoherenceSnapshot {
         &mut self,
         entry_id: EntryId,
         cluster_id: ClusterId,
-        vector: &TfIdfVector,
+        _vector: &TfIdfVector,
     ) {
         if let Some(cluster) = self.clusters.iter_mut().find(|c| c.id == cluster_id) {
             cluster.entry_ids.push(entry_id);
@@ -355,7 +355,7 @@ impl CoherenceSnapshot {
     /// Gets cluster statistics.
     pub fn stats(&self) -> CoherenceStats {
         let sizes: Vec<_> = self.clusters.iter().map(|c| c.size()).collect();
-        let densities: Vec<_> = self.clusters.iter().map(|c| c.reference_density).collect();
+        let _densities: Vec<_> = self.clusters.iter().map(|c| c.reference_density).collect();
 
         CoherenceStats {
             cluster_count: self.clusters.len(),
@@ -445,7 +445,10 @@ mod tests {
         let snapshot = CoherenceSnapshot::new();
         assert_eq!(snapshot.cluster_count(), 0);
         assert_eq!(snapshot.entry_count(), 0);
-        assert_eq!(snapshot.threshold(), DEFAULT_SIMILARITY_THRESHOLD);
+        assert_eq!(
+            snapshot.threshold(),
+            crate::clustering::DEFAULT_SIMILARITY_THRESHOLD
+        );
     }
 
     #[test]

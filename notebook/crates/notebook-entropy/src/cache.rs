@@ -279,10 +279,10 @@ impl CatalogCache {
 
     /// Returns true if a cached entry exists and is fresh.
     pub fn is_fresh(&self, notebook_id: &NotebookId) -> bool {
-        if let Ok(cache) = self.cache.read() {
-            if let Some(entry) = cache.get(notebook_id) {
-                return entry.status(&self.config) == CacheStatus::Fresh;
-            }
+        if let Ok(cache) = self.cache.read()
+            && let Some(entry) = cache.get(notebook_id)
+        {
+            return entry.status(&self.config) == CacheStatus::Fresh;
         }
         false
     }
@@ -294,10 +294,10 @@ impl CatalogCache {
     /// - Entry is stale
     /// - Entry is expired
     pub fn needs_revalidation(&self, notebook_id: &NotebookId) -> bool {
-        if let Ok(cache) = self.cache.read() {
-            if let Some(entry) = cache.get(notebook_id) {
-                return entry.is_stale(&self.config);
-            }
+        if let Ok(cache) = self.cache.read()
+            && let Some(entry) = cache.get(notebook_id)
+        {
+            return entry.is_stale(&self.config);
         }
         true // No entry = needs validation
     }

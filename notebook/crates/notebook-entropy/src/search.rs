@@ -108,6 +108,8 @@ struct SearchFields {
 /// Uses Tantivy for fast, Rust-native full-text search. The index stores
 /// all notebooks in a single index, with notebook_id filtering at query time.
 pub struct SearchIndex {
+    /// Tantivy Index must stay alive for RAII (keeps directory lock and segment files open).
+    #[allow(dead_code)]
     index: Index,
     reader: IndexReader,
     writer: Arc<Mutex<IndexWriter>>,

@@ -9,7 +9,7 @@
 //! 2. Iteratively merge the two most similar clusters
 //! 3. Stop when no pair exceeds the similarity threshold
 
-use crate::tfidf::{CorpusStats, TfIdfVector, merge_vectors};
+use crate::tfidf::{TfIdfVector, merge_vectors};
 use notebook_core::types::EntryId;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -179,10 +179,8 @@ impl ClusterState {
                 let v2 = &self.cluster_vectors[&ids[j]];
                 let sim = v1.cosine_similarity(v2);
 
-                if sim >= threshold {
-                    if best.is_none() || sim > best.as_ref().unwrap().2 {
-                        best = Some((ids[i], ids[j], sim));
-                    }
+                if sim >= threshold && (best.is_none() || sim > best.as_ref().unwrap().2) {
+                    best = Some((ids[i], ids[j], sim));
                 }
             }
         }
@@ -224,7 +222,7 @@ impl ReferenceGraph {
 
     /// Counts edges within a set of entries.
     pub fn count_internal_edges(&self, entries: &[EntryId]) -> usize {
-        let entry_set: HashSet<_> = entries.iter().copied().collect();
+        let _entry_set: HashSet<_> = entries.iter().copied().collect();
         let mut count = 0;
 
         for i in 0..entries.len() {
