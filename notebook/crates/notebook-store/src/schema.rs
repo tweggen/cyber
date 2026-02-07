@@ -17,9 +17,6 @@ pub const GRAPH_MIGRATION: &str = include_str!("../../../migrations/003_graph.sq
 pub const COHERENCE_LINKS_MIGRATION: &str =
     include_str!("../../../migrations/004_coherence_links.sql");
 
-/// Embedded migration SQL for users tables (005_users.sql).
-pub const USERS_MIGRATION: &str = include_str!("../../../migrations/005_users.sql");
-
 /// Embedded migration SQL for notebook sequence counter (006_notebook_sequence.sql).
 pub const NOTEBOOK_SEQUENCE_MIGRATION: &str =
     include_str!("../../../migrations/006_notebook_sequence.sql");
@@ -65,13 +62,6 @@ pub async fn run_migrations(pool: &PgPool) -> StoreResult<()> {
         .map_err(|e| {
             StoreError::MigrationError(format!("Coherence links migration failed: {}", e))
         })?;
-
-    // Run users migration
-    tracing::debug!("Running users migration (005_users.sql)...");
-    sqlx::raw_sql(USERS_MIGRATION)
-        .execute(pool)
-        .await
-        .map_err(|e| StoreError::MigrationError(format!("Users migration failed: {}", e)))?;
 
     // Run notebook sequence migration
     tracing::debug!("Running notebook sequence migration (006_notebook_sequence.sql)...");
@@ -158,23 +148,6 @@ pub async fn get_schema_version(pool: &PgPool) -> StoreResult<u32> {
         return Ok(2);
     }
 
-    // Check if users table exists (from 005_users.sql)
-    let has_users: (bool,) = sqlx::query_as(
-        r#"
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables
-            WHERE table_schema = 'public'
-            AND table_name = 'users'
-        )
-        "#,
-    )
-    .fetch_one(pool)
-    .await?;
-
-    if !has_users.0 {
-        return Ok(3);
-    }
-
     // Check if notebooks table has current_sequence column (from 006_notebook_sequence.sql)
     let has_sequence_col: (bool,) = sqlx::query_as(
         r#"
@@ -189,7 +162,7 @@ pub async fn get_schema_version(pool: &PgPool) -> StoreResult<u32> {
     .fetch_one(pool)
     .await?;
 
-    Ok(if has_sequence_col.0 { 5 } else { 4 })
+    Ok(if has_sequence_col.0 { 5 } else { 3 })
 }
 
 #[cfg(test)]
@@ -212,14 +185,6 @@ mod tests {
         assert!(GRAPH_MIGRATION.contains("create_elabel"));
         assert!(GRAPH_MIGRATION.contains("add_entry_vertex"));
         assert!(GRAPH_MIGRATION.contains("add_reference_edge"));
-    }
-
-    #[test]
-    fn test_users_migration_embedded() {
-        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS users"));
-        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS user_keys"));
-        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS user_quotas"));
-        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS usage_log"));
     }
 
     #[test]

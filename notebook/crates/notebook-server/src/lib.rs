@@ -2,7 +2,6 @@
 //!
 //! This crate provides:
 //! - REST API endpoints (READ, WRITE, BROWSE, REVISE)
-//! - Authentication and session management
 //! - Rate limiting and request validation
 //! - Server-Sent Events (SSE) for real-time notifications
 //!
@@ -13,6 +12,8 @@
 //! - CORS handling
 //! - Request ID generation
 //! - JSON error responses
+//!
+//! Identity is passed via X-Author-Id header from the upstream shell (ASP.NET Core).
 //!
 //! # Usage
 //!
@@ -29,19 +30,19 @@
 //!
 //! Owned by: agent-server
 
-pub mod auth;
 pub mod config;
 pub mod error;
 pub mod events;
+pub mod extract;
 pub mod middleware;
 pub mod routes;
 pub mod state;
 
 // Re-exports for convenience
-pub use auth::AuthenticatedUser;
 pub use config::{ConfigError, ServerConfig};
 pub use error::{ApiError, ApiResult};
 pub use events::EventBroadcaster;
+pub use extract::AuthorIdentity;
 pub use state::AppState;
 
 // Re-export dependent crates

@@ -1,0 +1,71 @@
+@page "/notebooks"
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+
+<PageTitle>Notebooks</PageTitle>
+
+<h3>Notebooks</h3>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+
+@if (notebooks == null && errorMessage == null)
+{
+    <p>Loading...</p>
+}
+else if (notebooks != null)
+{
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Entries</th>
+                <th>Entropy</th>
+                <th>Participants</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var nb in notebooks)
+            {
+                <tr>
+                    <td>@nb.Name</td>
+                    <td>@nb.TotalEntries</td>
+                    <td>@nb.TotalEntropy.ToString("F2")</td>
+                    <td>@nb.ParticipantCount</td>
+                    <td>
+                        <a href="/notebooks/@nb.Id" class="btn btn-sm btn-outline-primary">View</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (notebooks.Count == 0)
+    {
+        <p class="text-muted">No notebooks found. The Rust API may be unreachable or no notebooks have been created.</p>
+    }
+}
+
+@code {
+    private List<NotebookSummary>? notebooks;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Use zero author for now (dev mode)
+            var zeroAuthor = new string('0', 64);
+            var response = await ApiClient.ListNotebooksAsync(zeroAuthor);
+            notebooks = response?.Notebooks ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Could not connect to notebook API: {ex.Message}";
+        }
+    }
+}

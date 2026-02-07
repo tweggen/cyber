@@ -17,7 +17,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use notebook_core::{AuthorId, IntegrationCost};
+use notebook_core::IntegrationCost;
 use notebook_store::{EntryQuery, EntryRow, StoreError};
 
 use crate::error::{ApiError, ApiResult};

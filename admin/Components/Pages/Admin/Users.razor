@@ -1,0 +1,52 @@
+@page "/admin/users"
+@using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
+@using NotebookAdmin.Models
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Users</PageTitle>
+
+<h3>User Management</h3>
+
+@if (users == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped mt-3">
+        <thead>
+            <tr>
+                <th>Username</th>
+                <th>Display Name</th>
+                <th>Author ID</th>
+                <th>Created</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var user in users)
+            {
+                <tr>
+                    <td>@user.UserName</td>
+                    <td>@(user.DisplayName ?? "-")</td>
+                    <td><code>@(user.AuthorIdHex[..16])...</code></td>
+                    <td>-</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (users.Count == 0)
+    {
+        <p class="text-muted">No users registered yet.</p>
+    }
+}
+
+@code {
+    private List<ApplicationUser>? users;
+
+    protected override async Task OnInitializedAsync()
+    {
+        users = await UserManager.Users.ToListAsync();
+    }
+}

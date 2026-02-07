@@ -17,10 +17,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use notebook_core::{AuthorId, Permissions};
+use notebook_core::Permissions;
 use notebook_store::{NewNotebook, Store, StoreError};
 
 use crate::error::{ApiError, ApiResult};
+use crate::extract::AuthorIdentity;
 use crate::state::AppState;
 
 // ============================================================================
@@ -185,11 +186,12 @@ async fn get_author_permissions(
 ///
 /// - 200 OK: `{ "notebooks": [...] }`
 /// - 401 Unauthorized: No authentication (future)
-async fn list_notebooks(State(state): State<AppState>) -> ApiResult<Json<ListNotebooksResponse>> {
+async fn list_notebooks(
+    State(state): State<AppState>,
+    AuthorIdentity(author_id): AuthorIdentity,
+) -> ApiResult<Json<ListNotebooksResponse>> {
     let store = state.store();
 
-    // Get placeholder author for Phase 1 (will be replaced with JWT extraction)
-    let author_id = AuthorId::zero();
     let author_bytes = *author_id.as_bytes();
 
     // List notebooks accessible to this author
@@ -252,24 +254,12 @@ async fn list_notebooks(State(state): State<AppState>) -> ApiResult<Json<ListNot
 /// - 401 Unauthorized: No authentication (future)
 async fn create_notebook(
     State(state): State<AppState>,
+    AuthorIdentity(author_id): AuthorIdentity,
     Json(request): Json<CreateNotebookRequest>,
 ) -> ApiResult<(StatusCode, Json<CreateNotebookResponse>)> {
     let store = state.store();
 
-    // Get placeholder author for Phase 1 (will be replaced with JWT extraction)
-    let author_id = AuthorId::zero();
     let author_bytes = *author_id.as_bytes();
-
-    // Ensure author exists (create if not)
-    // For Phase 1, we use a zero author which should already exist or we create it
-    if !store.author_exists(&author_bytes).await? {
-        // Create the placeholder author with zero public key
-        let new_author = notebook_store::NewAuthor::new(author_bytes, [0u8; 32]);
-        store.insert_author(&new_author).await.map_err(|e| {
-            tracing::warn!(error = %e, "Failed to create placeholder author");
-            ApiError::Internal("Failed to create author".to_string())
-        })?;
-    }
 
     // Validate name is not empty
     if request.name.trim().is_empty() {
@@ -315,12 +305,11 @@ async fn create_notebook(
 /// - 404 Not Found: Notebook doesn't exist
 async fn delete_notebook(
     State(state): State<AppState>,
+    AuthorIdentity(author_id): AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
 ) -> ApiResult<Json<DeleteNotebookResponse>> {
     let store = state.store();
 
-    // Get placeholder author for Phase 1 (will be replaced with JWT extraction)
-    let author_id = AuthorId::zero();
     let author_bytes = *author_id.as_bytes();
 
     // Get the notebook to check ownership

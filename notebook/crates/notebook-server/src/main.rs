@@ -2,13 +2,12 @@
 
 use axum::middleware;
 use notebook_server::{
-    auth,
     config::ServerConfig,
     middleware::request_id::{propagate_request_id, request_id_layer},
     routes,
     state::AppState,
 };
-use notebook_store::{NewUser, Store, StoreConfig};
+use notebook_store::{Store, StoreConfig};
 use tokio::net::TcpListener;
 use tokio::signal;
 use tower_http::cors::{Any, CorsLayer};
@@ -35,9 +34,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let store = Store::connect(store_config).await?;
     tracing::info!("Connected to database");
 
-    // Bootstrap admin user if configured and no users exist yet
-    bootstrap_admin(&store, &config).await?;
-
     // Build application state
     let state = AppState::new(store, config.clone());
 
@@ -62,80 +58,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     tracing::info!("Server shutdown complete");
-    Ok(())
-}
-
-/// Bootstrap the initial admin user if ADMIN_USERNAME and ADMIN_PASSWORD are set
-/// and no users exist in the database yet.
-async fn bootstrap_admin(
-    store: &Store,
-    config: &ServerConfig,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let (Some(admin_username), Some(admin_password)) =
-        (&config.admin_username, &config.admin_password)
-    else {
-        return Ok(());
-    };
-
-    // Only bootstrap if no users exist
-    let has_users = store.has_users().await?;
-    if has_users {
-        tracing::debug!("Users already exist, skipping admin bootstrap");
-        return Ok(());
-    }
-
-    tracing::info!(
-        "No users found, bootstrapping admin user '{}'",
-        admin_username
-    );
-
-    // Generate Ed25519 keypair for the admin user
-    use ed25519_dalek::SigningKey;
-    use rand::rngs::OsRng;
-
-    let signing_key = SigningKey::generate(&mut OsRng);
-    let public_key = signing_key.verifying_key();
-    let public_key_bytes = public_key.to_bytes();
-
-    // Register the author (computes AuthorId as BLAKE3 hash of public key)
-    let author_id_bytes = blake3::hash(&public_key_bytes);
-    let author_id_arr: [u8; 32] = *author_id_bytes.as_bytes();
-
-    let new_author = notebook_store::NewAuthor::new(author_id_arr, public_key_bytes);
-    store.insert_author(&new_author).await?;
-
-    // Hash the admin password
-    let password_hash = auth::hash_password(admin_password)
-        .map_err(|e| format!("Failed to hash admin password: {}", e))?;
-
-    // Create the admin user
-    let new_user = NewUser {
-        username: admin_username.clone(),
-        display_name: Some("Administrator".to_string()),
-        password_hash,
-        author_id: author_id_arr,
-        role: "admin".to_string(),
-    };
-    let user = store.insert_user(&new_user).await?;
-
-    // Store the signing key (unencrypted for now — production should use a KMS)
-    store
-        .store_user_key(user.id, &signing_key.to_bytes())
-        .await?;
-
-    // Create default quotas for admin (generous defaults)
-    store
-        .upsert_user_quota(user.id, 100, 10000, 10_485_760, 1_073_741_824)
-        .await?;
-
-    let author_id_hex: String = author_id_arr.iter().map(|b| format!("{:02x}", b)).collect();
-    tracing::info!(
-        user_id = %user.id,
-        username = %user.username,
-        author_id = %author_id_hex,
-        "Admin user created successfully"
-    );
-
     Ok(())
 }
 

@@ -1,0 +1,35 @@
+@page "/admin/dashboard"
+@using Microsoft.AspNetCore.Identity
+@using NotebookAdmin.Models
+@inject UserManager<ApplicationUser> UserManager
+
+<PageTitle>Dashboard</PageTitle>
+
+<h3>Dashboard</h3>
+
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Total Users</h5>
+                <p class="card-text display-4">@userCount</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-4">
+    <p class="text-muted">
+        The dashboard connects to the Rust notebook API for notebook statistics.
+        Ensure the notebook server is running at the configured base URL.
+    </p>
+</div>
+
+@code {
+    private int userCount;
+
+    protected override async Task OnInitializedAsync()
+    {
+        userCount = UserManager.Users.Count();
+    }
+}

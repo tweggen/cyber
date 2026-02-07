@@ -11,7 +11,7 @@ use axum::{
     Json, Router,
     extract::{Path, Query, State},
     http::{HeaderMap, HeaderValue, StatusCode},
-    routing::{get, post, put},
+    routing::{post, put},
 };
 use base64::Engine;
 use chrono::{DateTime, Utc};
@@ -24,6 +24,7 @@ use notebook_store::{
 };
 
 use crate::error::{ApiError, ApiResult};
+use crate::extract::AuthorIdentity;
 use crate::state::AppState;
 
 // ============================================================================
@@ -304,6 +305,7 @@ fn entry_to_response(entry: &Entry) -> EntryResponse {
 /// - 500 Internal Server Error: Storage failure
 async fn create_entry(
     State(state): State<AppState>,
+    AuthorIdentity(author_id): AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
     Json(request): Json<CreateEntryRequest>,
 ) -> ApiResult<(StatusCode, HeaderMap, Json<CreateEntryResponse>)> {
@@ -331,10 +333,7 @@ async fn create_entry(
     // 3. Get content bytes (decode base64 if binary)
     let content = get_content_bytes(&request)?;
 
-    // 4. Get placeholder author (Phase 1 - will be replaced with JWT extraction)
-    let author_id = AuthorId::zero();
-
-    // 5. Assign causal position
+    // 4. Assign causal position
     let causal_position =
         CausalPositionService::assign_position(pool, NotebookId::from_uuid(notebook_id), author_id)
             .await
@@ -479,6 +478,7 @@ async fn create_entry(
 /// - 500 Internal Server Error: Storage failure
 async fn revise_entry(
     State(state): State<AppState>,
+    AuthorIdentity(author_id): AuthorIdentity,
     Path((notebook_id, entry_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<ReviseRequest>,
 ) -> ApiResult<(HeaderMap, Json<ReviseResponse>)> {
@@ -504,10 +504,6 @@ async fn revise_entry(
         tracing::warn!(error = %e, "Failed to fetch original entry");
         e
     })?;
-
-    // Use placeholder author for now (zeros) since auth is not yet implemented.
-    // In a full implementation, this would come from the authenticated user.
-    let author_id = AuthorId::zero();
 
     // Assign causal position for the new revision
     let causal_position =

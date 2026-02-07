@@ -1,0 +1,88 @@
+@page "/notebooks/{NotebookId:guid}"
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+
+<PageTitle>Notebook</PageTitle>
+
+<h3>Notebook Details</h3>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+
+@if (browseResult == null && errorMessage == null)
+{
+    <p>Loading...</p>
+}
+else if (browseResult != null)
+{
+    <div class="row mb-3">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Total Entries</h6>
+                    <p class="card-text display-6">@browseResult.TotalEntries</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Notebook Entropy</h6>
+                    <p class="card-text display-6">@browseResult.NotebookEntropy.ToString("F2")</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <h6 class="card-title">Clusters</h6>
+                    <p class="card-text display-6">@browseResult.Catalog.Count</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h4>Catalog</h4>
+
+    @if (browseResult.Catalog.Count == 0)
+    {
+        <p class="text-muted">No entries in this notebook yet.</p>
+    }
+
+    @foreach (var cluster in browseResult.Catalog)
+    {
+        <div class="card mb-2">
+            <div class="card-body">
+                <h6 class="card-title">@cluster.Topic</h6>
+                <p class="card-text">@cluster.Summary</p>
+                <small class="text-muted">
+                    @cluster.EntryCount entries | Cost: @cluster.CumulativeCost.ToString("F2") | Stability: @cluster.Stability
+                </small>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    [Parameter]
+    public Guid NotebookId { get; set; }
+
+    private BrowseResponse? browseResult;
+    private string? errorMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var zeroAuthor = new string('0', 64);
+            browseResult = await ApiClient.BrowseAsync(zeroAuthor, NotebookId);
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Could not connect to notebook API: {ex.Message}";
+        }
+    }
+}

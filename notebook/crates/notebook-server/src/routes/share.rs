@@ -10,7 +10,6 @@
 use axum::{
     Json, Router,
     extract::{Path, State},
-    http::StatusCode,
     routing::{delete, get, post},
 };
 use chrono::{DateTime, Utc};
@@ -20,6 +19,7 @@ use uuid::Uuid;
 use notebook_store::NewNotebookAccess;
 
 use crate::error::{ApiError, ApiResult};
+use crate::extract::AuthorIdentity;
 use crate::state::AppState;
 
 // ============================================================================
@@ -150,15 +150,14 @@ async fn is_notebook_owner(
 /// - 404 Not Found: Notebook not found
 async fn grant_access(
     State(state): State<AppState>,
+    AuthorIdentity(author_identity): AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
     Json(request): Json<ShareRequest>,
 ) -> ApiResult<Json<ShareResponse>> {
     // Parse target author_id
     let target_author_id = parse_author_id(&request.author_id)?;
 
-    // For now, use placeholder author (zeros) as requester
-    // In full implementation, this would come from JWT/auth middleware
-    let requester_id = [0u8; 32];
+    let requester_id = *author_identity.as_bytes();
 
     // Check if requester is owner
     if !is_notebook_owner(&state, notebook_id, &requester_id).await? {
@@ -206,13 +205,13 @@ async fn grant_access(
 /// - 404 Not Found: Notebook not found
 async fn revoke_access(
     State(state): State<AppState>,
+    AuthorIdentity(author_identity): AuthorIdentity,
     Path((notebook_id, author_id_hex)): Path<(Uuid, String)>,
 ) -> ApiResult<Json<RevokeResponse>> {
     // Parse target author_id
     let target_author_id = parse_author_id(&author_id_hex)?;
 
-    // For now, use placeholder author (zeros) as requester
-    let requester_id = [0u8; 32];
+    let requester_id = *author_identity.as_bytes();
 
     // Check if requester is owner
     if !is_notebook_owner(&state, notebook_id, &requester_id).await? {
@@ -269,6 +268,7 @@ async fn revoke_access(
 /// - 404 Not Found: Notebook not found
 async fn list_participants(
     State(state): State<AppState>,
+    AuthorIdentity(author_identity): AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
 ) -> ApiResult<Json<ParticipantsResponse>> {
     // Verify notebook exists
@@ -283,8 +283,7 @@ async fn list_participants(
             other => ApiError::Store(other),
         })?;
 
-    // For now, use placeholder author (zeros) as requester
-    let requester_id = [0u8; 32];
+    let requester_id = *author_identity.as_bytes();
 
     // Check if requester has read access
     if !state

@@ -33,7 +33,7 @@ use axum::{
     routing::get,
 };
 use chrono::Utc;
-use futures::stream::{self, Stream, StreamExt};
+use futures::stream::{self, Stream};
 use tokio::sync::broadcast::error::RecvError;
 use uuid::Uuid;
 
@@ -96,7 +96,7 @@ async fn subscribe_events(
     let broadcaster = state.broadcaster();
 
     // Subscribe to events
-    let mut receiver = broadcaster.subscribe(notebook_id).await;
+    let receiver = broadcaster.subscribe(notebook_id).await;
 
     tracing::info!(
         notebook_id = %notebook_id,
