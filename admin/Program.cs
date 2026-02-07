@@ -32,6 +32,9 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/auth/access-denied";
 });
 
+// Add JWT token service (EdDSA signing for Rust API auth)
+builder.Services.AddSingleton<TokenService>();
+
 // Add Notebook API client
 builder.Services.AddHttpClient<NotebookApiClient>(client =>
 {
@@ -61,6 +64,33 @@ app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
+
+// Token endpoint for API clients (AI agents, tools, etc.)
+app.MapPost("/auth/token", async (
+    TokenRequest request,
+    UserManager<ApplicationUser> userManager,
+    SignInManager<ApplicationUser> signInManager,
+    TokenService tokenService) =>
+{
+    var user = await userManager.FindByNameAsync(request.Username);
+    if (user == null)
+        return Results.Unauthorized();
+
+    var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: false);
+    if (!result.Succeeded)
+        return Results.Unauthorized();
+
+    var token = tokenService.GenerateToken(user.AuthorIdHex);
+    var expiryMinutes = int.TryParse(
+        app.Configuration["Jwt:ExpiryMinutes"], out var exp) ? exp : 60;
+
+    return Results.Ok(new TokenResponse
+    {
+        Token = token,
+        AuthorId = user.AuthorIdHex,
+        ExpiresAt = DateTimeOffset.UtcNow.AddMinutes(expiryMinutes).ToUnixTimeSeconds(),
+    });
+}).AllowAnonymous();
 
 app.MapStaticAssets();
 app.MapRazorComponents<App>()

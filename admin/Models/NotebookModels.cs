@@ -205,3 +205,22 @@ public class RegisterAuthorResponse
     [JsonPropertyName("author_id")]
     public string AuthorId { get; set; } = string.Empty;
 }
+
+/// <summary>
+/// DTO for token request.
+/// </summary>
+public class TokenRequest
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// DTO for token response.
+/// </summary>
+public class TokenResponse
+{
+    public string Token { get; set; } = string.Empty;
+    public string AuthorId { get; set; } = string.Empty;
+    public long ExpiresAt { get; set; }
+}

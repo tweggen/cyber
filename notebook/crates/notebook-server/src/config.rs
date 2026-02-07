@@ -13,6 +13,12 @@ pub struct ServerConfig {
     pub log_level: String,
     /// CORS allowed origins (comma-separated or "*" for all).
     pub cors_allowed_origins: String,
+    /// Ed25519 public key in PEM format for JWT validation.
+    /// If empty, JWT validation is disabled (dev mode only).
+    pub jwt_public_key: String,
+    /// Allow X-Author-Id header fallback for dev mode.
+    /// When true, requests without a JWT Bearer token can use X-Author-Id.
+    pub allow_dev_identity: bool,
 }
 
 impl ServerConfig {
@@ -39,11 +45,19 @@ impl ServerConfig {
         let cors_allowed_origins =
             env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| "*".to_string());
 
+        let jwt_public_key = env::var("JWT_PUBLIC_KEY").unwrap_or_default();
+
+        let allow_dev_identity = env::var("ALLOW_DEV_IDENTITY")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(false);
+
         Ok(Self {
             database_url,
             port,
             log_level,
             cors_allowed_origins,
+            jwt_public_key,
+            allow_dev_identity,
         })
     }
 
@@ -80,6 +94,8 @@ mod tests {
         assert_eq!(config.port, 3000);
         assert_eq!(config.log_level, "info");
         assert_eq!(config.cors_allowed_origins, "*");
+        assert!(config.jwt_public_key.is_empty());
+        assert!(!config.allow_dev_identity);
 
         // SAFETY: This test is not run in parallel with other tests that read DATABASE_URL.
         unsafe { env::remove_var("DATABASE_URL") };

@@ -6,16 +6,21 @@ namespace NotebookAdmin.Services;
 
 /// <summary>
 /// HttpClient wrapper for the Rust notebook API.
-/// Adds X-Author-Id header automatically from the current user's AuthorId.
+/// Authenticates via JWT Bearer tokens signed by TokenService.
 /// </summary>
 public class NotebookApiClient
 {
     private readonly HttpClient _httpClient;
+    private readonly TokenService _tokenService;
     private readonly ILogger<NotebookApiClient> _logger;
 
-    public NotebookApiClient(HttpClient httpClient, ILogger<NotebookApiClient> logger)
+    public NotebookApiClient(
+        HttpClient httpClient,
+        TokenService tokenService,
+        ILogger<NotebookApiClient> logger)
     {
         _httpClient = httpClient;
+        _tokenService = tokenService;
         _logger = logger;
     }
 
@@ -26,7 +31,7 @@ public class NotebookApiClient
 
     /// <summary>
     /// Register a new author with the Rust API.
-    /// Called during user creation.
+    /// Called during user creation. No auth needed for author registration.
     /// </summary>
     public async Task<RegisterAuthorResponse?> RegisterAuthorAsync(string publicKeyHex)
     {
@@ -42,7 +47,7 @@ public class NotebookApiClient
     public async Task<ListNotebooksResponse?> ListNotebooksAsync(string authorIdHex)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, "/notebooks");
-        request.Headers.Add("X-Author-Id", authorIdHex);
+        AddAuthHeader(request, authorIdHex);
         var response = await _httpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ListNotebooksResponse>(JsonOptions);
@@ -55,7 +60,7 @@ public class NotebookApiClient
         string authorIdHex, string name)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, "/notebooks");
-        request.Headers.Add("X-Author-Id", authorIdHex);
+        AddAuthHeader(request, authorIdHex);
         request.Content = JsonContent.Create(new CreateNotebookRequest { Name = name }, options: JsonOptions);
         var response = await _httpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
@@ -69,7 +74,7 @@ public class NotebookApiClient
         string authorIdHex, Guid notebookId, CreateEntryRequest entry)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, $"/notebooks/{notebookId}/entries");
-        request.Headers.Add("X-Author-Id", authorIdHex);
+        AddAuthHeader(request, authorIdHex);
         request.Content = JsonContent.Create(entry, options: JsonOptions);
         var response = await _httpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
@@ -89,7 +94,7 @@ public class NotebookApiClient
         if (queryParams.Count > 0) url += "?" + string.Join("&", queryParams);
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Add("X-Author-Id", authorIdHex);
+        AddAuthHeader(request, authorIdHex);
         var response = await _httpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<BrowseResponse>(JsonOptions);
@@ -105,9 +110,18 @@ public class NotebookApiClient
         if (since.HasValue) url += $"?since={since.Value}";
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.Add("X-Author-Id", authorIdHex);
+        AddAuthHeader(request, authorIdHex);
         var response = await _httpClient.SendAsync(request);
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<ObserveResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Add JWT Bearer token to the request for the given author.
+    /// </summary>
+    private void AddAuthHeader(HttpRequestMessage request, string authorIdHex)
+    {
+        var token = _tokenService.GenerateToken(authorIdHex);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 }

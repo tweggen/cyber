@@ -41,6 +41,9 @@ thiserror = { workspace = true }
 # Cryptography (for AuthorId computation)
 blake3 = { workspace = true }
 
+# JWT authentication
+jsonwebtoken = { workspace = true }
+
 # SSE support (added by agent-events for Task 4-3)
 axum-extra = { workspace = true }
 futures = { workspace = true }
