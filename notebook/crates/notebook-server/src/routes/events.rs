@@ -27,10 +27,10 @@ use std::convert::Infallible;
 use std::time::Duration;
 
 use axum::{
+    Router,
     extract::{Path, State},
     response::sse::{Event, KeepAlive, Sse},
     routing::get,
-    Router,
 };
 use chrono::Utc;
 use futures::stream::{self, Stream, StreamExt};
@@ -40,7 +40,7 @@ use uuid::Uuid;
 use notebook_store::StoreError;
 
 use crate::error::ApiError;
-use crate::events::{CatchupEvent, HeartbeatEvent, NotebookEvent, HEARTBEAT_INTERVAL_SECS};
+use crate::events::{CatchupEvent, HEARTBEAT_INTERVAL_SECS, HeartbeatEvent, NotebookEvent};
 use crate::state::AppState;
 
 // ============================================================================
@@ -81,12 +81,16 @@ async fn subscribe_events(
     Path(notebook_id): Path<Uuid>,
 ) -> Result<Sse<impl Stream<Item = Result<Event, Infallible>>>, ApiError> {
     // Validate notebook exists
-    state.store().get_notebook(notebook_id).await.map_err(|e| match e {
-        StoreError::NotebookNotFound(id) => {
-            ApiError::NotFound(format!("Notebook {} not found", id))
-        }
-        other => ApiError::Store(other),
-    })?;
+    state
+        .store()
+        .get_notebook(notebook_id)
+        .await
+        .map_err(|e| match e {
+            StoreError::NotebookNotFound(id) => {
+                ApiError::NotFound(format!("Notebook {} not found", id))
+            }
+            other => ApiError::Store(other),
+        })?;
 
     // Get broadcaster from state
     let broadcaster = state.broadcaster();
@@ -119,9 +123,7 @@ async fn subscribe_events(
 
                         match serde_json::to_string(&event) {
                             Ok(data) => {
-                                let sse_event = Event::default()
-                                    .event(event_type)
-                                    .data(data);
+                                let sse_event = Event::default().event(event_type).data(data);
                                 return Some((Ok(sse_event), (rx, nb_id, last_sequence)));
                             }
                             Err(e) => {
@@ -149,9 +151,7 @@ async fn subscribe_events(
 
                         match serde_json::to_string(&catchup) {
                             Ok(data) => {
-                                let sse_event = Event::default()
-                                    .event("catchup")
-                                    .data(data);
+                                let sse_event = Event::default().event("catchup").data(data);
                                 return Some((Ok(sse_event), (rx, nb_id, last_sequence)));
                             }
                             Err(e) => {
@@ -180,14 +180,12 @@ async fn subscribe_events(
     let keep_alive = KeepAlive::new()
         .interval(Duration::from_secs(HEARTBEAT_INTERVAL_SECS))
         .event(
-            Event::default()
-                .event("heartbeat")
-                .data(
-                    serde_json::to_string(&NotebookEvent::Heartbeat(HeartbeatEvent {
-                        timestamp: Utc::now(),
-                    }))
-                    .unwrap_or_else(|_| r#"{"type":"heartbeat","timestamp":"unknown"}"#.to_string()),
-                ),
+            Event::default().event("heartbeat").data(
+                serde_json::to_string(&NotebookEvent::Heartbeat(HeartbeatEvent {
+                    timestamp: Utc::now(),
+                }))
+                .unwrap_or_else(|_| r#"{"type":"heartbeat","timestamp":"unknown"}"#.to_string()),
+            ),
         );
 
     Ok(Sse::new(stream).keep_alive(keep_alive))

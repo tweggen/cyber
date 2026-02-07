@@ -212,12 +212,7 @@ impl Agent {
             references,
         };
 
-        let response = self
-            .client
-            .post(&url)
-            .json(&request)
-            .send()
-            .await?;
+        let response = self.client.post(&url).json(&request).send().await?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -254,12 +249,7 @@ impl Agent {
             reason: reason.map(|s| s.to_string()),
         };
 
-        let response = self
-            .client
-            .put(&url)
-            .json(&request)
-            .send()
-            .await?;
+        let response = self.client.put(&url).json(&request).send().await?;
 
         if !response.status().is_success() {
             let status = response.status();
@@ -328,7 +318,10 @@ impl Agent {
         let result: BrowseResponse = response.json().await?;
         println!(
             "[{}] BROWSE notebook (entries={}, entropy={:.2}, clusters={})",
-            self.name, result.total_entries, result.notebook_entropy, result.catalog.len()
+            self.name,
+            result.total_entries,
+            result.notebook_entropy,
+            result.catalog.len()
         );
         for cluster in &result.catalog {
             println!(
@@ -406,14 +399,13 @@ async fn create_test_notebook(
 ) -> Result<Uuid, Box<dyn std::error::Error>> {
     let url = format!("{}/notebooks", base_url);
     let request = CreateNotebookRequest {
-        name: format!("Two-Agent Exchange Test {}", chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")),
+        name: format!(
+            "Two-Agent Exchange Test {}",
+            chrono::Utc::now().format("%Y-%m-%d %H:%M:%S")
+        ),
     };
 
-    let response = client
-        .post(&url)
-        .json(&request)
-        .send()
-        .await?;
+    let response = client.post(&url).json(&request).send().await?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -486,8 +478,15 @@ async fn test_two_agent_knowledge_exchange() {
     };
 
     // Agent A observes to establish baseline
-    let initial_observe = agent_a.observe(notebook_id).await.expect("Initial observe failed");
-    assert_eq!(initial_observe.changes.len(), 0, "New notebook should have no entries");
+    let initial_observe = agent_a
+        .observe(notebook_id)
+        .await
+        .expect("Initial observe failed");
+    assert_eq!(
+        initial_observe.changes.len(),
+        0,
+        "New notebook should have no entries"
+    );
 
     println!();
 
@@ -611,7 +610,11 @@ async fn test_two_agent_knowledge_exchange() {
 
     println!(
         "       Integration costs present: {}",
-        if has_nonzero_cost { "yes" } else { "no (may be zero for coherent additions)" }
+        if has_nonzero_cost {
+            "yes"
+        } else {
+            "no (may be zero for coherent additions)"
+        }
     );
 
     println!();
@@ -664,7 +667,10 @@ async fn test_two_agent_knowledge_exchange() {
 
     println!("\nReference graph for entry Y:");
     println!("  References: {:?}", read_y_final.entry.references);
-    println!("  Referenced by: {} entries", read_y_final.referenced_by.len());
+    println!(
+        "  Referenced by: {} entries",
+        read_y_final.referenced_by.len()
+    );
     println!("  Revisions: {} entries", read_y_final.revisions.len());
 
     // Y should be referenced by B's perspective entry
@@ -798,10 +804,7 @@ async fn test_integration_cost_behavior() {
 
     // The unrelated entry might have higher cost or be marked orphan
     // depending on the entropy engine's calibration
-    println!(
-        "  Entry 3 orphan flag: {}",
-        entry3.integration_cost.orphan
-    );
+    println!("  Entry 3 orphan flag: {}", entry3.integration_cost.orphan);
 
     println!("\nTest completed (integration costs are system-computed)");
 }
@@ -843,11 +846,26 @@ async fn test_catalog_reflects_combined_knowledge() {
 
     // Write entries across different topics
     let topics = [
-        ("Rust is a systems programming language focused on safety.", "rust programming"),
-        ("Python is popular for data science and machine learning.", "python programming"),
-        ("JavaScript runs in web browsers and on servers.", "javascript programming"),
-        ("Memory safety prevents buffer overflows and data races.", "rust programming"),
-        ("Type inference reduces boilerplate in modern languages.", "rust programming"),
+        (
+            "Rust is a systems programming language focused on safety.",
+            "rust programming",
+        ),
+        (
+            "Python is popular for data science and machine learning.",
+            "python programming",
+        ),
+        (
+            "JavaScript runs in web browsers and on servers.",
+            "javascript programming",
+        ),
+        (
+            "Memory safety prevents buffer overflows and data races.",
+            "rust programming",
+        ),
+        (
+            "Type inference reduces boilerplate in modern languages.",
+            "rust programming",
+        ),
     ];
 
     for (content, topic) in topics {
@@ -872,10 +890,7 @@ async fn test_catalog_reflects_combined_knowledge() {
         );
     }
 
-    assert!(
-        browse.total_entries >= 5,
-        "Should have at least 5 entries"
-    );
+    assert!(browse.total_entries >= 5, "Should have at least 5 entries");
 
     println!("\nTest completed (catalog generation verified)");
 }

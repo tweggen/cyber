@@ -17,6 +17,9 @@ pub const GRAPH_MIGRATION: &str = include_str!("../../../migrations/003_graph.sq
 pub const COHERENCE_LINKS_MIGRATION: &str =
     include_str!("../../../migrations/004_coherence_links.sql");
 
+/// Embedded migration SQL for users tables (005_users.sql).
+pub const USERS_MIGRATION: &str = include_str!("../../../migrations/005_users.sql");
+
 /// Run all pending migrations against the database.
 ///
 /// This function is idempotent - it can be run multiple times safely.
@@ -58,6 +61,13 @@ pub async fn run_migrations(pool: &PgPool) -> StoreResult<()> {
         .map_err(|e| {
             StoreError::MigrationError(format!("Coherence links migration failed: {}", e))
         })?;
+
+    // Run users migration
+    tracing::debug!("Running users migration (005_users.sql)...");
+    sqlx::raw_sql(USERS_MIGRATION)
+        .execute(pool)
+        .await
+        .map_err(|e| StoreError::MigrationError(format!("Users migration failed: {}", e)))?;
 
     tracing::info!("Migrations completed successfully");
     Ok(())
@@ -131,7 +141,24 @@ pub async fn get_schema_version(pool: &PgPool) -> StoreResult<u32> {
     .fetch_one(pool)
     .await?;
 
-    Ok(if has_graph_functions.0 { 3 } else { 2 })
+    if !has_graph_functions.0 {
+        return Ok(2);
+    }
+
+    // Check if users table exists (from 005_users.sql)
+    let has_users: (bool,) = sqlx::query_as(
+        r#"
+        SELECT EXISTS (
+            SELECT FROM information_schema.tables
+            WHERE table_schema = 'public'
+            AND table_name = 'users'
+        )
+        "#,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(if has_users.0 { 4 } else { 3 })
 }
 
 #[cfg(test)]
@@ -154,6 +181,14 @@ mod tests {
         assert!(GRAPH_MIGRATION.contains("create_elabel"));
         assert!(GRAPH_MIGRATION.contains("add_entry_vertex"));
         assert!(GRAPH_MIGRATION.contains("add_reference_edge"));
+    }
+
+    #[test]
+    fn test_users_migration_embedded() {
+        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS users"));
+        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS user_keys"));
+        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS user_quotas"));
+        assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS usage_log"));
     }
 
     #[test]

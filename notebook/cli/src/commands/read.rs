@@ -7,7 +7,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{format_timestamp, make_request, output, truncate, HumanReadable};
+use super::{HumanReadable, format_timestamp, make_request, output, truncate};
 
 /// Arguments for the read command.
 #[derive(Args)]
@@ -90,11 +90,7 @@ impl HumanReadable for ReadEntryResponse {
         if let Some(topic) = &entry.topic {
             println!("  {} {}", "Topic:".cyan(), topic);
         }
-        println!(
-            "  {} {}",
-            "Author:".cyan(),
-            truncate(&entry.author, 16)
-        );
+        println!("  {} {}", "Author:".cyan(), truncate(&entry.author, 16));
         println!(
             "  {} {}",
             "Created:".cyan(),

@@ -7,7 +7,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{format_timestamp, make_request, output, HumanReadable};
+use super::{HumanReadable, format_timestamp, make_request, output};
 
 /// Arguments for the observe command.
 #[derive(Args)]
@@ -67,22 +67,14 @@ impl HumanReadable for ObserveResponse {
         println!();
 
         if let Some(seq) = self.current_sequence {
-            println!(
-                "  {} {}",
-                "Current Sequence:".cyan(),
-                seq
-            );
+            println!("  {} {}", "Current Sequence:".cyan(), seq);
         }
         println!(
             "  {} {:.1}",
             "Notebook Entropy:".cyan(),
             self.notebook_entropy
         );
-        println!(
-            "  {} {}",
-            "Changes Found:".cyan(),
-            self.changes.len()
-        );
+        println!("  {} {}", "Changes Found:".cyan(), self.changes.len());
 
         if self.changes.is_empty() {
             println!();
@@ -128,19 +120,11 @@ impl HumanReadable for ObserveResponse {
             );
 
             if let Some(created) = &change.created {
-                println!(
-                    "    {} {}",
-                    "Time:".dimmed(),
-                    format_timestamp(created)
-                );
+                println!("    {} {}", "Time:".dimmed(), format_timestamp(created));
             }
 
             if change.integration_cost.orphan {
-                println!(
-                    "    {} {}",
-                    "Warning:".red().bold(),
-                    "Marked as orphan"
-                );
+                println!("    {} {}", "Warning:".red().bold(), "Marked as orphan");
             }
         }
     }

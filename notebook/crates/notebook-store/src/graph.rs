@@ -113,9 +113,7 @@ impl<'a> GraphQueries<'a> {
         .bind(similarity)
         .execute(self.pool)
         .await
-        .map_err(|e| {
-            StoreError::GraphError(format!("Failed to insert coherence link: {}", e))
-        })?;
+        .map_err(|e| StoreError::GraphError(format!("Failed to insert coherence link: {}", e)))?;
 
         // Also write to AGE graph if available
         if self.age_available {
@@ -175,14 +173,15 @@ impl<'a> GraphQueries<'a> {
         entry_id: Uuid,
         max_depth: i32,
     ) -> StoreResult<Vec<(Uuid, i32)>> {
-        let rows: Vec<(String, i32)> = sqlx::query_as(
-            "SELECT entry_id::text, depth::int FROM find_reference_closure($1, $2)",
-        )
-        .bind(entry_id)
-        .bind(max_depth)
-        .fetch_all(self.pool)
-        .await
-        .map_err(|e| StoreError::GraphError(format!("Reference closure query failed: {}", e)))?;
+        let rows: Vec<(String, i32)> =
+            sqlx::query_as("SELECT entry_id::text, depth::int FROM find_reference_closure($1, $2)")
+                .bind(entry_id)
+                .bind(max_depth)
+                .fetch_all(self.pool)
+                .await
+                .map_err(|e| {
+                    StoreError::GraphError(format!("Reference closure query failed: {}", e))
+                })?;
 
         rows.into_iter()
             .map(|(id_str, depth)| {
@@ -192,10 +191,7 @@ impl<'a> GraphQueries<'a> {
             .collect()
     }
 
-    async fn find_revision_chain_age(
-        &self,
-        entry_id: Uuid,
-    ) -> StoreResult<Vec<(Uuid, i32)>> {
+    async fn find_revision_chain_age(&self, entry_id: Uuid) -> StoreResult<Vec<(Uuid, i32)>> {
         let rows: Vec<(String, i32)> =
             sqlx::query_as("SELECT entry_id::text, depth::int FROM find_revision_chain($1)")
                 .bind(entry_id)
@@ -292,10 +288,7 @@ impl<'a> GraphQueries<'a> {
     }
 
     /// Recursive CTE on `revision_of` FK chain.
-    async fn find_revision_chain_sql(
-        &self,
-        entry_id: Uuid,
-    ) -> StoreResult<Vec<(Uuid, i32)>> {
+    async fn find_revision_chain_sql(&self, entry_id: Uuid) -> StoreResult<Vec<(Uuid, i32)>> {
         let rows: Vec<(Uuid, i32)> = sqlx::query_as(
             r#"
             WITH RECURSIVE rev_chain AS (
@@ -320,22 +313,21 @@ impl<'a> GraphQueries<'a> {
         .bind(entry_id)
         .fetch_all(self.pool)
         .await
-        .map_err(|e| {
-            StoreError::GraphError(format!("SQL revision chain query failed: {}", e))
-        })?;
+        .map_err(|e| StoreError::GraphError(format!("SQL revision chain query failed: {}", e)))?;
 
         Ok(rows)
     }
 
     /// Uses the existing GIN index on `"references"` array.
     async fn find_citations_sql(&self, entry_id: Uuid) -> StoreResult<Vec<Uuid>> {
-        let rows: Vec<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM entries WHERE $1 = ANY("references")"#,
-        )
-        .bind(entry_id)
-        .fetch_all(self.pool)
-        .await
-        .map_err(|e| StoreError::GraphError(format!("SQL citations query failed: {}", e)))?;
+        let rows: Vec<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM entries WHERE $1 = ANY("references")"#)
+                .bind(entry_id)
+                .fetch_all(self.pool)
+                .await
+                .map_err(|e| {
+                    StoreError::GraphError(format!("SQL citations query failed: {}", e))
+                })?;
 
         Ok(rows.into_iter().map(|(id,)| id).collect())
     }
@@ -361,9 +353,7 @@ impl<'a> GraphQueries<'a> {
         .bind(min_similarity)
         .fetch_all(self.pool)
         .await
-        .map_err(|e| {
-            StoreError::GraphError(format!("SQL coherence query failed: {}", e))
-        })?;
+        .map_err(|e| StoreError::GraphError(format!("SQL coherence query failed: {}", e)))?;
 
         Ok(rows)
     }
@@ -399,20 +389,14 @@ mod tests {
     fn test_parse_age_uuid() {
         let uuid_str = "\"550e8400-e29b-41d4-a716-446655440000\"";
         let result = parse_age_uuid(uuid_str).unwrap();
-        assert_eq!(
-            result.to_string(),
-            "550e8400-e29b-41d4-a716-446655440000"
-        );
+        assert_eq!(result.to_string(), "550e8400-e29b-41d4-a716-446655440000");
     }
 
     #[test]
     fn test_parse_age_uuid_no_quotes() {
         let uuid_str = "550e8400-e29b-41d4-a716-446655440000";
         let result = parse_age_uuid(uuid_str).unwrap();
-        assert_eq!(
-            result.to_string(),
-            "550e8400-e29b-41d4-a716-446655440000"
-        );
+        assert_eq!(result.to_string(), "550e8400-e29b-41d4-a716-446655440000");
     }
 
     #[test]

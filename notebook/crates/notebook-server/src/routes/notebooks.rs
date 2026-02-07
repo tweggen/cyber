@@ -8,10 +8,10 @@
 //! Owned by: agent-discovery
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::{delete, get},
-    Json, Router,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -130,11 +130,7 @@ async fn get_notebook_extended_stats(
     .fetch_one(store.pool())
     .await?;
 
-    Ok((
-        stats.0.unwrap_or(0.0),
-        stats.1.unwrap_or(0),
-        stats.2,
-    ))
+    Ok((stats.0.unwrap_or(0.0), stats.1.unwrap_or(0), stats.2))
 }
 
 use notebook_store::StoreResult;
@@ -189,9 +185,7 @@ async fn get_author_permissions(
 ///
 /// - 200 OK: `{ "notebooks": [...] }`
 /// - 401 Unauthorized: No authentication (future)
-async fn list_notebooks(
-    State(state): State<AppState>,
-) -> ApiResult<Json<ListNotebooksResponse>> {
+async fn list_notebooks(State(state): State<AppState>) -> ApiResult<Json<ListNotebooksResponse>> {
     let store = state.store();
 
     // Get placeholder author for Phase 1 (will be replaced with JWT extraction)
@@ -206,7 +200,9 @@ async fn list_notebooks(
     for row in notebook_rows {
         // Get extended stats (entropy, last activity, entry count)
         let (total_entropy, last_activity_sequence, total_entries) =
-            get_notebook_extended_stats(store, row.id).await.unwrap_or((0.0, 0, 0));
+            get_notebook_extended_stats(store, row.id)
+                .await
+                .unwrap_or((0.0, 0, 0));
 
         // Get participant count
         let participant_count = get_participant_count(store, row.id).await.unwrap_or(0);
@@ -236,10 +232,7 @@ async fn list_notebooks(
     // Sort by last_activity_sequence descending (most recent first)
     notebooks.sort_by(|a, b| b.last_activity_sequence.cmp(&a.last_activity_sequence));
 
-    tracing::info!(
-        count = notebooks.len(),
-        "Listed notebooks for author"
-    );
+    tracing::info!(count = notebooks.len(), "Listed notebooks for author");
 
     Ok(Json(ListNotebooksResponse { notebooks }))
 }
@@ -280,7 +273,9 @@ async fn create_notebook(
 
     // Validate name is not empty
     if request.name.trim().is_empty() {
-        return Err(ApiError::BadRequest("Notebook name cannot be empty".to_string()));
+        return Err(ApiError::BadRequest(
+            "Notebook name cannot be empty".to_string(),
+        ));
     }
 
     // Create the notebook
@@ -337,9 +332,11 @@ async fn delete_notebook(
     })?;
 
     // Check ownership
-    let owner_bytes: [u8; 32] = notebook_row.owner_id.as_slice().try_into().map_err(|_| {
-        ApiError::Internal("Invalid owner_id in database".to_string())
-    })?;
+    let owner_bytes: [u8; 32] = notebook_row
+        .owner_id
+        .as_slice()
+        .try_into()
+        .map_err(|_| ApiError::Internal("Invalid owner_id in database".to_string()))?;
 
     if owner_bytes != author_bytes {
         return Err(ApiError::Forbidden(

@@ -8,20 +8,20 @@
 //! Owned by: agent-revise (REVISE endpoint), agent-write (WRITE endpoint), agent-read (READ endpoint)
 
 use axum::{
+    Json, Router,
     extract::{Path, Query, State},
     http::{HeaderMap, HeaderValue, StatusCode},
     routing::{get, post, put},
-    Json, Router,
 };
 use base64::Engine;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use notebook_core::{
-    AuthorId, CausalPosition, Entry, EntryId, IntegrationCost, NotebookId,
+use notebook_core::{AuthorId, CausalPosition, Entry, EntryId, IntegrationCost, NotebookId};
+use notebook_store::{
+    CausalPositionService, IntegrationCostJson, NewEntry, Repository, StoreEntryInput, StoreError,
 };
-use notebook_store::{CausalPositionService, IntegrationCostJson, NewEntry, Repository, StoreEntryInput, StoreError};
 
 use crate::error::{ApiError, ApiResult};
 use crate::state::AppState;
@@ -335,22 +335,23 @@ async fn create_entry(
     let author_id = AuthorId::zero();
 
     // 5. Assign causal position
-    let causal_position = CausalPositionService::assign_position(
-        pool,
-        NotebookId::from_uuid(notebook_id),
-        author_id,
-    )
-    .await
-    .map_err(|e| match e {
-        StoreError::NotebookNotFound(id) => {
-            ApiError::NotFound(format!("Notebook {} not found", id))
-        }
-        other => ApiError::Store(other),
-    })?;
+    let causal_position =
+        CausalPositionService::assign_position(pool, NotebookId::from_uuid(notebook_id), author_id)
+            .await
+            .map_err(|e| match e {
+                StoreError::NotebookNotFound(id) => {
+                    ApiError::NotFound(format!("Notebook {} not found", id))
+                }
+                other => ApiError::Store(other),
+            })?;
 
     // 6. Build Entry for cost computation
     let entry_id = Uuid::new_v4();
-    let references: Vec<EntryId> = request.references.iter().map(|&u| EntryId::from_uuid(u)).collect();
+    let references: Vec<EntryId> = request
+        .references
+        .iter()
+        .map(|&u| EntryId::from_uuid(u))
+        .collect();
     let temp_entry = Entry {
         id: EntryId::from_uuid(entry_id),
         content: content.clone(),
@@ -509,16 +510,13 @@ async fn revise_entry(
     let author_id = AuthorId::zero();
 
     // Assign causal position for the new revision
-    let causal_position = CausalPositionService::assign_position(
-        state.store().pool(),
-        notebook_id,
-        author_id,
-    )
-    .await
-    .map_err(|e| {
-        tracing::error!(error = %e, "Failed to assign causal position");
-        e
-    })?;
+    let causal_position =
+        CausalPositionService::assign_position(state.store().pool(), notebook_id, author_id)
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "Failed to assign causal position");
+                e
+            })?;
 
     // Create the revision entry (with placeholder cost for now)
     let revision_id = EntryId::new();
@@ -611,11 +609,14 @@ async fn revise_entry(
         HeaderValue::from_static(if cost_computed { "true" } else { "false" }),
     );
 
-    Ok((headers, Json(ReviseResponse {
-        revision_id,
-        causal_position,
-        integration_cost,
-    })))
+    Ok((
+        headers,
+        Json(ReviseResponse {
+            revision_id,
+            causal_position,
+            integration_cost,
+        }),
+    ))
 }
 
 /// GET /notebooks/:notebook_id/entries/:entry_id - Get an entry with metadata.
@@ -810,7 +811,7 @@ mod tests {
 
     #[test]
     fn test_get_content_bytes_binary_base64() {
-        use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+        use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
         let original = b"binary data here";
         let encoded = BASE64.encode(original);
 

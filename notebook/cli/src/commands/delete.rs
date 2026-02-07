@@ -6,7 +6,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{make_request, output, HumanReadable};
+use super::{HumanReadable, make_request, output};
 
 /// Arguments for the delete command.
 #[derive(Args)]

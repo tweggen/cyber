@@ -10,9 +10,7 @@
 //!
 //! Created by: agent-perf (Task 5-5)
 
-use criterion::{
-    black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput,
-};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use notebook_core::types::{AuthorId, CausalPosition, Entry, EntryBuilder, IntegrationCost};
 use notebook_entropy::catalog::CatalogGenerator;
 use notebook_entropy::coherence::CoherenceSnapshot;

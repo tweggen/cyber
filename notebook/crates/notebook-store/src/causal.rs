@@ -90,12 +90,11 @@ impl CausalPositionService {
         // Lock the notebook row to serialize concurrent position assignments.
         // This ensures that only one writer can compute and assign a sequence
         // number at a time for this notebook.
-        let notebook_exists: Option<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM notebooks WHERE id = $1 FOR UPDATE"#,
-        )
-        .bind(notebook_uuid)
-        .fetch_optional(&mut *tx)
-        .await?;
+        let notebook_exists: Option<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM notebooks WHERE id = $1 FOR UPDATE"#)
+                .bind(notebook_uuid)
+                .fetch_optional(&mut *tx)
+                .await?;
 
         if notebook_exists.is_none() {
             return Err(StoreError::NotebookNotFound(notebook_uuid));
@@ -103,22 +102,20 @@ impl CausalPositionService {
 
         // Compute the next sequence number.
         // The lock on notebooks ensures this is serialized.
-        let max_seq: (Option<i64>,) = sqlx::query_as(
-            r#"SELECT MAX(sequence) FROM entries WHERE notebook_id = $1"#,
-        )
-        .bind(notebook_uuid)
-        .fetch_one(&mut *tx)
-        .await?;
+        let max_seq: (Option<i64>,) =
+            sqlx::query_as(r#"SELECT MAX(sequence) FROM entries WHERE notebook_id = $1"#)
+                .bind(notebook_uuid)
+                .fetch_one(&mut *tx)
+                .await?;
 
         let next_sequence = max_seq.0.unwrap_or(0) + 1;
 
         // Compute total_notebook_entries (current count before this entry)
-        let total_count: (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM entries WHERE notebook_id = $1"#,
-        )
-        .bind(notebook_uuid)
-        .fetch_one(&mut *tx)
-        .await?;
+        let total_count: (i64,) =
+            sqlx::query_as(r#"SELECT COUNT(*) FROM entries WHERE notebook_id = $1"#)
+                .bind(notebook_uuid)
+                .fetch_one(&mut *tx)
+                .await?;
 
         let total_notebook_entries = total_count.0 as u32;
 
@@ -217,24 +214,22 @@ impl CausalPositionService {
         let author_bytes = author_id.as_bytes();
 
         // Verify notebook exists
-        let notebook_exists: Option<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM notebooks WHERE id = $1"#,
-        )
-        .bind(notebook_uuid)
-        .fetch_optional(pool)
-        .await?;
+        let notebook_exists: Option<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM notebooks WHERE id = $1"#)
+                .bind(notebook_uuid)
+                .fetch_optional(pool)
+                .await?;
 
         if notebook_exists.is_none() {
             return Err(StoreError::NotebookNotFound(notebook_uuid));
         }
 
         // Compute total_notebook_entries
-        let total_count: (i64,) = sqlx::query_as(
-            r#"SELECT COUNT(*) FROM entries WHERE notebook_id = $1"#,
-        )
-        .bind(notebook_uuid)
-        .fetch_one(pool)
-        .await?;
+        let total_count: (i64,) =
+            sqlx::query_as(r#"SELECT COUNT(*) FROM entries WHERE notebook_id = $1"#)
+                .bind(notebook_uuid)
+                .fetch_one(pool)
+                .await?;
 
         let total_notebook_entries = total_count.0 as u32;
 
@@ -306,30 +301,25 @@ impl CausalPositionService {
     /// # Returns
     ///
     /// Returns the current maximum sequence number, or 0 if the notebook has no entries.
-    pub async fn current_sequence(
-        pool: &PgPool,
-        notebook_id: NotebookId,
-    ) -> StoreResult<u64> {
+    pub async fn current_sequence(pool: &PgPool, notebook_id: NotebookId) -> StoreResult<u64> {
         let notebook_uuid = *notebook_id.as_uuid();
 
         // Verify notebook exists
-        let notebook_exists: Option<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM notebooks WHERE id = $1"#,
-        )
-        .bind(notebook_uuid)
-        .fetch_optional(pool)
-        .await?;
+        let notebook_exists: Option<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM notebooks WHERE id = $1"#)
+                .bind(notebook_uuid)
+                .fetch_optional(pool)
+                .await?;
 
         if notebook_exists.is_none() {
             return Err(StoreError::NotebookNotFound(notebook_uuid));
         }
 
-        let max_seq: (Option<i64>,) = sqlx::query_as(
-            r#"SELECT MAX(sequence) FROM entries WHERE notebook_id = $1"#,
-        )
-        .bind(notebook_uuid)
-        .fetch_one(pool)
-        .await?;
+        let max_seq: (Option<i64>,) =
+            sqlx::query_as(r#"SELECT MAX(sequence) FROM entries WHERE notebook_id = $1"#)
+                .bind(notebook_uuid)
+                .fetch_one(pool)
+                .await?;
 
         Ok(max_seq.0.unwrap_or(0) as u64)
     }
@@ -373,8 +363,9 @@ mod integration_tests {
     use tokio::task::JoinSet;
 
     async fn setup_test_db() -> PgPool {
-        let database_url = std::env::var("DATABASE_URL")
-            .unwrap_or_else(|_| "postgres://notebook:notebook_dev@localhost:5432/notebook".to_string());
+        let database_url = std::env::var("DATABASE_URL").unwrap_or_else(|_| {
+            "postgres://notebook:notebook_dev@localhost:5432/notebook".to_string()
+        });
 
         PgPoolOptions::new()
             .max_connections(10)
@@ -403,15 +394,13 @@ mod integration_tests {
     async fn create_test_notebook(pool: &PgPool, owner_id: AuthorId) -> NotebookId {
         let notebook_id = NotebookId::new();
 
-        sqlx::query(
-            r#"INSERT INTO notebooks (id, name, owner_id) VALUES ($1, $2, $3)"#,
-        )
-        .bind(*notebook_id.as_uuid())
-        .bind("Test Notebook")
-        .bind(owner_id.as_bytes().as_slice())
-        .execute(pool)
-        .await
-        .expect("Failed to create test notebook");
+        sqlx::query(r#"INSERT INTO notebooks (id, name, owner_id) VALUES ($1, $2, $3)"#)
+            .bind(*notebook_id.as_uuid())
+            .bind("Test Notebook")
+            .bind(owner_id.as_bytes().as_slice())
+            .execute(pool)
+            .await
+            .expect("Failed to create test notebook");
 
         // Grant owner write access
         sqlx::query(
@@ -479,7 +468,9 @@ mod integration_tests {
         // Collect all results
         let mut sequences = Vec::new();
         while let Some(result) = tasks.join_next().await {
-            let pos = result.expect("Task panicked").expect("Position assignment failed");
+            let pos = result
+                .expect("Task panicked")
+                .expect("Position assignment failed");
             sequences.push(pos.sequence);
         }
 
@@ -539,7 +530,14 @@ mod integration_tests {
             let pos = CausalPositionService::assign_position(&pool, notebook, author)
                 .await
                 .unwrap();
-            insert_mock_entry_with_cost(&pool, notebook, author, pos.sequence as i64, i as f64 * 0.1).await;
+            insert_mock_entry_with_cost(
+                &pool,
+                notebook,
+                author,
+                pos.sequence as i64,
+                i as f64 * 0.1,
+            )
+            .await;
         }
 
         // Get activity context - should sum last 10 entries (6..=15)
@@ -550,7 +548,11 @@ mod integration_tests {
             .unwrap();
 
         // Allow for floating point imprecision
-        assert!((ctx.recent_entropy - 10.5).abs() < 0.01, "Expected ~10.5, got {}", ctx.recent_entropy);
+        assert!(
+            (ctx.recent_entropy - 10.5).abs() < 0.01,
+            "Expected ~10.5, got {}",
+            ctx.recent_entropy
+        );
     }
 
     #[tokio::test]
@@ -563,7 +565,12 @@ mod integration_tests {
         assert!(matches!(result, Err(StoreError::NotebookNotFound(_))));
     }
 
-    async fn insert_mock_entry(pool: &PgPool, notebook: NotebookId, author: AuthorId, sequence: i64) {
+    async fn insert_mock_entry(
+        pool: &PgPool,
+        notebook: NotebookId,
+        author: AuthorId,
+        sequence: i64,
+    ) {
         insert_mock_entry_with_cost(pool, notebook, author, sequence, 0.5).await;
     }
 
@@ -572,7 +579,7 @@ mod integration_tests {
         notebook: NotebookId,
         author: AuthorId,
         sequence: i64,
-        catalog_shift: f64
+        catalog_shift: f64,
     ) {
         let id = uuid::Uuid::new_v4();
         let integration_cost = serde_json::json!({

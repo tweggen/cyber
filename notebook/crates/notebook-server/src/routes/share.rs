@@ -8,10 +8,10 @@
 //! Owned by: agent-share
 
 use axum::{
+    Json, Router,
     extract::{Path, State},
     http::StatusCode,
     routing::{delete, get, post},
-    Json, Router,
 };
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -95,9 +95,8 @@ fn parse_author_id(hex_str: &str) -> Result<[u8; 32], ApiError> {
         )));
     }
 
-    let bytes = hex::decode(hex_str).map_err(|e| {
-        ApiError::BadRequest(format!("Invalid hex in author_id: {}", e))
-    })?;
+    let bytes = hex::decode(hex_str)
+        .map_err(|e| ApiError::BadRequest(format!("Invalid hex in author_id: {}", e)))?;
 
     let mut arr = [0u8; 32];
     arr.copy_from_slice(&bytes);
@@ -115,14 +114,16 @@ async fn is_notebook_owner(
     notebook_id: Uuid,
     author_id: &[u8; 32],
 ) -> ApiResult<bool> {
-    let notebook = state.store().get_notebook(notebook_id).await.map_err(|e| {
-        match e {
+    let notebook = state
+        .store()
+        .get_notebook(notebook_id)
+        .await
+        .map_err(|e| match e {
             notebook_store::StoreError::NotebookNotFound(_) => {
                 ApiError::NotFound(format!("Notebook {} not found", notebook_id))
             }
             other => ApiError::Store(other),
-        }
-    })?;
+        })?;
 
     Ok(notebook.owner_id == author_id.as_slice())
 }
@@ -229,14 +230,13 @@ async fn revoke_access(
     }
 
     // Revoke access using direct SQL (store doesn't have revoke_access method)
-    let result = sqlx::query(
-        "DELETE FROM notebook_access WHERE notebook_id = $1 AND author_id = $2",
-    )
-    .bind(notebook_id)
-    .bind(target_author_id.as_slice())
-    .execute(state.store().pool())
-    .await
-    .map_err(|e| ApiError::Internal(format!("Failed to revoke access: {}", e)))?;
+    let result =
+        sqlx::query("DELETE FROM notebook_access WHERE notebook_id = $1 AND author_id = $2")
+            .bind(notebook_id)
+            .bind(target_author_id.as_slice())
+            .execute(state.store().pool())
+            .await
+            .map_err(|e| ApiError::Internal(format!("Failed to revoke access: {}", e)))?;
 
     if result.rows_affected() == 0 {
         return Err(ApiError::NotFound(format!(
@@ -272,14 +272,16 @@ async fn list_participants(
     Path(notebook_id): Path<Uuid>,
 ) -> ApiResult<Json<ParticipantsResponse>> {
     // Verify notebook exists
-    let _ = state.store().get_notebook(notebook_id).await.map_err(|e| {
-        match e {
+    let _ = state
+        .store()
+        .get_notebook(notebook_id)
+        .await
+        .map_err(|e| match e {
             notebook_store::StoreError::NotebookNotFound(_) => {
                 ApiError::NotFound(format!("Notebook {} not found", notebook_id))
             }
             other => ApiError::Store(other),
-        }
-    })?;
+        })?;
 
     // For now, use placeholder author (zeros) as requester
     let requester_id = [0u8; 32];
@@ -358,7 +360,12 @@ mod tests {
         let hex = "0000"; // Too short
         let result = parse_author_id(hex);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("64 hex characters"));
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("64 hex characters")
+        );
     }
 
     #[test]

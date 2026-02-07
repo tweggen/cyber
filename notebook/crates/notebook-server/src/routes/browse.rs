@@ -10,16 +10,14 @@
 //! Owned by: agent-browse (Task 3-3)
 
 use axum::{
+    Json, Router,
     extract::{Path, Query, State},
     routing::get,
-    Json, Router,
 };
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use notebook_core::{
-    ActivityContext, AuthorId, CausalPosition, Entry, EntryId, IntegrationCost,
-};
+use notebook_core::{ActivityContext, AuthorId, CausalPosition, Entry, EntryId, IntegrationCost};
 use notebook_entropy::{
     catalog::{CatalogGenerator, ClusterSummary, DEFAULT_MAX_TOKENS},
     coherence::CoherenceSnapshot,
@@ -158,13 +156,14 @@ async fn browse_notebook(
     for row in &entry_rows {
         // Convert EntryRow to Entry using a simplified approach
         // We don't need full activity context for catalog generation
-        let author_bytes: [u8; 32] = row.author_id.as_slice().try_into().map_err(|_| {
-            ApiError::Internal("Invalid author_id length in database".to_string())
-        })?;
+        let author_bytes: [u8; 32] =
+            row.author_id.as_slice().try_into().map_err(|_| {
+                ApiError::Internal("Invalid author_id length in database".to_string())
+            })?;
 
-        let integration_cost_json = row.parse_integration_cost().map_err(|e| {
-            ApiError::Internal(format!("Failed to parse integration cost: {}", e))
-        })?;
+        let integration_cost_json = row
+            .parse_integration_cost()
+            .map_err(|e| ApiError::Internal(format!("Failed to parse integration cost: {}", e)))?;
 
         let entry = Entry {
             id: EntryId::from_uuid(row.id),
@@ -173,7 +172,11 @@ async fn browse_notebook(
             topic: row.topic.clone(),
             author: AuthorId::from_bytes(author_bytes),
             signature: row.signature.clone(),
-            references: row.references.iter().map(|u| EntryId::from_uuid(*u)).collect(),
+            references: row
+                .references
+                .iter()
+                .map(|u| EntryId::from_uuid(*u))
+                .collect(),
             revision_of: row.revision_of.map(EntryId::from_uuid),
             causal_position: CausalPosition {
                 sequence: row.sequence as u64,
@@ -191,7 +194,11 @@ async fn browse_notebook(
     }
 
     // 4. Build coherence snapshot from entries
-    let max_sequence = entries.iter().map(|e| e.causal_position.sequence).max().unwrap_or(0);
+    let max_sequence = entries
+        .iter()
+        .map(|e| e.causal_position.sequence)
+        .max()
+        .unwrap_or(0);
     let timestamp = CausalPosition {
         sequence: max_sequence,
         activity_context: ActivityContext {
@@ -254,16 +261,24 @@ async fn browse_notebook(
     // 7. Filter catalog by search results if query was provided
     let filtered_catalog = if let Some(ref matching_ids) = filtered_entry_ids {
         // Keep only clusters that contain at least one matching entry
-        let matching_set: std::collections::HashSet<EntryId> = matching_ids.iter().copied().collect();
+        let matching_set: std::collections::HashSet<EntryId> =
+            matching_ids.iter().copied().collect();
 
-        catalog.clusters.iter()
+        catalog
+            .clusters
+            .iter()
             .filter(|cluster| {
-                cluster.representative_entry_ids.iter().any(|id| matching_set.contains(id))
+                cluster
+                    .representative_entry_ids
+                    .iter()
+                    .any(|id| matching_set.contains(id))
             })
             .map(ClusterSummaryResponse::from)
             .collect()
     } else {
-        catalog.clusters.iter()
+        catalog
+            .clusters
+            .iter()
             .map(ClusterSummaryResponse::from)
             .collect()
     };

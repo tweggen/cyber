@@ -19,8 +19,8 @@
 //!
 //! Owned by: agent-catalog (Task 3-1)
 
-use crate::coherence::CoherenceSnapshot;
 use crate::clustering::Cluster;
+use crate::coherence::CoherenceSnapshot;
 use notebook_core::types::{CausalPosition, Entry, EntryId};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -143,8 +143,7 @@ impl CatalogGenerator {
         let max_clusters = budget / TOKENS_PER_SUMMARY;
 
         // Build entry lookup for efficient access
-        let entry_map: HashMap<EntryId, &Entry> =
-            entries.iter().map(|e| (e.id, e)).collect();
+        let entry_map: HashMap<EntryId, &Entry> = entries.iter().map(|e| (e.id, e)).collect();
 
         // Generate summaries for each cluster
         let mut summaries: Vec<ClusterSummary> = snapshot
@@ -219,11 +218,7 @@ impl CatalogGenerator {
     }
 
     /// Extracts a summary from the first text entry in the cluster.
-    fn extract_summary(
-        &self,
-        cluster: &Cluster,
-        entry_map: &HashMap<EntryId, &Entry>,
-    ) -> String {
+    fn extract_summary(&self, cluster: &Cluster, entry_map: &HashMap<EntryId, &Entry>) -> String {
         // Find first text entry
         for entry_id in &cluster.entry_ids {
             if let Some(entry) = entry_map.get(entry_id) {
@@ -266,7 +261,11 @@ impl CatalogGenerator {
         let mut summary: String = text.chars().take(end_pos).collect();
 
         // If we truncated mid-sentence, add ellipsis
-        if end_pos < text.len() && !summary.ends_with('.') && !summary.ends_with('!') && !summary.ends_with('?') {
+        if end_pos < text.len()
+            && !summary.ends_with('.')
+            && !summary.ends_with('!')
+            && !summary.ends_with('?')
+        {
             // Try to truncate at word boundary
             if let Some(last_space) = summary.rfind(' ') {
                 if last_space > summary.len() / 2 {
@@ -636,11 +635,7 @@ mod tests {
         let entry_id = entry.id;
 
         // Cluster with many keywords
-        let cluster = make_cluster(
-            0,
-            &["one", "two", "three", "four", "five"],
-            vec![entry_id],
-        );
+        let cluster = make_cluster(0, &["one", "two", "three", "four", "five"], vec![entry_id]);
 
         let mut snapshot = CoherenceSnapshot::new();
         snapshot.clusters.push(cluster);

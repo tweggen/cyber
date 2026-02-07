@@ -22,10 +22,7 @@
 //! ```
 
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
-use ed25519_dalek::{
-    Signature as DalekSignature, SigningKey, VerifyingKey,
-    Signer, Verifier,
-};
+use ed25519_dalek::{Signature as DalekSignature, Signer, SigningKey, Verifier, VerifyingKey};
 use rand::rngs::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -76,11 +73,17 @@ impl PublicKey {
     }
 
     /// Verify a signature over content
-    pub fn verify(&self, content: &SignableContent, signature: &Signature) -> Result<(), CryptoError> {
-        let payload = content.canonical_bytes()
+    pub fn verify(
+        &self,
+        content: &SignableContent,
+        signature: &Signature,
+    ) -> Result<(), CryptoError> {
+        let payload = content
+            .canonical_bytes()
             .map_err(|e| CryptoError::SerializationError(e.to_string()))?;
 
-        self.0.verify(&payload, &signature.0)
+        self.0
+            .verify(&payload, &signature.0)
             .map_err(|_| CryptoError::VerificationFailed)
     }
 }
@@ -107,8 +110,7 @@ impl<'de> Deserialize<'de> for PublicKey {
         D: Deserializer<'de>,
     {
         let encoded = String::deserialize(deserializer)?;
-        let bytes = BASE64.decode(&encoded)
-            .map_err(serde::de::Error::custom)?;
+        let bytes = BASE64.decode(&encoded).map_err(serde::de::Error::custom)?;
 
         if bytes.len() != 32 {
             return Err(serde::de::Error::custom(format!(
@@ -164,8 +166,7 @@ impl<'de> Deserialize<'de> for Signature {
         D: Deserializer<'de>,
     {
         let encoded = String::deserialize(deserializer)?;
-        let bytes = BASE64.decode(&encoded)
-            .map_err(serde::de::Error::custom)?;
+        let bytes = BASE64.decode(&encoded).map_err(serde::de::Error::custom)?;
 
         if bytes.len() != 64 {
             return Err(serde::de::Error::custom(format!(
@@ -213,7 +214,8 @@ impl KeyPair {
 
     /// Sign content with this keypair
     pub fn sign(&self, content: &SignableContent) -> Signature {
-        let payload = content.canonical_bytes()
+        let payload = content
+            .canonical_bytes()
             .expect("serialization should not fail for valid content");
         Signature(self.signing_key.sign(&payload))
     }
@@ -317,7 +319,10 @@ mod tests {
         let keypair1 = KeyPair::from_bytes(&secret);
         let keypair2 = KeyPair::from_bytes(&secret);
 
-        assert_eq!(keypair1.public_key().as_bytes(), keypair2.public_key().as_bytes());
+        assert_eq!(
+            keypair1.public_key().as_bytes(),
+            keypair2.public_key().as_bytes()
+        );
     }
 
     #[test]

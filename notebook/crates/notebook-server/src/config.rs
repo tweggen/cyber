@@ -13,6 +13,14 @@ pub struct ServerConfig {
     pub log_level: String,
     /// CORS allowed origins (comma-separated or "*" for all).
     pub cors_allowed_origins: String,
+    /// JWT signing secret. Required in production, auto-generated in dev.
+    pub jwt_secret: String,
+    /// JWT token expiry in hours. Default: 24.
+    pub jwt_expiry_hours: u64,
+    /// Admin username for first-run bootstrap.
+    pub admin_username: Option<String>,
+    /// Admin password for first-run bootstrap.
+    pub admin_password: Option<String>,
 }
 
 impl ServerConfig {
@@ -25,6 +33,10 @@ impl ServerConfig {
     /// - `PORT`: Server port (default: 3000)
     /// - `LOG_LEVEL`: Logging level (default: "info")
     /// - `CORS_ALLOWED_ORIGINS`: Allowed CORS origins (default: "*")
+    /// - `JWT_SECRET`: JWT signing secret (auto-generated if not set)
+    /// - `JWT_EXPIRY_HOURS`: JWT token expiry in hours (default: 24)
+    /// - `ADMIN_USERNAME`: Admin username for first-run bootstrap
+    /// - `ADMIN_PASSWORD`: Admin password for first-run bootstrap
     pub fn from_env() -> Result<Self, ConfigError> {
         let database_url = env::var("DATABASE_URL")
             .map_err(|_| ConfigError::MissingEnvVar("DATABASE_URL".to_string()))?;
@@ -39,11 +51,33 @@ impl ServerConfig {
         let cors_allowed_origins =
             env::var("CORS_ALLOWED_ORIGINS").unwrap_or_else(|_| "*".to_string());
 
+        let jwt_secret = env::var("JWT_SECRET").unwrap_or_else(|_| {
+            let secret: String = (0..64)
+                .map(|_| format!("{:02x}", rand::random::<u8>()))
+                .collect();
+            tracing::warn!(
+                "JWT_SECRET not set, using auto-generated secret (not suitable for production)"
+            );
+            secret
+        });
+
+        let jwt_expiry_hours = env::var("JWT_EXPIRY_HOURS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(24);
+
+        let admin_username = env::var("ADMIN_USERNAME").ok();
+        let admin_password = env::var("ADMIN_PASSWORD").ok();
+
         Ok(Self {
             database_url,
             port,
             log_level,
             cors_allowed_origins,
+            jwt_secret,
+            jwt_expiry_hours,
+            admin_username,
+            admin_password,
         })
     }
 
@@ -80,6 +114,8 @@ mod tests {
         assert_eq!(config.port, 3000);
         assert_eq!(config.log_level, "info");
         assert_eq!(config.cors_allowed_origins, "*");
+        assert_eq!(config.jwt_expiry_hours, 24);
+        assert!(!config.jwt_secret.is_empty());
 
         // SAFETY: This test is not run in parallel with other tests that read DATABASE_URL.
         unsafe { env::remove_var("DATABASE_URL") };

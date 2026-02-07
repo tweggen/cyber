@@ -97,11 +97,7 @@ impl PropagationJob {
     /// * `notebook_id` - The notebook containing affected entries
     /// * `affected_entry_ids` - Entries whose cumulative_cost should be updated
     /// * `cost_delta` - The amount to add to each entry's cumulative_cost
-    pub fn new(
-        notebook_id: NotebookId,
-        affected_entry_ids: Vec<EntryId>,
-        cost_delta: f64,
-    ) -> Self {
+    pub fn new(notebook_id: NotebookId, affected_entry_ids: Vec<EntryId>, cost_delta: f64) -> Self {
         Self {
             job_id: Uuid::new_v4(),
             notebook_id,
@@ -504,11 +500,14 @@ pub fn create_propagation_job(
 
     // Compute cost delta from integration cost components
     // Each affected entry accumulates a portion of the disruption cost
-    let cost_delta = (entries_revised as f64 * 0.5)
-        + (references_broken as f64 * 0.3)
-        + (catalog_shift * 0.2);
+    let cost_delta =
+        (entries_revised as f64 * 0.5) + (references_broken as f64 * 0.3) + (catalog_shift * 0.2);
 
-    Some(PropagationJob::new(notebook_id, affected_entry_ids, cost_delta))
+    Some(PropagationJob::new(
+        notebook_id,
+        affected_entry_ids,
+        cost_delta,
+    ))
 }
 
 #[cfg(test)]

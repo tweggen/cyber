@@ -14,8 +14,8 @@
 //!
 //! Owned by: agent-test-entropy (Task 5-4)
 
-use notebook_entropy::notebook_core::types::{AuthorId, Entry, EntryBuilder, EntryId, NotebookId};
 use notebook_entropy::IntegrationCostEngine;
+use notebook_entropy::notebook_core::types::{AuthorId, Entry, EntryBuilder, EntryId, NotebookId};
 
 // =============================================================================
 // Test Helpers
@@ -247,9 +247,8 @@ fn unrelated_entry_with_references_is_not_orphan() {
     let notebook_id = NotebookId::new();
 
     // Create a base entry
-    let base_entry = make_entry(
-        "Machine learning algorithms for data analysis and pattern recognition.",
-    );
+    let base_entry =
+        make_entry("Machine learning algorithms for data analysis and pattern recognition.");
     let base_id = base_entry.id;
     engine.compute_cost(&base_entry, notebook_id).unwrap();
 
@@ -323,15 +322,13 @@ fn synthesizing_entry_integrates_via_references() {
     let notebook_id = NotebookId::new();
 
     // Create two distinct topic clusters
-    let ml_entry = make_entry(
-        "Machine learning algorithms for predictive modeling and data analysis.",
-    );
+    let ml_entry =
+        make_entry("Machine learning algorithms for predictive modeling and data analysis.");
     let ml_id = ml_entry.id;
     engine.compute_cost(&ml_entry, notebook_id).unwrap();
 
-    let stats_entry = make_entry(
-        "Statistical methods for hypothesis testing and regression analysis.",
-    );
+    let stats_entry =
+        make_entry("Statistical methods for hypothesis testing and regression analysis.");
     let stats_id = stats_entry.id;
     engine.compute_cost(&stats_entry, notebook_id).unwrap();
 
@@ -365,16 +362,14 @@ fn bridge_entry_connects_clusters() {
     let notebook_id = NotebookId::new();
 
     // Create entry about topic A
-    let topic_a = make_entry(
-        "Astronomy studies celestial objects like stars, planets, and galaxies.",
-    );
+    let topic_a =
+        make_entry("Astronomy studies celestial objects like stars, planets, and galaxies.");
     let topic_a_id = topic_a.id;
     engine.compute_cost(&topic_a, notebook_id).unwrap();
 
     // Create entry about unrelated topic B
-    let topic_b = make_entry(
-        "Culinary arts involve cooking techniques and food preparation methods.",
-    );
+    let topic_b =
+        make_entry("Culinary arts involve cooking techniques and food preparation methods.");
     let topic_b_id = topic_b.id;
     engine.compute_cost(&topic_b, notebook_id).unwrap();
 
@@ -561,7 +556,10 @@ fn even_redundant_entries_contribute_some_entropy() {
     let total = cost1.catalog_shift + cost2.catalog_shift;
 
     // First entry always contributes
-    assert!(cost1.catalog_shift > 0.0, "First entry should have non-zero cost");
+    assert!(
+        cost1.catalog_shift > 0.0,
+        "First entry should have non-zero cost"
+    );
 
     // Total should be at least the first entry's cost
     assert!(
@@ -644,7 +642,10 @@ fn empty_content_handled_gracefully() {
     let cost = engine.compute_cost(&empty_entry, notebook_id).unwrap();
 
     // Empty entry with no references is orphan
-    assert!(cost.orphan, "Empty entry without references should be orphan");
+    assert!(
+        cost.orphan,
+        "Empty entry without references should be orphan"
+    );
 }
 
 /// Non-text content types are handled.
@@ -664,7 +665,10 @@ fn non_text_content_handled() {
     let cost = engine.compute_cost(&binary_entry, notebook_id).unwrap();
 
     // Binary entry with no references and no text is orphan
-    assert!(cost.orphan, "Binary entry without references should be orphan");
+    assert!(
+        cost.orphan,
+        "Binary entry without references should be orphan"
+    );
 }
 
 /// The engine correctly tracks multiple notebooks independently.

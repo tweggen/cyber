@@ -7,7 +7,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{make_request, output, truncate, HumanReadable};
+use super::{HumanReadable, make_request, output, truncate};
 
 /// Arguments for the browse command.
 #[derive(Args)]
@@ -54,11 +54,7 @@ impl HumanReadable for BrowseResponse {
         println!("{}", "=".repeat(70));
         println!();
 
-        println!(
-            "  {} {}",
-            "Total Entries:".cyan(),
-            self.total_entries
-        );
+        println!("  {} {}", "Total Entries:".cyan(), self.total_entries);
         println!(
             "  {} {:.1}",
             "Notebook Entropy:".cyan(),

@@ -172,10 +172,9 @@ impl FromStr for AuthorId {
 
         let mut bytes = [0u8; 32];
         for (i, chunk) in s.as_bytes().chunks(2).enumerate() {
-            let hex_str = std::str::from_utf8(chunk)
-                .map_err(|_| AuthorIdParseError::InvalidHex)?;
-            bytes[i] = u8::from_str_radix(hex_str, 16)
-                .map_err(|_| AuthorIdParseError::InvalidHex)?;
+            let hex_str = std::str::from_utf8(chunk).map_err(|_| AuthorIdParseError::InvalidHex)?;
+            bytes[i] =
+                u8::from_str_radix(hex_str, 16).map_err(|_| AuthorIdParseError::InvalidHex)?;
         }
         Ok(Self(bytes))
     }
@@ -194,7 +193,11 @@ impl fmt::Display for AuthorIdParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLength(len) => {
-                write!(f, "invalid AuthorId length: expected 64 hex chars, got {}", len)
+                write!(
+                    f,
+                    "invalid AuthorId length: expected 64 hex chars, got {}",
+                    len
+                )
             }
             Self::InvalidHex => write!(f, "invalid hex character in AuthorId"),
         }
@@ -348,19 +351,28 @@ impl Permissions {
     /// Full permissions (read and write).
     #[must_use]
     pub const fn full() -> Self {
-        Self { read: true, write: true }
+        Self {
+            read: true,
+            write: true,
+        }
     }
 
     /// Read-only permissions.
     #[must_use]
     pub const fn read_only() -> Self {
-        Self { read: true, write: false }
+        Self {
+            read: true,
+            write: false,
+        }
     }
 
     /// No permissions.
     #[must_use]
     pub const fn none() -> Self {
-        Self { read: false, write: false }
+        Self {
+            read: false,
+            write: false,
+        }
     }
 }
 

@@ -75,29 +75,29 @@
 
 pub use notebook_core;
 
-pub mod tfidf;
+pub mod cache;
+pub mod calibration;
+pub mod catalog;
 pub mod clustering;
 pub mod coherence;
 pub mod engine;
-pub mod calibration;
 pub mod propagation;
 pub mod search;
-pub mod catalog;
-pub mod cache;
+pub mod tfidf;
 
 // Re-export main types for convenience
+pub use cache::{
+    CacheConfig, CacheStats, CacheStatus, CachedCatalog, CatalogCache, DEFAULT_MAX_AGE_SECS,
+    DEFAULT_SHIFT_THRESHOLD,
+};
+pub use calibration::{NotebookConfig, ThresholdCalibrator};
+pub use catalog::{Catalog, CatalogGenerator, ClusterSummary, DEFAULT_MAX_TOKENS};
 pub use clustering::{Cluster, ClusterId, ClusteringConfig, ReferenceGraph};
 pub use coherence::{CoherenceSnapshot, CoherenceStats};
-pub use tfidf::{CorpusStats, TfIdfVector};
-pub use engine::{IntegrationCostEngine, EntropyError};
-pub use calibration::{ThresholdCalibrator, NotebookConfig};
+pub use engine::{EntropyError, IntegrationCostEngine};
 pub use propagation::{
-    PropagationJob, PropagationQueue, PropagationWorker, PropagationError,
-    CostUpdater, NoOpCostUpdater, WorkerStats, create_propagation_job,
+    CostUpdater, NoOpCostUpdater, PropagationError, PropagationJob, PropagationQueue,
+    PropagationWorker, WorkerStats, create_propagation_job,
 };
-pub use search::{SearchIndex, SearchHit, SearchError};
-pub use catalog::{Catalog, ClusterSummary, CatalogGenerator, DEFAULT_MAX_TOKENS};
-pub use cache::{
-    CatalogCache, CachedCatalog, CacheConfig, CacheStatus, CacheStats,
-    DEFAULT_SHIFT_THRESHOLD, DEFAULT_MAX_AGE_SECS,
-};
+pub use search::{SearchError, SearchHit, SearchIndex};
+pub use tfidf::{CorpusStats, TfIdfVector};

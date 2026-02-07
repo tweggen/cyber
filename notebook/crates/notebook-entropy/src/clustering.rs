@@ -9,7 +9,7 @@
 //! 2. Iteratively merge the two most similar clusters
 //! 3. Stop when no pair exceeds the similarity threshold
 
-use crate::tfidf::{merge_vectors, CorpusStats, TfIdfVector};
+use crate::tfidf::{CorpusStats, TfIdfVector, merge_vectors};
 use notebook_core::types::EntryId;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -332,10 +332,7 @@ mod tests {
     use std::collections::HashMap;
 
     fn make_vector(terms: &[(&str, f64)]) -> TfIdfVector {
-        let weights = terms
-            .iter()
-            .map(|(t, w)| (t.to_string(), *w))
-            .collect();
+        let weights = terms.iter().map(|(t, w)| (t.to_string(), *w)).collect();
         TfIdfVector { weights }
     }
 
@@ -348,11 +345,7 @@ mod tests {
     #[test]
     fn cluster_singleton() {
         let entry_id = EntryId::new();
-        let cluster = Cluster::singleton(
-            ClusterId::new(1),
-            entry_id,
-            vec!["test".into()],
-        );
+        let cluster = Cluster::singleton(ClusterId::new(1), entry_id, vec!["test".into()]);
 
         assert!(cluster.is_singleton());
         assert_eq!(cluster.size(), 1);
@@ -459,11 +452,7 @@ mod tests {
         let v1 = make_vector(&[("cat", 1.0), ("dog", 0.5)]);
         let v2 = make_vector(&[("cat", 0.8), ("dog", 0.6)]);
 
-        let clusters = cluster_entries(
-            vec![(e1, v1), (e2, v2)],
-            &references,
-            &config,
-        );
+        let clusters = cluster_entries(vec![(e1, v1), (e2, v2)], &references, &config);
 
         // Should merge into single cluster due to high similarity
         assert_eq!(clusters.len(), 1);
@@ -486,11 +475,7 @@ mod tests {
         let v1 = make_vector(&[("cat", 1.0)]);
         let v2 = make_vector(&[("dog", 1.0)]);
 
-        let clusters = cluster_entries(
-            vec![(e1, v1), (e2, v2)],
-            &references,
-            &config,
-        );
+        let clusters = cluster_entries(vec![(e1, v1), (e2, v2)], &references, &config);
 
         // Should remain separate due to zero similarity
         assert_eq!(clusters.len(), 2);
@@ -502,10 +487,7 @@ mod tests {
         let c1_vec = make_vector(&[("cat", 0.8), ("dog", 0.6)]);
         let c2_vec = make_vector(&[("bird", 1.0)]);
 
-        let clusters = vec![
-            (ClusterId::new(1), c1_vec),
-            (ClusterId::new(2), c2_vec),
-        ];
+        let clusters = vec![(ClusterId::new(1), c1_vec), (ClusterId::new(2), c2_vec)];
 
         let result = find_best_cluster(&vector, &clusters, 0.5);
         assert!(result.is_some());
@@ -518,10 +500,7 @@ mod tests {
         let c1_vec = make_vector(&[("cat", 1.0)]);
         let c2_vec = make_vector(&[("dog", 1.0)]);
 
-        let clusters = vec![
-            (ClusterId::new(1), c1_vec),
-            (ClusterId::new(2), c2_vec),
-        ];
+        let clusters = vec![(ClusterId::new(1), c1_vec), (ClusterId::new(2), c2_vec)];
 
         let result = find_best_cluster(&vector, &clusters, 0.5);
         assert!(result.is_none());

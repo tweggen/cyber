@@ -15,9 +15,9 @@ use notebook_core::{
 };
 use uuid::Uuid;
 
+use crate::Store;
 use crate::error::{StoreError, StoreResult};
 use crate::models::{EntryRow, IntegrationCostJson, NewAuthor, NewEntry, NewNotebook};
-use crate::Store;
 
 /// Default maximum depth for recursive graph traversal.
 pub const DEFAULT_MAX_DEPTH: u32 = 100;
@@ -321,10 +321,12 @@ impl Repository {
             .get_activity_context(row.notebook_id, &author_bytes)
             .await?;
 
+        let recent_entropy = self.store.get_recent_entropy(row.notebook_id).await?;
+
         let activity_context = ActivityContext {
             entries_since_last_by_author: entries_since,
             total_notebook_entries: total_entries,
-            recent_entropy: 0.0, // TODO: Compute from entropy service
+            recent_entropy,
         };
 
         Ok(Entry {
@@ -334,7 +336,11 @@ impl Repository {
             topic: row.topic.clone(),
             author: AuthorId::from_bytes(author_bytes),
             signature: row.signature.clone(),
-            references: row.references.iter().map(|u| EntryId::from_uuid(*u)).collect(),
+            references: row
+                .references
+                .iter()
+                .map(|u| EntryId::from_uuid(*u))
+                .collect(),
             revision_of: row.revision_of.map(EntryId::from_uuid),
             causal_position: CausalPosition {
                 sequence: row.sequence as u64,
@@ -371,10 +377,7 @@ impl Repository {
     ///
     /// This is the preferred method when you need to specify
     /// which notebook the entry belongs to.
-    pub async fn store_entry_in_notebook(
-        &self,
-        input: &StoreEntryInput,
-    ) -> StoreResult<EntryId> {
+    pub async fn store_entry_in_notebook(&self, input: &StoreEntryInput) -> StoreResult<EntryId> {
         let mut new_entry = self.entry_to_new_entry(&input.entry)?;
         new_entry.notebook_id = input.notebook_id.0;
 

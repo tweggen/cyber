@@ -38,7 +38,6 @@ pub fn output<T: Serialize + HumanReadable>(value: &T, human: bool) -> Result<()
     Ok(())
 }
 
-
 /// Trait for types that can be printed in human-readable format.
 pub trait HumanReadable {
     fn print_human(&self);

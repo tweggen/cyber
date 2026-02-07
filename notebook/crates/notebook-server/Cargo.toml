@@ -38,6 +38,15 @@ sqlx = { version = "0.8", features = ["runtime-tokio", "postgres"] }
 # Error handling
 thiserror = { workspace = true }
 
+# Authentication
+argon2 = { workspace = true }
+jsonwebtoken = { workspace = true }
+rand = { workspace = true }
+
+# Cryptography (for admin bootstrap)
+ed25519-dalek = { workspace = true }
+blake3 = { workspace = true }
+
 # SSE support (added by agent-events for Task 4-3)
 axum-extra = { workspace = true }
 futures = { workspace = true }

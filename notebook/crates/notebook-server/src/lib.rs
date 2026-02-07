@@ -29,6 +29,7 @@
 //!
 //! Owned by: agent-server
 
+pub mod auth;
 pub mod config;
 pub mod error;
 pub mod events;
@@ -37,6 +38,7 @@ pub mod routes;
 pub mod state;
 
 // Re-exports for convenience
+pub use auth::AuthenticatedUser;
 pub use config::{ConfigError, ServerConfig};
 pub use error::{ApiError, ApiResult};
 pub use events::EventBroadcaster;

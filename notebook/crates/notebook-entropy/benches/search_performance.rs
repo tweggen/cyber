@@ -10,9 +10,7 @@
 //!
 //! Created by: agent-perf (Task 5-5)
 
-use criterion::{
-    black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput,
-};
+use criterion::{BenchmarkId, Criterion, Throughput, black_box, criterion_group, criterion_main};
 use notebook_core::types::{AuthorId, Entry, EntryBuilder, NotebookId};
 use notebook_entropy::search::SearchIndex;
 use rand::Rng;
@@ -128,7 +126,13 @@ fn query_complexity_benchmark(c: &mut Criterion) {
 
     // Three term query
     group.bench_function("three_terms", |b| {
-        b.iter(|| black_box(index.search("distributed computing systems", notebook_id, 10).unwrap()))
+        b.iter(|| {
+            black_box(
+                index
+                    .search("distributed computing systems", notebook_id, 10)
+                    .unwrap(),
+            )
+        })
     });
 
     // Long query
@@ -163,7 +167,13 @@ fn result_limit_benchmark(c: &mut Criterion) {
 
     for limit in [1, 10, 50, 100] {
         group.bench_with_input(BenchmarkId::new("limit", limit), &limit, |b, &limit| {
-            b.iter(|| black_box(index.search("machine learning", notebook_id, limit).unwrap()))
+            b.iter(|| {
+                black_box(
+                    index
+                        .search("machine learning", notebook_id, limit)
+                        .unwrap(),
+                )
+            })
         });
     }
 

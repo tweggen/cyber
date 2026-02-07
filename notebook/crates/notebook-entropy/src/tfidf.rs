@@ -15,19 +15,132 @@ use unicode_segmentation::UnicodeSegmentation;
 /// Common English stop words to filter from text analysis.
 /// These words occur frequently but carry little semantic meaning.
 const STOP_WORDS: &[&str] = &[
-    "a", "about", "above", "after", "again", "against", "all", "am", "an", "and",
-    "any", "are", "as", "at", "be", "because", "been", "before", "being", "below",
-    "between", "both", "but", "by", "can", "could", "did", "do", "does", "doing",
-    "down", "during", "each", "few", "for", "from", "further", "had", "has", "have",
-    "having", "he", "her", "here", "hers", "herself", "him", "himself", "his", "how",
-    "i", "if", "in", "into", "is", "it", "its", "itself", "just", "me", "more",
-    "most", "my", "myself", "no", "nor", "not", "now", "of", "off", "on", "once",
-    "only", "or", "other", "our", "ours", "ourselves", "out", "over", "own", "same",
-    "she", "should", "so", "some", "such", "than", "that", "the", "their", "theirs",
-    "them", "themselves", "then", "there", "these", "they", "this", "those", "through",
-    "to", "too", "under", "until", "up", "very", "was", "we", "were", "what", "when",
-    "where", "which", "while", "who", "whom", "why", "will", "with", "would", "you",
-    "your", "yours", "yourself", "yourselves",
+    "a",
+    "about",
+    "above",
+    "after",
+    "again",
+    "against",
+    "all",
+    "am",
+    "an",
+    "and",
+    "any",
+    "are",
+    "as",
+    "at",
+    "be",
+    "because",
+    "been",
+    "before",
+    "being",
+    "below",
+    "between",
+    "both",
+    "but",
+    "by",
+    "can",
+    "could",
+    "did",
+    "do",
+    "does",
+    "doing",
+    "down",
+    "during",
+    "each",
+    "few",
+    "for",
+    "from",
+    "further",
+    "had",
+    "has",
+    "have",
+    "having",
+    "he",
+    "her",
+    "here",
+    "hers",
+    "herself",
+    "him",
+    "himself",
+    "his",
+    "how",
+    "i",
+    "if",
+    "in",
+    "into",
+    "is",
+    "it",
+    "its",
+    "itself",
+    "just",
+    "me",
+    "more",
+    "most",
+    "my",
+    "myself",
+    "no",
+    "nor",
+    "not",
+    "now",
+    "of",
+    "off",
+    "on",
+    "once",
+    "only",
+    "or",
+    "other",
+    "our",
+    "ours",
+    "ourselves",
+    "out",
+    "over",
+    "own",
+    "same",
+    "she",
+    "should",
+    "so",
+    "some",
+    "such",
+    "than",
+    "that",
+    "the",
+    "their",
+    "theirs",
+    "them",
+    "themselves",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "those",
+    "through",
+    "to",
+    "too",
+    "under",
+    "until",
+    "up",
+    "very",
+    "was",
+    "we",
+    "were",
+    "what",
+    "when",
+    "where",
+    "which",
+    "while",
+    "who",
+    "whom",
+    "why",
+    "will",
+    "with",
+    "would",
+    "you",
+    "your",
+    "yours",
+    "yourself",
+    "yourselves",
 ];
 
 /// Minimum token length to consider (shorter tokens are filtered).
@@ -54,9 +167,7 @@ pub fn tokenize(text: &str) -> Vec<String> {
 
     text.unicode_words()
         .map(|word| normalize_token(word))
-        .filter(|token| {
-            token.len() >= MIN_TOKEN_LENGTH && !stop_words.contains(token.as_str())
-        })
+        .filter(|token| token.len() >= MIN_TOKEN_LENGTH && !stop_words.contains(token.as_str()))
         .collect()
 }
 
@@ -167,11 +278,7 @@ impl TfIdfVector {
 
     /// Computes the L2 norm (magnitude) of the vector.
     pub fn magnitude(&self) -> f64 {
-        self.weights
-            .values()
-            .map(|w| w * w)
-            .sum::<f64>()
-            .sqrt()
+        self.weights.values().map(|w| w * w).sum::<f64>().sqrt()
     }
 
     /// Computes the dot product with another TF-IDF vector.
@@ -179,7 +286,10 @@ impl TfIdfVector {
         self.weights
             .iter()
             .filter_map(|(term, weight)| {
-                other.weights.get(term).map(|other_weight| weight * other_weight)
+                other
+                    .weights
+                    .get(term)
+                    .map(|other_weight| weight * other_weight)
             })
             .sum()
     }
@@ -202,7 +312,11 @@ impl TfIdfVector {
     pub fn top_terms(&self, n: usize) -> Vec<String> {
         let mut terms: Vec<_> = self.weights.iter().collect();
         terms.sort_by(|a, b| b.1.partial_cmp(a.1).unwrap_or(std::cmp::Ordering::Equal));
-        terms.into_iter().take(n).map(|(term, _)| term.clone()).collect()
+        terms
+            .into_iter()
+            .take(n)
+            .map(|(term, _)| term.clone())
+            .collect()
     }
 
     /// Checks if the vector is empty (no terms with positive weight).

@@ -7,7 +7,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{format_timestamp, make_request, output, HumanReadable};
+use super::{HumanReadable, format_timestamp, make_request, output};
 
 /// Arguments for the create command.
 #[derive(Args)]
@@ -38,7 +38,11 @@ impl HumanReadable for CreateNotebookResponse {
         println!("  {} {}", "ID:".cyan(), self.id);
         println!("  {} {}", "Name:".cyan(), self.name);
         println!("  {} {}", "Owner:".cyan(), &self.owner[..16]);
-        println!("  {} {}", "Created:".cyan(), format_timestamp(&self.created));
+        println!(
+            "  {} {}",
+            "Created:".cyan(),
+            format_timestamp(&self.created)
+        );
     }
 }
 

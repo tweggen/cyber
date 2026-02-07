@@ -42,10 +42,10 @@ pub use causal::CausalPositionService;
 pub use error::{StoreError, StoreResult};
 pub use models::*;
 pub use queries::{
-    AuthorEntriesQuery, BatchEntryQuery, BrokenReferencesQuery, NotebookStats,
-    NotebookStatsQuery, OrphanEntriesQuery, TopicQuery,
+    AuthorEntriesQuery, BatchEntryQuery, BrokenReferencesQuery, NotebookStats, NotebookStatsQuery,
+    OrphanEntriesQuery, TopicQuery,
 };
-pub use repository::{AuthorPublicKey, Repository, StoreEntryInput, DEFAULT_MAX_DEPTH};
+pub use repository::{AuthorPublicKey, DEFAULT_MAX_DEPTH, Repository, StoreEntryInput};
 pub use store::{Store, StoreConfig};
 
 // Re-export notebook-core for downstream crates

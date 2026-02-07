@@ -21,7 +21,31 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    networks:
+      - notebook-net
+
+  notebook-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: notebook-server
+    environment:
+      DATABASE_URL: postgres://notebook:notebook_dev@postgres:5432/notebook
+      PORT: "3000"
+      LOG_LEVEL: info
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - notebook-net
 
 volumes:
   postgres_data:
     driver: local
+
+networks:
+  notebook-net:
+    driver: bridge

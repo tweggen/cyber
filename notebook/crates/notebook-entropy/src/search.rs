@@ -34,11 +34,11 @@ use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
 use tantivy::collector::TopDocs;
 use tantivy::query::{BooleanQuery, Occur, QueryParser, TermQuery};
-use tantivy::schema::{
-    Field, IndexRecordOption, Schema, TextFieldIndexing, TextOptions, STORED, STRING,
-};
 use tantivy::schema::document::Value;
-use tantivy::{doc, Index, IndexReader, IndexWriter, ReloadPolicy, Term};
+use tantivy::schema::{
+    Field, IndexRecordOption, STORED, STRING, Schema, TextFieldIndexing, TextOptions,
+};
+use tantivy::{Index, IndexReader, IndexWriter, ReloadPolicy, Term, doc};
 use thiserror::Error;
 
 use notebook_core::types::{Entry, EntryId, NotebookId};

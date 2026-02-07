@@ -1,5 +1,6 @@
 //! Route definitions for the HTTP API.
 
+pub mod auth;
 pub mod browse;
 pub mod entries;
 pub mod events;
@@ -16,6 +17,7 @@ use crate::state::AppState;
 pub fn build_router(state: AppState) -> Router {
     Router::new()
         .merge(health::routes())
+        .merge(auth::routes())
         .merge(entries::routes())
         .merge(notebooks::routes())
         .merge(observe::routes())

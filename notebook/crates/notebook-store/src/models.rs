@@ -323,6 +323,75 @@ impl NewEntryBuilder {
     }
 }
 
+// ==================== User Management Models ====================
+
+/// Database row for the `users` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct UserRow {
+    pub id: Uuid,
+    pub username: String,
+    pub display_name: Option<String>,
+    pub password_hash: String,
+    pub author_id: Vec<u8>,
+    pub role: String,
+    pub is_active: bool,
+    pub created: DateTime<Utc>,
+    pub updated: DateTime<Utc>,
+}
+
+/// Input for creating a new user.
+#[derive(Debug, Clone)]
+pub struct NewUser {
+    pub username: String,
+    pub display_name: Option<String>,
+    pub password_hash: String,
+    pub author_id: [u8; 32],
+    pub role: String,
+}
+
+/// Database row for the `user_keys` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct UserKeyRow {
+    pub user_id: Uuid,
+    pub encrypted_private_key: Vec<u8>,
+}
+
+/// Database row for the `user_quotas` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct UserQuotaRow {
+    pub user_id: Uuid,
+    pub max_notebooks: i32,
+    pub max_entries_per_notebook: i32,
+    pub max_entry_size_bytes: i32,
+    pub max_total_storage_bytes: i64,
+}
+
+/// Database row for the `usage_log` table.
+#[derive(Debug, Clone, FromRow)]
+pub struct UsageLogRow {
+    pub id: i64,
+    pub user_id: Option<Uuid>,
+    pub author_id: Vec<u8>,
+    pub action: String,
+    pub resource_type: Option<String>,
+    pub resource_id: Option<String>,
+    pub details: Option<serde_json::Value>,
+    pub ip_address: Option<String>,
+    pub created: DateTime<Utc>,
+}
+
+/// Input for creating a new usage log entry.
+#[derive(Debug, Clone)]
+pub struct NewUsageLogEntry {
+    pub user_id: Option<Uuid>,
+    pub author_id: [u8; 32],
+    pub action: String,
+    pub resource_type: Option<String>,
+    pub resource_id: Option<String>,
+    pub details: Option<serde_json::Value>,
+    pub ip_address: Option<String>,
+}
+
 /// Query parameters for listing entries.
 #[derive(Debug, Clone, Default)]
 pub struct EntryQuery {

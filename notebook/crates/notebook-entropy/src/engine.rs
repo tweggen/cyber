@@ -171,8 +171,12 @@ impl IntegrationCostEngine {
                 let after_state = CostState::capture(&preview_snapshot, entry);
 
                 let entries_revised = compute_entries_revised(&before_state, &after_state);
-                let references_broken =
-                    compute_references_broken(entry, &preview_snapshot, &before_state, &after_state);
+                let references_broken = compute_references_broken(
+                    entry,
+                    &preview_snapshot,
+                    &before_state,
+                    &after_state,
+                );
                 let catalog_shift = compute_catalog_shift(&before_state, &after_state);
                 let orphan = compute_orphan(entry, assigned_cluster, &before_state);
 
@@ -329,7 +333,9 @@ fn compute_references_broken(
 
 /// Computes how much the catalog summary changed.
 fn compute_catalog_shift(before: &CostState, after: &CostState) -> f64 {
-    let similarity = before.catalog_vector.cosine_similarity(&after.catalog_vector);
+    let similarity = before
+        .catalog_vector
+        .cosine_similarity(&after.catalog_vector);
 
     // Convert similarity to distance
     // similarity 1.0 -> shift 0.0 (identical)
@@ -338,11 +344,7 @@ fn compute_catalog_shift(before: &CostState, after: &CostState) -> f64 {
 }
 
 /// Determines if the entry is an orphan.
-fn compute_orphan(
-    entry: &Entry,
-    assigned_cluster: ClusterId,
-    before: &CostState,
-) -> bool {
+fn compute_orphan(entry: &Entry, assigned_cluster: ClusterId, before: &CostState) -> bool {
     // An entry is orphan if:
     // 1. It created a new singleton cluster (no semantic match)
     // 2. AND it has no references to existing entries
@@ -442,10 +444,8 @@ mod tests {
         engine.compute_cost(&entry1, notebook_id).unwrap();
 
         // Add entry that references the first
-        let entry2 = make_text_entry_with_refs(
-            "Deep learning builds on machine learning",
-            vec![entry1.id],
-        );
+        let entry2 =
+            make_text_entry_with_refs("Deep learning builds on machine learning", vec![entry1.id]);
         let cost = engine.compute_cost(&entry2, notebook_id).unwrap();
 
         // Entry with reference is not orphan

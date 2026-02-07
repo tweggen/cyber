@@ -10,7 +10,7 @@
 //!
 //! Created by: agent-perf (Task 5-5)
 
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 use notebook_core::types::{AuthorId, CausalPosition, Entry, EntryBuilder, EntryId, NotebookId};
 use notebook_entropy::coherence::CoherenceSnapshot;
 use notebook_entropy::engine::IntegrationCostEngine;
@@ -243,7 +243,11 @@ fn integration_cost_cyclic_benchmark(c: &mut Criterion) {
                         "new ring member",
                         vec![entries[0].id, entries[size / 2].id],
                     );
-                    black_box(engine.compute_cost_preview(&new_entry, notebook_id).unwrap())
+                    black_box(
+                        engine
+                            .compute_cost_preview(&new_entry, notebook_id)
+                            .unwrap(),
+                    )
                 })
             });
         }
@@ -274,9 +278,14 @@ fn reference_density_benchmark(c: &mut Criterion) {
             &refs_per_entry,
             |b, &refs| {
                 b.iter(|| {
-                    let ref_targets: Vec<EntryId> = entries.iter().take(refs).map(|e| e.id).collect();
+                    let ref_targets: Vec<EntryId> =
+                        entries.iter().take(refs).map(|e| e.id).collect();
                     let new_entry = generate_entry_with_refs("dense entry", ref_targets);
-                    black_box(engine.compute_cost_preview(&new_entry, notebook_id).unwrap())
+                    black_box(
+                        engine
+                            .compute_cost_preview(&new_entry, notebook_id)
+                            .unwrap(),
+                    )
                 })
             },
         );
@@ -304,7 +313,11 @@ fn fully_connected_benchmark(c: &mut Criterion) {
             b.iter(|| {
                 let all_refs: Vec<EntryId> = entries.iter().map(|e| e.id).collect();
                 let new_entry = generate_entry_with_refs("fully connected new", all_refs);
-                black_box(engine.compute_cost_preview(&new_entry, notebook_id).unwrap())
+                black_box(
+                    engine
+                        .compute_cost_preview(&new_entry, notebook_id)
+                        .unwrap(),
+                )
             })
         });
     }
@@ -371,7 +384,11 @@ fn cycle_safety_benchmark(c: &mut Criterion) {
                 entry_ids[3 * size / 4],
             ];
             let new_entry = generate_entry_with_refs("cycle connector", refs);
-            black_box(engine.compute_cost_preview(&new_entry, notebook_id).unwrap())
+            black_box(
+                engine
+                    .compute_cost_preview(&new_entry, notebook_id)
+                    .unwrap(),
+            )
         })
     });
 

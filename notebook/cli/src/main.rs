@@ -20,15 +20,8 @@ mod commands;
 use clap::{Parser, Subcommand};
 
 use commands::{
-    browse::BrowseArgs,
-    create::CreateArgs,
-    delete::DeleteArgs,
-    list::ListArgs,
-    observe::ObserveArgs,
-    read::ReadArgs,
-    revise::ReviseArgs,
-    share::ShareArgs,
-    write::WriteArgs,
+    browse::BrowseArgs, create::CreateArgs, delete::DeleteArgs, list::ListArgs,
+    observe::ObserveArgs, read::ReadArgs, revise::ReviseArgs, share::ShareArgs, write::WriteArgs,
 };
 
 /// Knowledge Exchange Platform CLI
@@ -45,7 +38,12 @@ struct Cli {
     human: bool,
 
     /// Notebook server URL
-    #[arg(long, env = "NOTEBOOK_URL", default_value = "http://localhost:3000", global = true)]
+    #[arg(
+        long,
+        env = "NOTEBOOK_URL",
+        default_value = "http://localhost:3000",
+        global = true
+    )]
     url: String,
 
     #[command(subcommand)]

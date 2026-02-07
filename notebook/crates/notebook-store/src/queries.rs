@@ -12,9 +12,9 @@
 use notebook_core::{AuthorId, EntryId, NotebookId};
 use uuid::Uuid;
 
+use crate::Store;
 use crate::error::StoreResult;
 use crate::models::EntryRow;
-use crate::Store;
 
 /// Query builder for batch entry fetching.
 ///
@@ -63,10 +63,8 @@ impl BatchEntryQuery {
         let mut rows = self.execute(store).await?;
 
         // Create lookup map
-        let mut id_to_row: std::collections::HashMap<Uuid, EntryRow> = rows
-            .drain(..)
-            .map(|r| (r.id, r))
-            .collect();
+        let mut id_to_row: std::collections::HashMap<Uuid, EntryRow> =
+            rows.drain(..).map(|r| (r.id, r)).collect();
 
         // Return in input order
         let result: Vec<EntryRow> = self
@@ -383,12 +381,11 @@ impl BrokenReferencesQuery {
         .await?;
 
         // Get all entry IDs in this notebook
-        let all_ids: Vec<(Uuid,)> = sqlx::query_as(
-            r#"SELECT id FROM entries WHERE notebook_id = $1"#,
-        )
-        .bind(self.notebook_id)
-        .fetch_all(store.pool())
-        .await?;
+        let all_ids: Vec<(Uuid,)> =
+            sqlx::query_as(r#"SELECT id FROM entries WHERE notebook_id = $1"#)
+                .bind(self.notebook_id)
+                .fetch_all(store.pool())
+                .await?;
 
         let existing_ids: std::collections::HashSet<Uuid> =
             all_ids.into_iter().map(|(id,)| id).collect();

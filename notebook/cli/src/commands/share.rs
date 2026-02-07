@@ -7,7 +7,7 @@ use colored::Colorize;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use super::{format_timestamp, make_request, output, HumanReadable};
+use super::{HumanReadable, format_timestamp, make_request, output};
 
 /// Arguments for the share command.
 #[derive(Args)]
