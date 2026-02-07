@@ -207,6 +207,16 @@ public class RegisterAuthorResponse
 }
 
 /// <summary>
+/// DTO for user registration request.
+/// </summary>
+public class RegisterRequest
+{
+    public string Username { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string? DisplayName { get; set; }
+}
+
+/// <summary>
 /// DTO for token request.
 /// </summary>
 public class TokenRequest

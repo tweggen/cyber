@@ -65,6 +65,37 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseAntiforgery();
 
+// Registration endpoint for API clients (AI agents, tools, etc.)
+app.MapPost("/auth/register", async (
+    RegisterRequest request,
+    UserManager<ApplicationUser> userManager,
+    AuthorService authorService) =>
+{
+    // Validate input
+    if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+        return Results.BadRequest(new { error = "Username and password are required" });
+
+    // Register author with the Rust notebook API
+    var (authorIdHex, authorIdBytes) = await authorService.RegisterNewAuthorAsync();
+
+    var user = new ApplicationUser
+    {
+        UserName = request.Username,
+        DisplayName = request.DisplayName,
+        AuthorId = authorIdBytes,
+        AuthorIdHex = authorIdHex,
+    };
+
+    var result = await userManager.CreateAsync(user, request.Password);
+    if (!result.Succeeded)
+    {
+        var errors = result.Errors.Select(e => e.Description).ToList();
+        return Results.BadRequest(new { errors });
+    }
+
+    return Results.Ok(new { authorId = authorIdHex, username = request.Username });
+}).AllowAnonymous();
+
 // Token endpoint for API clients (AI agents, tools, etc.)
 app.MapPost("/auth/token", async (
     TokenRequest request,
