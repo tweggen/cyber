@@ -20,6 +20,10 @@ pub const COHERENCE_LINKS_MIGRATION: &str =
 /// Embedded migration SQL for users tables (005_users.sql).
 pub const USERS_MIGRATION: &str = include_str!("../../../migrations/005_users.sql");
 
+/// Embedded migration SQL for notebook sequence counter (006_notebook_sequence.sql).
+pub const NOTEBOOK_SEQUENCE_MIGRATION: &str =
+    include_str!("../../../migrations/006_notebook_sequence.sql");
+
 /// Run all pending migrations against the database.
 ///
 /// This function is idempotent - it can be run multiple times safely.
@@ -68,6 +72,15 @@ pub async fn run_migrations(pool: &PgPool) -> StoreResult<()> {
         .execute(pool)
         .await
         .map_err(|e| StoreError::MigrationError(format!("Users migration failed: {}", e)))?;
+
+    // Run notebook sequence migration
+    tracing::debug!("Running notebook sequence migration (006_notebook_sequence.sql)...");
+    sqlx::raw_sql(NOTEBOOK_SEQUENCE_MIGRATION)
+        .execute(pool)
+        .await
+        .map_err(|e| {
+            StoreError::MigrationError(format!("Notebook sequence migration failed: {}", e))
+        })?;
 
     tracing::info!("Migrations completed successfully");
     Ok(())
@@ -158,7 +171,25 @@ pub async fn get_schema_version(pool: &PgPool) -> StoreResult<u32> {
     .fetch_one(pool)
     .await?;
 
-    Ok(if has_users.0 { 4 } else { 3 })
+    if !has_users.0 {
+        return Ok(3);
+    }
+
+    // Check if notebooks table has current_sequence column (from 006_notebook_sequence.sql)
+    let has_sequence_col: (bool,) = sqlx::query_as(
+        r#"
+        SELECT EXISTS (
+            SELECT FROM information_schema.columns
+            WHERE table_schema = 'public'
+            AND table_name = 'notebooks'
+            AND column_name = 'current_sequence'
+        )
+        "#,
+    )
+    .fetch_one(pool)
+    .await?;
+
+    Ok(if has_sequence_col.0 { 5 } else { 4 })
 }
 
 #[cfg(test)]
@@ -189,6 +220,12 @@ mod tests {
         assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS user_keys"));
         assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS user_quotas"));
         assert!(USERS_MIGRATION.contains("CREATE TABLE IF NOT EXISTS usage_log"));
+    }
+
+    #[test]
+    fn test_notebook_sequence_migration_embedded() {
+        assert!(NOTEBOOK_SEQUENCE_MIGRATION.contains("current_sequence"));
+        assert!(NOTEBOOK_SEQUENCE_MIGRATION.contains("ALTER TABLE notebooks"));
     }
 
     #[test]

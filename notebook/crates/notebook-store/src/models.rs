@@ -54,6 +54,8 @@ pub struct NotebookRow {
     /// AuthorId as 32-byte hash
     pub owner_id: Vec<u8>,
     pub created: DateTime<Utc>,
+    /// Atomically incremented sequence counter for concurrent writes.
+    pub current_sequence: i64,
 }
 
 /// Database row for the `notebook_access` table.

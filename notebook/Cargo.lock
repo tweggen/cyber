@@ -1767,6 +1767,7 @@ dependencies = [
  "blake3",
  "chrono",
  "notebook-core",
+ "rand",
  "serde",
  "serde_json",
  "sqlx",

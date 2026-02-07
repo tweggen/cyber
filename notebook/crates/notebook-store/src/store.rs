@@ -228,7 +228,7 @@ impl Store {
             r#"
             INSERT INTO notebooks (id, name, owner_id)
             VALUES ($1, $2, $3)
-            RETURNING id, name, owner_id, created
+            RETURNING id, name, owner_id, created, current_sequence
             "#,
         )
         .bind(notebook.id)
@@ -252,7 +252,7 @@ impl Store {
     /// Get a notebook by ID.
     pub async fn get_notebook(&self, id: Uuid) -> StoreResult<NotebookRow> {
         sqlx::query_as::<_, NotebookRow>(
-            r#"SELECT id, name, owner_id, created FROM notebooks WHERE id = $1"#,
+            r#"SELECT id, name, owner_id, created, current_sequence FROM notebooks WHERE id = $1"#,
         )
         .bind(id)
         .fetch_optional(&self.pool)
@@ -267,7 +267,7 @@ impl Store {
     ) -> StoreResult<Vec<NotebookRow>> {
         Ok(sqlx::query_as::<_, NotebookRow>(
             r#"
-            SELECT DISTINCT n.id, n.name, n.owner_id, n.created
+            SELECT DISTINCT n.id, n.name, n.owner_id, n.created, n.current_sequence
             FROM notebooks n
             LEFT JOIN notebook_access a ON n.id = a.notebook_id
             WHERE n.owner_id = $1 OR a.author_id = $1
@@ -366,15 +366,21 @@ impl Store {
 
     // ==================== Entry Operations ====================
 
-    /// Get the next sequence number for a notebook.
+    /// Get the next sequence number for a notebook by atomically incrementing the counter.
     async fn next_sequence(&self, notebook_id: Uuid) -> StoreResult<i64> {
-        let result: (Option<i64>,) =
-            sqlx::query_as(r#"SELECT MAX(sequence) FROM entries WHERE notebook_id = $1"#)
-                .bind(notebook_id)
-                .fetch_one(&self.pool)
-                .await?;
+        let result: (i64,) = sqlx::query_as(
+            r#"
+            UPDATE notebooks
+            SET current_sequence = current_sequence + 1
+            WHERE id = $1
+            RETURNING current_sequence
+            "#,
+        )
+        .bind(notebook_id)
+        .fetch_one(&self.pool)
+        .await?;
 
-        Ok(result.0.unwrap_or(0) + 1)
+        Ok(result.0)
     }
 
     /// Insert a new entry.

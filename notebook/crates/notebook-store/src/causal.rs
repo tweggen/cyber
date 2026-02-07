@@ -87,28 +87,25 @@ impl CausalPositionService {
         // Start a transaction for atomic position assignment
         let mut tx = pool.begin().await?;
 
-        // Lock the notebook row to serialize concurrent position assignments.
-        // This ensures that only one writer can compute and assign a sequence
-        // number at a time for this notebook.
-        let notebook_exists: Option<(Uuid,)> =
-            sqlx::query_as(r#"SELECT id FROM notebooks WHERE id = $1 FOR UPDATE"#)
-                .bind(notebook_uuid)
-                .fetch_optional(&mut *tx)
-                .await?;
+        // Atomically increment the sequence counter on the notebook row.
+        // This both locks the row (serializing concurrent writers) and assigns
+        // the next sequence number in a single operation, preventing races.
+        let next_seq_row: Option<(i64,)> = sqlx::query_as(
+            r#"
+            UPDATE notebooks
+            SET current_sequence = current_sequence + 1
+            WHERE id = $1
+            RETURNING current_sequence
+            "#,
+        )
+        .bind(notebook_uuid)
+        .fetch_optional(&mut *tx)
+        .await?;
 
-        if notebook_exists.is_none() {
-            return Err(StoreError::NotebookNotFound(notebook_uuid));
-        }
-
-        // Compute the next sequence number.
-        // The lock on notebooks ensures this is serialized.
-        let max_seq: (Option<i64>,) =
-            sqlx::query_as(r#"SELECT MAX(sequence) FROM entries WHERE notebook_id = $1"#)
-                .bind(notebook_uuid)
-                .fetch_one(&mut *tx)
-                .await?;
-
-        let next_sequence = max_seq.0.unwrap_or(0) + 1;
+        let next_sequence = match next_seq_row {
+            Some((seq,)) => seq,
+            None => return Err(StoreError::NotebookNotFound(notebook_uuid)),
+        };
 
         // Compute total_notebook_entries (current count before this entry)
         let total_count: (i64,) =
@@ -304,24 +301,16 @@ impl CausalPositionService {
     pub async fn current_sequence(pool: &PgPool, notebook_id: NotebookId) -> StoreResult<u64> {
         let notebook_uuid = *notebook_id.as_uuid();
 
-        // Verify notebook exists
-        let notebook_exists: Option<(Uuid,)> =
-            sqlx::query_as(r#"SELECT id FROM notebooks WHERE id = $1"#)
+        let row: Option<(i64,)> =
+            sqlx::query_as(r#"SELECT current_sequence FROM notebooks WHERE id = $1"#)
                 .bind(notebook_uuid)
                 .fetch_optional(pool)
                 .await?;
 
-        if notebook_exists.is_none() {
-            return Err(StoreError::NotebookNotFound(notebook_uuid));
+        match row {
+            Some((seq,)) => Ok(seq as u64),
+            None => Err(StoreError::NotebookNotFound(notebook_uuid)),
         }
-
-        let max_seq: (Option<i64>,) =
-            sqlx::query_as(r#"SELECT MAX(sequence) FROM entries WHERE notebook_id = $1"#)
-                .bind(notebook_uuid)
-                .fetch_one(pool)
-                .await?;
-
-        Ok(max_seq.0.unwrap_or(0) as u64)
     }
 }
 

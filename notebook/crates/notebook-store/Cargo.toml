@@ -41,6 +41,7 @@ blake3 = "1"
 
 [dev-dependencies]
 tokio-test = "0.4"
+rand = { workspace = true }
 
 [features]
 # Feature for running integration tests against real database
