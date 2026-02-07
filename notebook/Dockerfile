@@ -21,9 +21,10 @@ RUN mkdir -p crates/notebook-core/src && echo "" > crates/notebook-core/src/lib.
 # Cache dependency build
 RUN cargo build --release --bin notebook-server 2>/dev/null || true
 
-# Copy real source code
+# Copy real source code and migrations (needed at compile time for include_str!)
 COPY crates/ crates/
 COPY cli/ cli/
+COPY migrations/ migrations/
 
 # Touch source files to invalidate cached dummy builds
 RUN find crates/ cli/ -name "*.rs" -exec touch {} +

@@ -12,7 +12,7 @@
 use notebook_core::{AuthorId, EntryId, NotebookId};
 use uuid::Uuid;
 
-use crate::error::{StoreError, StoreResult};
+use crate::error::StoreResult;
 use crate::models::EntryRow;
 use crate::Store;
 
