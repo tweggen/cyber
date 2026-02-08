@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   postgres:
-    image: apache/age:PG16_latest
+    image: apache/age:release_PG16_1.6.0
     container_name: notebook-postgres
     environment:
       POSTGRES_USER: notebook
