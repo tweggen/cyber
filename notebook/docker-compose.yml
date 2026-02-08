@@ -12,6 +12,7 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
       - ./migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ./migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
       - ./migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
@@ -35,6 +36,27 @@ services:
       LOG_LEVEL: info
     ports:
       - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - notebook-net
+
+  admin:
+    build:
+      context: ../admin
+      dockerfile: Dockerfile
+    container_name: notebook-admin
+    environment:
+      ASPNETCORE_URLS: "http://+:5000"
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev"
+      NotebookApi__BaseUrl: "http://notebook-server:3000"
+      Jwt__Issuer: notebook-admin
+      Jwt__ExpiryMinutes: "60"
+    ports:
+      - "5000:5000"
     depends_on:
       postgres:
         condition: service_healthy

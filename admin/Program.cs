@@ -53,6 +53,13 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
+// Run EF Core migrations automatically on startup (safe for Docker/Coolify)
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    db.Database.Migrate();
+}
+
 // Configure the HTTP request pipeline
 if (!app.Environment.IsDevelopment())
 {
