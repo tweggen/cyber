@@ -31,7 +31,7 @@ services:
       dockerfile: Dockerfile
     container_name: notebook-server
     environment:
-      DATABASE_URL: postgres://notebook:notebook_dev@postgres:5432/notebook
+      DATABASE_URL: postgres://notebook:notebook_dev@notebook-postgres:5432/notebook
       PORT: "3000"
       LOG_LEVEL: info
     ports:
@@ -58,7 +58,7 @@ services:
     environment:
       ASPNETCORE_URLS: "http://+:5000"
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev"
+      ConnectionStrings__DefaultConnection: "Host=notebook-postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev"
       NotebookApi__BaseUrl: "http://notebook-server:3000"
       Jwt__Issuer: notebook-admin
       Jwt__ExpiryMinutes: "60"
