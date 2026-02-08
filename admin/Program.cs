@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using NotebookAdmin.Components;
 using NotebookAdmin.Data;
 using NotebookAdmin.Models;
@@ -53,11 +54,77 @@ builder.Services.AddRazorComponents()
 
 var app = builder.Build();
 
-// Run EF Core migrations automatically on startup (safe for Docker/Coolify)
+// Ensure the target database exists (safe for Coolify where PG init scripts may not run)
+{
+    var connString = builder.Configuration.GetConnectionString("DefaultConnection");
+    var connBuilder = new NpgsqlConnectionStringBuilder(connString);
+    var dbName = connBuilder.Database!;
+    connBuilder.Database = "postgres";
+    using var conn = new NpgsqlConnection(connBuilder.ConnectionString);
+    conn.Open();
+    using var check = conn.CreateCommand();
+    check.CommandText = $"SELECT 1 FROM pg_database WHERE datname = '{dbName}'";
+    if (check.ExecuteScalar() == null)
+    {
+        using var create = conn.CreateCommand();
+        create.CommandText = $"CREATE DATABASE \"{dbName}\"";
+        create.ExecuteNonQuery();
+        app.Logger.LogInformation("Created database {Database}", dbName);
+    }
+}
+
+// Run EF Core migrations automatically on startup
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     db.Database.Migrate();
+}
+
+// Seed initial admin user from environment variables (if set)
+{
+    var adminUser = app.Configuration["ADMIN_USERNAME"];
+    var adminPass = app.Configuration["ADMIN_PASSWORD"];
+    if (!string.IsNullOrEmpty(adminUser) && !string.IsNullOrEmpty(adminPass))
+    {
+        using var scope = app.Services.CreateScope();
+        var userManager = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
+        var existing = await userManager.FindByNameAsync(adminUser);
+        if (existing == null)
+        {
+            try
+            {
+                var authorService = scope.ServiceProvider.GetRequiredService<AuthorService>();
+                var quotaService = scope.ServiceProvider.GetRequiredService<QuotaService>();
+                var (authorIdHex, authorIdBytes) = await authorService.RegisterNewAuthorAsync();
+
+                var user = new ApplicationUser
+                {
+                    UserName = adminUser,
+                    DisplayName = "Admin",
+                    AuthorId = authorIdBytes,
+                    AuthorIdHex = authorIdHex,
+                };
+
+                var result = await userManager.CreateAsync(user, adminPass);
+                if (result.Succeeded)
+                {
+                    await quotaService.GetOrCreateDefaultAsync(user.Id);
+                    app.Logger.LogInformation("Seeded admin user '{Username}'", adminUser);
+                }
+                else
+                {
+                    var errors = string.Join(", ", result.Errors.Select(e => e.Description));
+                    app.Logger.LogWarning("Failed to seed admin user: {Errors}", errors);
+                }
+            }
+            catch (Exception ex)
+            {
+                app.Logger.LogWarning(ex,
+                    "Could not seed admin user (notebook API may not be ready yet). " +
+                    "Use POST /auth/register once all services are running.");
+            }
+        }
+    }
 }
 
 // Configure the HTTP request pipeline

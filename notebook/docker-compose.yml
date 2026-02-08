@@ -55,6 +55,8 @@ services:
       NotebookApi__BaseUrl: "http://notebook-server:3000"
       Jwt__Issuer: notebook-admin
       Jwt__ExpiryMinutes: "60"
+      # ADMIN_USERNAME: "admin"      # Set to seed initial admin user
+      # ADMIN_PASSWORD: "changeme"   # Set to seed initial admin user
     ports:
       - "5000:5000"
     depends_on:
