@@ -191,6 +191,220 @@ public class ChangeEntry
     public IntegrationCost IntegrationCost { get; set; } = new();
 }
 
+// ============================================================================
+// Revise Entry DTOs
+// ============================================================================
+
+/// <summary>
+/// DTO for revising an entry via Rust API.
+/// </summary>
+public class ReviseEntryRequest
+{
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("reason")]
+    public string? Reason { get; set; }
+}
+
+public class ReviseEntryResponse
+{
+    [JsonPropertyName("revision_id")]
+    public Guid RevisionId { get; set; }
+
+    [JsonPropertyName("causal_position")]
+    public CausalPosition CausalPosition { get; set; } = new();
+
+    [JsonPropertyName("integration_cost")]
+    public IntegrationCost IntegrationCost { get; set; } = new();
+}
+
+// ============================================================================
+// Read Entry DTOs
+// ============================================================================
+
+/// <summary>
+/// Full response from GET /notebooks/{id}/entries/{entryId}.
+/// </summary>
+public class ReadEntryResponse
+{
+    [JsonPropertyName("entry")]
+    public EntryDetail Entry { get; set; } = new();
+
+    [JsonPropertyName("revisions")]
+    public List<EntrySummaryDto> Revisions { get; set; } = [];
+
+    [JsonPropertyName("references")]
+    public List<EntrySummaryDto> References { get; set; } = [];
+
+    [JsonPropertyName("referenced_by")]
+    public List<EntrySummaryDto> ReferencedBy { get; set; } = [];
+}
+
+/// <summary>
+/// Full entry detail for read response.
+/// </summary>
+public class EntryDetail
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("content")]
+    public object? Content { get; set; }
+
+    [JsonPropertyName("content_type")]
+    public string ContentType { get; set; } = string.Empty;
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; set; }
+
+    [JsonPropertyName("author")]
+    public string Author { get; set; } = string.Empty;
+
+    [JsonPropertyName("references")]
+    public List<Guid> References { get; set; } = [];
+
+    [JsonPropertyName("revision_of")]
+    public Guid? RevisionOf { get; set; }
+
+    [JsonPropertyName("causal_position")]
+    public CausalPositionDto CausalPosition { get; set; } = new();
+
+    [JsonPropertyName("created")]
+    public DateTime Created { get; set; }
+
+    [JsonPropertyName("integration_cost")]
+    public IntegrationCost IntegrationCost { get; set; } = new();
+}
+
+/// <summary>
+/// Causal position with activity context.
+/// </summary>
+public class CausalPositionDto
+{
+    [JsonPropertyName("sequence")]
+    public ulong Sequence { get; set; }
+
+    [JsonPropertyName("activity_context")]
+    public ActivityContextDto ActivityContext { get; set; } = new();
+}
+
+/// <summary>
+/// Activity context at entry creation time.
+/// </summary>
+public class ActivityContextDto
+{
+    [JsonPropertyName("entries_since_last_by_author")]
+    public uint EntriesSinceLastByAuthor { get; set; }
+
+    [JsonPropertyName("total_notebook_entries")]
+    public uint TotalNotebookEntries { get; set; }
+
+    [JsonPropertyName("recent_entropy")]
+    public double RecentEntropy { get; set; }
+}
+
+/// <summary>
+/// Summary of an entry in references/revisions lists.
+/// </summary>
+public class EntrySummaryDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; set; }
+
+    [JsonPropertyName("author")]
+    public string Author { get; set; } = string.Empty;
+
+    [JsonPropertyName("created")]
+    public DateTime Created { get; set; }
+}
+
+// ============================================================================
+// Share DTOs
+// ============================================================================
+
+/// <summary>
+/// Request body for sharing a notebook.
+/// </summary>
+public class ShareRequest
+{
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("permissions")]
+    public SharePermissions Permissions { get; set; } = new();
+}
+
+public class SharePermissions
+{
+    [JsonPropertyName("read")]
+    public bool Read { get; set; }
+
+    [JsonPropertyName("write")]
+    public bool Write { get; set; }
+}
+
+public class ShareResponse
+{
+    [JsonPropertyName("access_granted")]
+    public bool AccessGranted { get; set; }
+
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("permissions")]
+    public SharePermissions Permissions { get; set; } = new();
+}
+
+public class RevokeResponse
+{
+    [JsonPropertyName("access_revoked")]
+    public bool AccessRevoked { get; set; }
+
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+}
+
+/// <summary>
+/// Response for listing notebook participants.
+/// </summary>
+public class ParticipantsResponse
+{
+    [JsonPropertyName("participants")]
+    public List<ParticipantDto> Participants { get; set; } = [];
+}
+
+public class ParticipantDto
+{
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("permissions")]
+    public SharePermissions Permissions { get; set; } = new();
+
+    [JsonPropertyName("granted_at")]
+    public DateTime GrantedAt { get; set; }
+}
+
+/// <summary>
+/// Response for deleting a notebook.
+/// </summary>
+public class DeleteNotebookResponse
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
+}
+
+// ============================================================================
+// Author Registration DTOs
+// ============================================================================
+
 /// <summary>
 /// DTO for author registration via Rust API.
 /// </summary>

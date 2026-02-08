@@ -19,7 +19,7 @@ use uuid::Uuid;
 use notebook_store::NewNotebookAccess;
 
 use crate::error::{ApiError, ApiResult};
-use crate::extract::AuthorIdentity;
+use crate::extract::{AuthorIdentity, require_scope};
 use crate::state::AppState;
 
 // ============================================================================
@@ -150,10 +150,12 @@ async fn is_notebook_owner(
 /// - 404 Not Found: Notebook not found
 async fn grant_access(
     State(state): State<AppState>,
-    AuthorIdentity(author_identity): AuthorIdentity,
+    identity: AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
     Json(request): Json<ShareRequest>,
 ) -> ApiResult<Json<ShareResponse>> {
+    require_scope(&identity, "notebook:share", state.config())?;
+    let author_identity = identity.author_id;
     // Parse target author_id
     let target_author_id = parse_author_id(&request.author_id)?;
 
@@ -205,9 +207,11 @@ async fn grant_access(
 /// - 404 Not Found: Notebook not found
 async fn revoke_access(
     State(state): State<AppState>,
-    AuthorIdentity(author_identity): AuthorIdentity,
+    identity: AuthorIdentity,
     Path((notebook_id, author_id_hex)): Path<(Uuid, String)>,
 ) -> ApiResult<Json<RevokeResponse>> {
+    require_scope(&identity, "notebook:share", state.config())?;
+    let author_identity = identity.author_id;
     // Parse target author_id
     let target_author_id = parse_author_id(&author_id_hex)?;
 
@@ -268,9 +272,11 @@ async fn revoke_access(
 /// - 404 Not Found: Notebook not found
 async fn list_participants(
     State(state): State<AppState>,
-    AuthorIdentity(author_identity): AuthorIdentity,
+    identity: AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
 ) -> ApiResult<Json<ParticipantsResponse>> {
+    require_scope(&identity, "notebook:read", state.config())?;
+    let author_identity = identity.author_id;
     // Verify notebook exists
     let _ = state
         .store()

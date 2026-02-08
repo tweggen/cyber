@@ -3,10 +3,16 @@
 @using Microsoft.EntityFrameworkCore
 @using NotebookAdmin.Models
 @inject UserManager<ApplicationUser> UserManager
+@rendermode InteractiveServer
 
 <PageTitle>Users</PageTitle>
 
 <h3>User Management</h3>
+
+@if (statusMessage != null)
+{
+    <div class="alert @(statusIsError ? "alert-danger" : "alert-success")">@statusMessage</div>
+}
 
 @if (users == null)
 {
@@ -20,7 +26,8 @@ else
                 <th>Username</th>
                 <th>Display Name</th>
                 <th>Author ID</th>
-                <th>Created</th>
+                <th>Locked</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -30,7 +37,20 @@ else
                     <td>@user.UserName</td>
                     <td>@(user.DisplayName ?? "-")</td>
                     <td><code>@(user.AuthorIdHex[..16])...</code></td>
-                    <td>-</td>
+                    <td>@(user.LockoutEnd > DateTimeOffset.UtcNow ? "Yes" : "No")</td>
+                    <td>
+                        @if (user.LockoutEnd > DateTimeOffset.UtcNow)
+                        {
+                            <button class="btn btn-sm btn-outline-success"
+                                @onclick="() => UnlockUser(user)">Unlock</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-warning"
+                                @onclick="() => LockUser(user)">Lock</button>
+                        }
+                        <a href="/admin/users/@user.Id/quotas" class="btn btn-sm btn-outline-secondary ms-1">Quotas</a>
+                    </td>
                 </tr>
             }
         </tbody>
@@ -44,9 +64,45 @@ else
 
 @code {
     private List<ApplicationUser>? users;
+    private string? statusMessage;
+    private bool statusIsError;
 
     protected override async Task OnInitializedAsync()
     {
+        users = await UserManager.Users.ToListAsync();
+    }
+
+    private async Task LockUser(ApplicationUser user)
+    {
+        statusMessage = null;
+        var result = await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+        if (result.Succeeded)
+        {
+            statusMessage = $"User {user.UserName} locked.";
+            statusIsError = false;
+        }
+        else
+        {
+            statusMessage = $"Failed to lock user: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            statusIsError = true;
+        }
+        users = await UserManager.Users.ToListAsync();
+    }
+
+    private async Task UnlockUser(ApplicationUser user)
+    {
+        statusMessage = null;
+        var result = await UserManager.SetLockoutEndDateAsync(user, null);
+        if (result.Succeeded)
+        {
+            statusMessage = $"User {user.UserName} unlocked.";
+            statusIsError = false;
+        }
+        else
+        {
+            statusMessage = $"Failed to unlock user: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            statusIsError = true;
+        }
         users = await UserManager.Users.ToListAsync();
     }
 }

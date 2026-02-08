@@ -21,14 +21,50 @@ pub struct Claims {
     pub scope: Option<String>,
 }
 
-/// Extracts AuthorId from a JWT Bearer token or X-Author-Id header (dev fallback).
+/// Extracts AuthorId and scopes from a JWT Bearer token or X-Author-Id header (dev fallback).
 ///
 /// Priority:
-/// 1. `Authorization: Bearer <jwt>` — validates signature, extracts `sub` claim as AuthorId.
+/// 1. `Authorization: Bearer <jwt>` — validates signature, extracts `sub` claim as AuthorId
+///    and `scope` claim as a list of scopes.
 /// 2. `X-Author-Id` header — only if `allow_dev_identity` is true in config.
-/// 3. If neither is present and `allow_dev_identity` is true, returns `AuthorId::zero()`.
+///    Grants all scopes (read, write, share, admin).
+/// 3. If neither is present and `allow_dev_identity` is true, returns `AuthorId::zero()`
+///    with all scopes.
 /// 4. Otherwise returns `Unauthorized`.
-pub struct AuthorIdentity(pub AuthorId);
+pub struct AuthorIdentity {
+    pub author_id: AuthorId,
+    pub scopes: Vec<String>,
+}
+
+/// All available scopes for dev/admin use.
+const ALL_SCOPES: &[&str] = &[
+    "notebook:read",
+    "notebook:write",
+    "notebook:share",
+    "notebook:admin",
+];
+
+/// Check that `identity` has the required `scope`.
+///
+/// If `config.enforce_scopes` is false, this always succeeds.
+/// Otherwise, returns `Forbidden` if the scope is missing.
+pub fn require_scope(
+    identity: &AuthorIdentity,
+    scope: &str,
+    config: &crate::config::ServerConfig,
+) -> Result<(), ApiError> {
+    if !config.enforce_scopes {
+        return Ok(());
+    }
+    if identity.scopes.iter().any(|s| s == scope) {
+        Ok(())
+    } else {
+        Err(ApiError::Forbidden(format!(
+            "Missing required scope: {}",
+            scope
+        )))
+    }
+}
 
 impl FromRequestParts<AppState> for AuthorIdentity {
     type Rejection = ApiError;
@@ -61,7 +97,7 @@ impl FromRequestParts<AppState> for AuthorIdentity {
     }
 }
 
-/// Validate JWT and extract AuthorId from the `sub` claim.
+/// Validate JWT and extract AuthorId + scopes from claims.
 fn extract_from_jwt(
     token: &str,
     config: &crate::config::ServerConfig,
@@ -89,14 +125,30 @@ fn extract_from_jwt(
         })?;
 
     let author_id = parse_author_id_hex(&token_data.claims.sub)?;
-    Ok(AuthorIdentity(author_id))
+
+    // Parse space-separated scope string into Vec<String>
+    let scopes = token_data
+        .claims
+        .scope
+        .unwrap_or_default()
+        .split_whitespace()
+        .map(String::from)
+        .collect();
+
+    Ok(AuthorIdentity { author_id, scopes })
 }
 
 /// Extract AuthorId from the X-Author-Id header (dev mode fallback).
+/// Dev mode grants all scopes.
 fn extract_from_dev_header(parts: &Parts) -> Result<AuthorIdentity, ApiError> {
+    let all_scopes: Vec<String> = ALL_SCOPES.iter().map(|s| (*s).to_string()).collect();
+
     let Some(header_value) = parts.headers.get("X-Author-Id") else {
         tracing::warn!("No auth provided, using zero author (dev mode)");
-        return Ok(AuthorIdentity(AuthorId::zero()));
+        return Ok(AuthorIdentity {
+            author_id: AuthorId::zero(),
+            scopes: all_scopes,
+        });
     };
 
     let hex_str = header_value.to_str().map_err(|_| {
@@ -105,7 +157,10 @@ fn extract_from_dev_header(parts: &Parts) -> Result<AuthorIdentity, ApiError> {
 
     let author_id = parse_author_id_hex(hex_str)?;
     tracing::debug!(author_id = %hex_str, "Using dev identity from X-Author-Id header");
-    Ok(AuthorIdentity(author_id))
+    Ok(AuthorIdentity {
+        author_id,
+        scopes: all_scopes,
+    })
 }
 
 /// Parse a 64-char hex string into an AuthorId.
@@ -147,6 +202,7 @@ mod tests {
             cors_allowed_origins: "*".into(),
             jwt_public_key: public_key.to_string(),
             allow_dev_identity: allow_dev,
+            enforce_scopes: true,
         }
     }
 
@@ -201,7 +257,9 @@ mod tests {
         let result = extract_from_jwt(&token, &config);
         assert!(result.is_ok());
         let identity = result.unwrap();
-        assert_eq!(hex::encode(identity.0.as_bytes()), author_hex);
+        assert_eq!(hex::encode(identity.author_id.as_bytes()), author_hex);
+        assert!(identity.scopes.contains(&"notebook:read".to_string()));
+        assert!(identity.scopes.contains(&"notebook:write".to_string()));
     }
 
     #[test]
@@ -236,6 +294,40 @@ mod tests {
         let config = test_config(TEST_PUBLIC_KEY_PEM, false);
         let result = extract_from_jwt(&token, &config);
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_require_scope_enforced_present() {
+        let identity = AuthorIdentity {
+            author_id: AuthorId::zero(),
+            scopes: vec!["notebook:read".to_string(), "notebook:write".to_string()],
+        };
+        let config = test_config("", false); // enforce_scopes = true
+        assert!(require_scope(&identity, "notebook:read", &config).is_ok());
+        assert!(require_scope(&identity, "notebook:write", &config).is_ok());
+    }
+
+    #[test]
+    fn test_require_scope_enforced_missing() {
+        let identity = AuthorIdentity {
+            author_id: AuthorId::zero(),
+            scopes: vec!["notebook:read".to_string()],
+        };
+        let config = test_config("", false);
+        assert!(require_scope(&identity, "notebook:write", &config).is_err());
+        assert!(require_scope(&identity, "notebook:admin", &config).is_err());
+    }
+
+    #[test]
+    fn test_require_scope_not_enforced() {
+        let identity = AuthorIdentity {
+            author_id: AuthorId::zero(),
+            scopes: vec![], // no scopes at all
+        };
+        let mut config = test_config("", false);
+        config.enforce_scopes = false;
+        // Should pass even with no scopes when enforcement is off
+        assert!(require_scope(&identity, "notebook:admin", &config).is_ok());
     }
 
     #[test]

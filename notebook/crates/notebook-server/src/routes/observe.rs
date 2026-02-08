@@ -21,6 +21,7 @@ use notebook_core::IntegrationCost;
 use notebook_store::{EntryQuery, EntryRow, StoreError};
 
 use crate::error::{ApiError, ApiResult};
+use crate::extract::{AuthorIdentity, require_scope};
 use crate::state::AppState;
 
 // ============================================================================
@@ -137,9 +138,11 @@ fn entry_row_to_change(row: &EntryRow) -> ChangeEntry {
 /// - `since >= current_sequence`: Returns empty changes array
 async fn observe_changes(
     State(state): State<AppState>,
+    identity: AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
     Query(params): Query<ObserveParams>,
 ) -> ApiResult<Json<ObserveResponse>> {
+    require_scope(&identity, "notebook:read", state.config())?;
     let store = state.store();
 
     // Validate notebook exists

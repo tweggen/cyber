@@ -33,9 +33,9 @@ public class TokenService
     }
 
     /// <summary>
-    /// Generate a signed JWT for the given AuthorId.
+    /// Generate a signed JWT for the given AuthorId with the specified scopes.
     /// </summary>
-    public string GenerateToken(string authorIdHex)
+    public string GenerateToken(string authorIdHex, string scopes = "notebook:read notebook:write")
     {
         var now = DateTimeOffset.UtcNow;
         var exp = now.AddMinutes(_expiryMinutes);
@@ -48,7 +48,7 @@ public class TokenService
             exp = exp.ToUnixTimeSeconds(),
             nbf = now.ToUnixTimeSeconds(),
             iat = now.ToUnixTimeSeconds(),
-            scope = "notebook:read notebook:write",
+            scope = scopes,
         };
 
         var headerJson = JsonSerializer.Serialize(header);
@@ -67,6 +67,14 @@ public class TokenService
 
         var signatureB64 = Base64UrlEncode(signature);
         return $"{headerB64}.{payloadB64}.{signatureB64}";
+    }
+
+    /// <summary>
+    /// Generate a signed JWT with all scopes (read, write, share, admin).
+    /// </summary>
+    public string GenerateAdminToken(string authorIdHex)
+    {
+        return GenerateToken(authorIdHex, "notebook:read notebook:write notebook:share notebook:admin");
     }
 
     /// <summary>

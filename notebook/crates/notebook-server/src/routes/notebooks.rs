@@ -21,7 +21,7 @@ use notebook_core::Permissions;
 use notebook_store::{NewNotebook, Store, StoreError};
 
 use crate::error::{ApiError, ApiResult};
-use crate::extract::AuthorIdentity;
+use crate::extract::{AuthorIdentity, require_scope};
 use crate::state::AppState;
 
 // ============================================================================
@@ -188,8 +188,10 @@ async fn get_author_permissions(
 /// - 401 Unauthorized: No authentication (future)
 async fn list_notebooks(
     State(state): State<AppState>,
-    AuthorIdentity(author_id): AuthorIdentity,
+    identity: AuthorIdentity,
 ) -> ApiResult<Json<ListNotebooksResponse>> {
+    require_scope(&identity, "notebook:read", state.config())?;
+    let author_id = identity.author_id;
     let store = state.store();
 
     let author_bytes = *author_id.as_bytes();
@@ -254,9 +256,11 @@ async fn list_notebooks(
 /// - 401 Unauthorized: No authentication (future)
 async fn create_notebook(
     State(state): State<AppState>,
-    AuthorIdentity(author_id): AuthorIdentity,
+    identity: AuthorIdentity,
     Json(request): Json<CreateNotebookRequest>,
 ) -> ApiResult<(StatusCode, Json<CreateNotebookResponse>)> {
+    require_scope(&identity, "notebook:write", state.config())?;
+    let author_id = identity.author_id;
     let store = state.store();
 
     let author_bytes = *author_id.as_bytes();
@@ -305,9 +309,11 @@ async fn create_notebook(
 /// - 404 Not Found: Notebook doesn't exist
 async fn delete_notebook(
     State(state): State<AppState>,
-    AuthorIdentity(author_id): AuthorIdentity,
+    identity: AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
 ) -> ApiResult<Json<DeleteNotebookResponse>> {
+    require_scope(&identity, "notebook:admin", state.config())?;
+    let author_id = identity.author_id;
     let store = state.store();
 
     let author_bytes = *author_id.as_bytes();

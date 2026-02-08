@@ -1,14 +1,16 @@
 @page "/admin/dashboard"
 @using Microsoft.AspNetCore.Identity
 @using NotebookAdmin.Models
+@using NotebookAdmin.Services
 @inject UserManager<ApplicationUser> UserManager
+@inject NotebookApiClient ApiClient
 
 <PageTitle>Dashboard</PageTitle>
 
 <h3>Dashboard</h3>
 
 <div class="row mt-4">
-    <div class="col-md-4">
+    <div class="col-md-3">
         <div class="card text-bg-primary">
             <div class="card-body">
                 <h5 class="card-title">Total Users</h5>
@@ -16,7 +18,38 @@
             </div>
         </div>
     </div>
+    <div class="col-md-3">
+        <div class="card text-bg-success">
+            <div class="card-body">
+                <h5 class="card-title">Notebooks</h5>
+                <p class="card-text display-4">@notebookCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-info">
+            <div class="card-body">
+                <h5 class="card-title">Total Entries</h5>
+                <p class="card-text display-4">@totalEntries</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">System Entropy</h5>
+                <p class="card-text display-4">@systemEntropy.ToString("F1")</p>
+            </div>
+        </div>
+    </div>
 </div>
+
+@if (apiError != null)
+{
+    <div class="alert alert-warning mt-3">
+        Notebook API unreachable: @apiError
+    </div>
+}
 
 <div class="mt-4">
     <p class="text-muted">
@@ -27,9 +60,30 @@
 
 @code {
     private int userCount;
+    private int notebookCount;
+    private long totalEntries;
+    private double systemEntropy;
+    private string? apiError;
 
     protected override async Task OnInitializedAsync()
     {
         userCount = UserManager.Users.Count();
+
+        // Try to get notebook stats from the Rust API using a zero author (admin mode)
+        try
+        {
+            var zeroAuthor = new string('0', 64);
+            var response = await ApiClient.ListNotebooksAsync(zeroAuthor);
+            if (response != null)
+            {
+                notebookCount = response.Notebooks.Count;
+                totalEntries = response.Notebooks.Sum(n => n.TotalEntries);
+                systemEntropy = response.Notebooks.Sum(n => n.TotalEntropy);
+            }
+        }
+        catch (Exception ex)
+        {
+            apiError = ex.Message;
+        }
     }
 }

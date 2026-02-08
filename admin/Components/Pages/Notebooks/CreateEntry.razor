@@ -1,0 +1,148 @@
+@page "/notebooks/{NotebookId:guid}/entries/new"
+@using Microsoft.AspNetCore.Components.Authorization
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject QuotaService QuotaService
+@inject NavigationManager Navigation
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>New Entry</PageTitle>
+
+<h3>Create Entry</h3>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+
+@if (createdEntry != null)
+{
+    <div class="alert alert-success">
+        <p>Entry created successfully!</p>
+        <p>Entry ID: <code>@createdEntry.EntryId</code></p>
+        <p>Integration Cost: @createdEntry.IntegrationCost.CatalogShift.ToString("F4")</p>
+        <a href="/notebooks/@NotebookId/entries/@createdEntry.EntryId" class="btn btn-sm btn-primary">View Entry</a>
+        <a href="/notebooks/@NotebookId" class="btn btn-sm btn-outline-secondary ms-2">Back to Notebook</a>
+    </div>
+}
+else
+{
+    <EditForm Model="formModel" OnValidSubmit="HandleSubmit" FormName="createEntry">
+        <div class="mb-3">
+            <label class="form-label">Content</label>
+            <InputTextArea class="form-control" @bind-Value="formModel.Content" rows="6" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Content Type</label>
+            <InputSelect class="form-select" @bind-Value="formModel.ContentType">
+                <option value="text/plain">text/plain</option>
+                <option value="text/markdown">text/markdown</option>
+                <option value="application/json">application/json</option>
+            </InputSelect>
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Topic (optional)</label>
+            <InputText class="form-control" @bind-Value="formModel.Topic" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">References (comma-separated UUIDs, optional)</label>
+            <InputText class="form-control" @bind-Value="formModel.ReferencesText" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+            @(isSubmitting ? "Creating..." : "Create Entry")
+        </button>
+        <a href="/notebooks/@NotebookId" class="btn btn-outline-secondary ms-2">Cancel</a>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public Guid NotebookId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private EntryFormModel formModel = new();
+    private string? authorIdHex;
+    private string? userId;
+    private string? errorMessage;
+    private bool isSubmitting;
+    private CreateEntryResponse? createdEntry;
+
+    public class EntryFormModel
+    {
+        public string Content { get; set; } = string.Empty;
+        public string ContentType { get; set; } = "text/plain";
+        public string? Topic { get; set; }
+        public string? ReferencesText { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = AuthState != null ? await AuthState : null;
+        var user = await CurrentUser.GetCurrentUserAsync(state?.User);
+        if (user == null)
+        {
+            Navigation.NavigateTo("/auth/login");
+            return;
+        }
+        authorIdHex = user.AuthorIdHex;
+        userId = user.Id;
+    }
+
+    private async Task HandleSubmit()
+    {
+        if (authorIdHex == null || userId == null) return;
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            // Quota check
+            var contentBytes = System.Text.Encoding.UTF8.GetByteCount(formModel.Content);
+            var canCreate = await QuotaService.CanCreateEntryAsync(
+                userId, authorIdHex, NotebookId, contentBytes, ApiClient);
+            if (!canCreate)
+            {
+                errorMessage = "Quota exceeded. You have reached the maximum number of entries or entry size limit.";
+                return;
+            }
+
+            // Parse references
+            var references = new List<Guid>();
+            if (!string.IsNullOrWhiteSpace(formModel.ReferencesText))
+            {
+                foreach (var part in formModel.ReferencesText.Split(',', StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (Guid.TryParse(part.Trim(), out var refId))
+                        references.Add(refId);
+                }
+            }
+
+            var request = new CreateEntryRequest
+            {
+                Content = formModel.Content,
+                ContentType = formModel.ContentType,
+                Topic = string.IsNullOrWhiteSpace(formModel.Topic) ? null : formModel.Topic,
+                References = references,
+            };
+
+            createdEntry = await ApiClient.CreateEntryAsync(authorIdHex, NotebookId, request);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to create entry: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

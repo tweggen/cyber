@@ -25,6 +25,7 @@ use notebook_entropy::{
 use notebook_store::{EntryQuery, StoreError};
 
 use crate::error::{ApiError, ApiResult};
+use crate::extract::{AuthorIdentity, require_scope};
 use crate::state::AppState;
 
 // ============================================================================
@@ -122,9 +123,11 @@ impl From<&ClusterSummary> for ClusterSummaryResponse {
 /// - 404 Not Found: Notebook not found
 async fn browse_notebook(
     State(state): State<AppState>,
+    identity: AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
     Query(params): Query<BrowseParams>,
 ) -> ApiResult<Json<BrowseResponse>> {
+    require_scope(&identity, "notebook:read", state.config())?;
     let store = state.store();
 
     // 1. Verify notebook exists

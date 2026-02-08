@@ -1,0 +1,201 @@
+@page "/notebooks/{NotebookId:guid}/entries/{EntryId:guid}"
+@using Microsoft.AspNetCore.Components.Authorization
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Entry Detail</PageTitle>
+
+<h3>Entry Detail</h3>
+
+<a href="/notebooks/@NotebookId" class="btn btn-sm btn-outline-secondary mb-3">Back to Notebook</a>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+
+@if (entryData == null && errorMessage == null)
+{
+    <p>Loading...</p>
+}
+else if (entryData != null)
+{
+    <div class="card mb-3">
+        <div class="card-header">
+            <strong>@(entryData.Entry.Topic ?? "Untitled")</strong>
+            <span class="text-muted ms-2">@entryData.Entry.ContentType</span>
+        </div>
+        <div class="card-body">
+            <pre class="mb-0">@GetContentText(entryData.Entry.Content)</pre>
+        </div>
+        <div class="card-footer text-muted">
+            <small>
+                ID: <code>@entryData.Entry.Id</code> |
+                Author: <code>@entryData.Entry.Author[..16]...</code> |
+                Sequence: @entryData.Entry.CausalPosition.Sequence |
+                Cost: @entryData.Entry.IntegrationCost.CatalogShift.ToString("F4") |
+                Created: @entryData.Entry.Created.ToString("u")
+            </small>
+        </div>
+    </div>
+
+    @if (entryData.Entry.RevisionOf != null)
+    {
+        <p>Revision of: <a href="/notebooks/@NotebookId/entries/@entryData.Entry.RevisionOf">@entryData.Entry.RevisionOf</a></p>
+    }
+
+    @if (entryData.Entry.References.Count > 0)
+    {
+        <h5>References</h5>
+        <ul>
+            @foreach (var refEntry in entryData.References)
+            {
+                <li>
+                    <a href="/notebooks/@NotebookId/entries/@refEntry.Id">
+                        @(refEntry.Topic ?? refEntry.Id.ToString()[..8])
+                    </a>
+                    <small class="text-muted"> - @refEntry.Created.ToString("u")</small>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (entryData.ReferencedBy.Count > 0)
+    {
+        <h5>Referenced By</h5>
+        <ul>
+            @foreach (var refBy in entryData.ReferencedBy)
+            {
+                <li>
+                    <a href="/notebooks/@NotebookId/entries/@refBy.Id">
+                        @(refBy.Topic ?? refBy.Id.ToString()[..8])
+                    </a>
+                    <small class="text-muted"> - @refBy.Created.ToString("u")</small>
+                </li>
+            }
+        </ul>
+    }
+
+    @if (entryData.Revisions.Count > 0)
+    {
+        <h5>Revision Chain</h5>
+        <ul>
+            @foreach (var rev in entryData.Revisions)
+            {
+                <li>
+                    <a href="/notebooks/@NotebookId/entries/@rev.Id">
+                        Revision @rev.Created.ToString("u")
+                    </a>
+                </li>
+            }
+        </ul>
+    }
+
+    <hr />
+    <h5>Revise Entry</h5>
+
+    @if (revisionResult != null)
+    {
+        <div class="alert alert-success">
+            Revision created: <a href="/notebooks/@NotebookId/entries/@revisionResult.RevisionId">View revision</a>
+            (Cost: @revisionResult.IntegrationCost.CatalogShift.ToString("F4"))
+        </div>
+    }
+
+    <EditForm Model="reviseModel" OnValidSubmit="HandleRevise" FormName="reviseEntry">
+        <div class="mb-3">
+            <label class="form-label">New Content</label>
+            <InputTextArea class="form-control" @bind-Value="reviseModel.Content" rows="4" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Reason (optional)</label>
+            <InputText class="form-control" @bind-Value="reviseModel.Reason" />
+        </div>
+        <button type="submit" class="btn btn-primary" disabled="@isRevising">
+            @(isRevising ? "Revising..." : "Submit Revision")
+        </button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public Guid NotebookId { get; set; }
+    [Parameter] public Guid EntryId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private ReadEntryResponse? entryData;
+    private string? errorMessage;
+    private string? authorIdHex;
+
+    private ReviseFormModel reviseModel = new();
+    private ReviseEntryResponse? revisionResult;
+    private bool isRevising;
+
+    public class ReviseFormModel
+    {
+        public string Content { get; set; } = string.Empty;
+        public string? Reason { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = AuthState != null ? await AuthState : null;
+        authorIdHex = await CurrentUser.GetAuthorIdHexAsync(state?.User);
+        if (authorIdHex == null)
+        {
+            Navigation.NavigateTo("/auth/login");
+            return;
+        }
+
+        try
+        {
+            entryData = await ApiClient.ReadEntryAsync(authorIdHex, NotebookId, EntryId);
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Could not load entry: {ex.Message}";
+        }
+    }
+
+    private string GetContentText(object? content)
+    {
+        if (content == null) return string.Empty;
+        // Content can be a string (text) or an object with data+encoding (binary)
+        return content.ToString() ?? string.Empty;
+    }
+
+    private async Task HandleRevise()
+    {
+        if (authorIdHex == null || string.IsNullOrWhiteSpace(reviseModel.Content)) return;
+        isRevising = true;
+        errorMessage = null;
+
+        try
+        {
+            var request = new ReviseEntryRequest
+            {
+                Content = reviseModel.Content,
+                Reason = string.IsNullOrWhiteSpace(reviseModel.Reason) ? null : reviseModel.Reason,
+            };
+            revisionResult = await ApiClient.ReviseEntryAsync(authorIdHex, NotebookId, EntryId, request);
+            reviseModel = new ReviseFormModel();
+
+            // Reload entry data to show updated revision chain
+            entryData = await ApiClient.ReadEntryAsync(authorIdHex, NotebookId, EntryId);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to revise: {ex.Message}";
+        }
+        finally
+        {
+            isRevising = false;
+        }
+    }
+}

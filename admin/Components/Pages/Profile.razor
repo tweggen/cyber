@@ -1,0 +1,152 @@
+@page "/profile"
+@using Microsoft.AspNetCore.Components.Authorization
+@using Microsoft.AspNetCore.Identity
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject CurrentUserService CurrentUser
+@inject UserManager<ApplicationUser> UserManager
+@inject QuotaService QuotaService
+@inject NotebookApiClient ApiClient
+@inject NavigationManager Navigation
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+
+<PageTitle>Profile</PageTitle>
+
+<h3>Profile</h3>
+
+@if (user == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">@(user.DisplayName ?? user.UserName)</h5>
+            <p>Username: <strong>@user.UserName</strong></p>
+            <p>Email: <strong>@(user.Email ?? "Not set")</strong></p>
+            <p>Author ID: <code>@user.AuthorIdHex</code></p>
+        </div>
+    </div>
+
+    @if (quota != null)
+    {
+        <div class="card mb-3">
+            <div class="card-header">Quota Usage</div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td>Notebooks</td>
+                        <td>@ownedNotebooks / @quota.MaxNotebooks</td>
+                    </tr>
+                    <tr>
+                        <td>Max Entries per Notebook</td>
+                        <td>@quota.MaxEntriesPerNotebook</td>
+                    </tr>
+                    <tr>
+                        <td>Max Entry Size</td>
+                        <td>@FormatBytes(quota.MaxEntrySizeBytes)</td>
+                    </tr>
+                    <tr>
+                        <td>Max Total Storage</td>
+                        <td>@FormatBytes(quota.MaxTotalStorageBytes)</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    }
+
+    @if (successMessage != null)
+    {
+        <div class="alert alert-success">@successMessage</div>
+    }
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    <h5>Update Profile</h5>
+    <EditForm Model="editModel" OnValidSubmit="UpdateProfile" FormName="editProfile">
+        <div class="mb-3">
+            <label class="form-label">Display Name</label>
+            <InputText class="form-control" @bind-Value="editModel.DisplayName" />
+        </div>
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <InputText class="form-control" @bind-Value="editModel.Email" />
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </EditForm>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private ApplicationUser? user;
+    private UserQuota? quota;
+    private int ownedNotebooks;
+    private ProfileEditModel editModel = new();
+    private string? successMessage;
+    private string? errorMessage;
+
+    public class ProfileEditModel
+    {
+        public string? DisplayName { get; set; }
+        public string? Email { get; set; }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = AuthState != null ? await AuthState : null;
+        user = await CurrentUser.GetCurrentUserAsync(state?.User);
+        if (user == null)
+        {
+            Navigation.NavigateTo("/auth/login");
+            return;
+        }
+
+        editModel.DisplayName = user.DisplayName;
+        editModel.Email = user.Email;
+
+        quota = await QuotaService.GetOrCreateDefaultAsync(user.Id);
+
+        try
+        {
+            var notebooks = await ApiClient.ListNotebooksAsync(user.AuthorIdHex);
+            ownedNotebooks = notebooks?.Notebooks.Count(n => n.IsOwner) ?? 0;
+        }
+        catch { ownedNotebooks = 0; }
+    }
+
+    private async Task UpdateProfile()
+    {
+        if (user == null) return;
+        successMessage = null;
+        errorMessage = null;
+
+        try
+        {
+            user.DisplayName = editModel.DisplayName;
+            user.Email = editModel.Email;
+            var result = await UserManager.UpdateAsync(user);
+            if (result.Succeeded)
+                successMessage = "Profile updated.";
+            else
+                errorMessage = string.Join(", ", result.Errors.Select(e => e.Description));
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Failed to update profile: {ex.Message}";
+        }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes} B";
+    }
+}

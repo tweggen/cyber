@@ -19,6 +19,10 @@ pub struct ServerConfig {
     /// Allow X-Author-Id header fallback for dev mode.
     /// When true, requests without a JWT Bearer token can use X-Author-Id.
     pub allow_dev_identity: bool,
+    /// Whether to enforce JWT scope claims on endpoints.
+    /// When true, endpoints require matching scope (e.g. `notebook:read`).
+    /// When false, any valid JWT grants full access (backward-compatible).
+    pub enforce_scopes: bool,
 }
 
 impl ServerConfig {
@@ -51,6 +55,10 @@ impl ServerConfig {
             .map(|v| v == "true" || v == "1")
             .unwrap_or(false);
 
+        let enforce_scopes = env::var("ENFORCE_SCOPES")
+            .map(|v| v == "true" || v == "1")
+            .unwrap_or(true);
+
         Ok(Self {
             database_url,
             port,
@@ -58,6 +66,7 @@ impl ServerConfig {
             cors_allowed_origins,
             jwt_public_key,
             allow_dev_identity,
+            enforce_scopes,
         })
     }
 
@@ -96,6 +105,7 @@ mod tests {
         assert_eq!(config.cors_allowed_origins, "*");
         assert!(config.jwt_public_key.is_empty());
         assert!(!config.allow_dev_identity);
+        assert!(config.enforce_scopes);
 
         // SAFETY: This test is not run in parallel with other tests that read DATABASE_URL.
         unsafe { env::remove_var("DATABASE_URL") };

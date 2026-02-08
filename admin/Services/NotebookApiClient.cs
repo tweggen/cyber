@@ -117,11 +117,99 @@ public class NotebookApiClient
     }
 
     /// <summary>
+    /// Read a specific entry with metadata, revisions, and references.
+    /// </summary>
+    public async Task<ReadEntryResponse?> ReadEntryAsync(
+        string authorIdHex, Guid notebookId, Guid entryId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"/notebooks/{notebookId}/entries/{entryId}");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ReadEntryResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Revise an existing entry.
+    /// </summary>
+    public async Task<ReviseEntryResponse?> ReviseEntryAsync(
+        string authorIdHex, Guid notebookId, Guid entryId, ReviseEntryRequest reviseRequest)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put,
+            $"/notebooks/{notebookId}/entries/{entryId}");
+        AddAuthHeader(request, authorIdHex);
+        request.Content = JsonContent.Create(reviseRequest, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ReviseEntryResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Share a notebook with another author.
+    /// </summary>
+    public async Task<ShareResponse?> ShareNotebookAsync(
+        string authorIdHex, Guid notebookId, ShareRequest shareRequest)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/notebooks/{notebookId}/share");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(shareRequest, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ShareResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Revoke a shared author's access to a notebook.
+    /// </summary>
+    public async Task<RevokeResponse?> RevokeShareAsync(
+        string authorIdHex, Guid notebookId, string targetAuthorIdHex)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete,
+            $"/notebooks/{notebookId}/share/{targetAuthorIdHex}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<RevokeResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// List all participants with access to a notebook.
+    /// </summary>
+    public async Task<ParticipantsResponse?> ListParticipantsAsync(
+        string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"/notebooks/{notebookId}/participants");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ParticipantsResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Delete a notebook (owner only).
+    /// </summary>
+    public async Task<DeleteNotebookResponse?> DeleteNotebookAsync(
+        string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete,
+            $"/notebooks/{notebookId}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<DeleteNotebookResponse>(JsonOptions);
+    }
+
+    /// <summary>
     /// Add JWT Bearer token to the request for the given author.
     /// </summary>
-    private void AddAuthHeader(HttpRequestMessage request, string authorIdHex)
+    private void AddAuthHeader(HttpRequestMessage request, string authorIdHex, bool admin = false)
     {
-        var token = _tokenService.GenerateToken(authorIdHex);
+        var token = admin
+            ? _tokenService.GenerateAdminToken(authorIdHex)
+            : _tokenService.GenerateToken(authorIdHex);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
     }
 }

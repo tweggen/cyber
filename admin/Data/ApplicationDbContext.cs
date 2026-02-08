@@ -15,6 +15,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
     {
     }
 
+    public DbSet<UserQuota> UserQuotas => Set<UserQuota>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -34,6 +36,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
             entity.HasIndex(e => e.AuthorIdHex)
                 .IsUnique();
+        });
+
+        builder.Entity<UserQuota>(entity =>
+        {
+            entity.HasKey(e => e.UserId);
+
+            entity.HasOne(e => e.User)
+                .WithOne()
+                .HasForeignKey<UserQuota>(e => e.UserId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

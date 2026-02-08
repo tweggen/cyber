@@ -24,7 +24,7 @@ use notebook_store::{
 };
 
 use crate::error::{ApiError, ApiResult};
-use crate::extract::AuthorIdentity;
+use crate::extract::{AuthorIdentity, require_scope};
 use crate::state::AppState;
 
 // ============================================================================
@@ -305,10 +305,12 @@ fn entry_to_response(entry: &Entry) -> EntryResponse {
 /// - 500 Internal Server Error: Storage failure
 async fn create_entry(
     State(state): State<AppState>,
-    AuthorIdentity(author_id): AuthorIdentity,
+    identity: AuthorIdentity,
     Path(notebook_id): Path<Uuid>,
     Json(request): Json<CreateEntryRequest>,
 ) -> ApiResult<(StatusCode, HeaderMap, Json<CreateEntryResponse>)> {
+    require_scope(&identity, "notebook:write", state.config())?;
+    let author_id = identity.author_id;
     let store = state.store();
     let pool = store.pool();
 
@@ -478,10 +480,12 @@ async fn create_entry(
 /// - 500 Internal Server Error: Storage failure
 async fn revise_entry(
     State(state): State<AppState>,
-    AuthorIdentity(author_id): AuthorIdentity,
+    identity: AuthorIdentity,
     Path((notebook_id, entry_id)): Path<(Uuid, Uuid)>,
     Json(request): Json<ReviseRequest>,
 ) -> ApiResult<(HeaderMap, Json<ReviseResponse>)> {
+    require_scope(&identity, "notebook:write", state.config())?;
+    let author_id = identity.author_id;
     // Log the revision reason if provided (for audit purposes)
     if let Some(ref reason) = request.reason {
         tracing::info!(
@@ -631,9 +635,11 @@ async fn revise_entry(
 /// - 404 Not Found: Notebook or entry not found
 async fn get_entry(
     State(state): State<AppState>,
+    identity: AuthorIdentity,
     Path((notebook_id, entry_id)): Path<(Uuid, Uuid)>,
     Query(params): Query<GetEntryParams>,
 ) -> ApiResult<Json<ReadEntryResponse>> {
+    require_scope(&identity, "notebook:read", state.config())?;
     // Create repository from store
     let repo = Repository::new(state.store().clone());
 

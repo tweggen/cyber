@@ -1,7 +1,11 @@
 @page "/notebooks"
+@using Microsoft.AspNetCore.Components.Authorization
 @using NotebookAdmin.Models
 @using NotebookAdmin.Services
 @inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
 <PageTitle>Notebooks</PageTitle>
 
@@ -51,16 +55,25 @@ else if (notebooks != null)
 }
 
 @code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
     private List<NotebookSummary>? notebooks;
     private string? errorMessage;
 
     protected override async Task OnInitializedAsync()
     {
+        var state = AuthState != null ? await AuthState : null;
+        var authorId = await CurrentUser.GetAuthorIdHexAsync(state?.User);
+        if (authorId == null)
+        {
+            Navigation.NavigateTo("/auth/login");
+            return;
+        }
+
         try
         {
-            // Use zero author for now (dev mode)
-            var zeroAuthor = new string('0', 64);
-            var response = await ApiClient.ListNotebooksAsync(zeroAuthor);
+            var response = await ApiClient.ListNotebooksAsync(authorId);
             notebooks = response?.Notebooks ?? [];
         }
         catch (HttpRequestException ex)

@@ -44,6 +44,8 @@ builder.Services.AddHttpClient<NotebookApiClient>(client =>
 });
 
 builder.Services.AddScoped<AuthorService>();
+builder.Services.AddScoped<QuotaService>();
+builder.Services.AddScoped<CurrentUserService>();
 
 // Add Razor Components with Server interactivity
 builder.Services.AddRazorComponents()
@@ -69,7 +71,8 @@ app.UseAntiforgery();
 app.MapPost("/auth/register", async (
     RegisterRequest request,
     UserManager<ApplicationUser> userManager,
-    AuthorService authorService) =>
+    AuthorService authorService,
+    QuotaService quotaService) =>
 {
     // Validate input
     if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
@@ -92,6 +95,9 @@ app.MapPost("/auth/register", async (
         var errors = result.Errors.Select(e => e.Description).ToList();
         return Results.BadRequest(new { errors });
     }
+
+    // Auto-assign default quota
+    await quotaService.GetOrCreateDefaultAsync(user.Id);
 
     return Results.Ok(new { authorId = authorIdHex, username = request.Username });
 }).AllowAnonymous();
