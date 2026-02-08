@@ -48,6 +48,7 @@ services:
       - "traefik.http.services.notebook-server.loadbalancer.server.port=3000"
     networks:
       - notebook-net
+      - coolify
 
   admin:
     build:
@@ -61,6 +62,7 @@ services:
       NotebookApi__BaseUrl: "http://notebook-server:3000"
       Jwt__Issuer: notebook-admin
       Jwt__ExpiryMinutes: "60"
+      Jwt__PrivateKey: "MC4CAQAwBQYDK2VwBCIEIOGNGtqlxyJMP96I4UXCqdHFhYFSLjbtMmLmzjP+t6a0"
       # ADMIN_USERNAME: "admin"      # Set to seed initial admin user
       # ADMIN_PASSWORD: "changeme"   # Set to seed initial admin user
     ports:
@@ -77,6 +79,7 @@ services:
       - "traefik.http.services.admin.loadbalancer.server.port=5000"
     networks:
       - notebook-net
+      - coolify
 
 volumes:
   postgres_data:
@@ -85,3 +88,5 @@ volumes:
 networks:
   notebook-net:
     driver: bridge
+  coolify:
+    external: true
