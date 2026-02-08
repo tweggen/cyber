@@ -40,6 +40,12 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.notebook-server.rule=Host(`notebook.nassau-records.de`)"
+      - "traefik.http.routers.notebook-server.entrypoints=websecure"
+      - "traefik.http.routers.notebook-server.tls.certresolver=letsencrypt"
+      - "traefik.http.services.notebook-server.loadbalancer.server.port=3000"
     networks:
       - notebook-net
 
@@ -63,6 +69,12 @@ services:
       postgres:
         condition: service_healthy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.admin.rule=Host(`cyber.nassau-records.de`)"
+      - "traefik.http.routers.admin.entrypoints=websecure"
+      - "traefik.http.routers.admin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.admin.loadbalancer.server.port=5000"
     networks:
       - notebook-net
 

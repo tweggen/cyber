@@ -20,7 +20,7 @@ Traefik (Coolify-managed, auto TLS)
     |
     +-- cyber.nassau-records.de --> admin (Blazor Server, port 5000)
     |
-    +-- api.cyber.nassau-records.de --> notebook-server (Rust/Axum, port 3000)
+    +-- notebook.nassau-records.de --> notebook-server (Rust/Axum, port 3000)
     |
     +-- (internal network only)
             |
@@ -133,14 +133,8 @@ Store all secrets in Coolify's environment variable UI (mark as sensitive). Neve
 Point both domains to the Coolify server IP:
 
 ```
-api.cyber.nassau-records.de  A  <coolify-server-ip>
+notebook.nassau-records.de   A  <coolify-server-ip>
 cyber.nassau-records.de      A  <coolify-server-ip>
-```
-
-Or use a wildcard:
-
-```
-*.cyber.nassau-records.de    A  <coolify-server-ip>
 ```
 
 Coolify/Traefik handles TLS certificates via Let's Encrypt automatically.
@@ -184,7 +178,7 @@ Create three services on the **same Coolify internal network**.
 | **Type** | Dockerfile |
 | **Source** | Git repo, Dockerfile at `notebook/Dockerfile`, build context `notebook/` |
 | **Port** | 3000 |
-| **Public domain** | `api.cyber.nassau-records.de` |
+| **Public domain** | `notebook.nassau-records.de` |
 | **Health check** | `GET /health` → 200 |
 
 **Environment variables:**
@@ -242,7 +236,7 @@ Deploy in this order — each service depends on the previous:
 
 ### API (notebook-server)
 
-- [ ] `GET https://api.cyber.nassau-records.de/health` returns 200
+- [ ] `GET https://notebook.nassau-records.de/health` returns 200
 - [ ] Unauthenticated requests return 401
 - [ ] JWT from admin's `/auth/token` endpoint is accepted by notebook-server
 
