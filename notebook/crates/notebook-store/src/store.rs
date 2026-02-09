@@ -249,6 +249,19 @@ impl Store {
         Ok(row)
     }
 
+    /// Rename a notebook. Returns the updated row.
+    pub async fn rename_notebook(&self, id: Uuid, new_name: &str) -> StoreResult<NotebookRow> {
+        sqlx::query_as::<_, NotebookRow>(
+            r#"UPDATE notebooks SET name = $2 WHERE id = $1
+            RETURNING id, name, owner_id, created, current_sequence"#,
+        )
+        .bind(id)
+        .bind(new_name)
+        .fetch_optional(&self.pool)
+        .await?
+        .ok_or(StoreError::NotebookNotFound(id))
+    }
+
     /// Get a notebook by ID.
     pub async fn get_notebook(&self, id: Uuid) -> StoreResult<NotebookRow> {
         sqlx::query_as::<_, NotebookRow>(

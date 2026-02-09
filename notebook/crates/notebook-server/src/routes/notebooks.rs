@@ -93,6 +93,22 @@ pub struct CreateNotebookResponse {
     pub created: DateTime<Utc>,
 }
 
+/// Request body for PATCH /notebooks/{id}.
+#[derive(Debug, Deserialize)]
+pub struct RenameNotebookRequest {
+    /// New name for the notebook.
+    pub name: String,
+}
+
+/// Response for PATCH /notebooks/{id}.
+#[derive(Debug, Serialize)]
+pub struct RenameNotebookResponse {
+    /// Notebook ID.
+    pub id: Uuid,
+    /// Updated notebook name.
+    pub name: String,
+}
+
 /// Response for DELETE /notebooks/{id}.
 #[derive(Debug, Serialize)]
 pub struct DeleteNotebookResponse {
@@ -296,6 +312,81 @@ async fn create_notebook(
     ))
 }
 
+/// PATCH /notebooks/{id} - Rename a notebook.
+///
+/// Renames a notebook. Only the owner can rename a notebook.
+///
+/// # Request
+///
+/// Body: `{ "name": "New Name" }`
+///
+/// # Response
+///
+/// - 200 OK: `{ "id": "...", "name": "..." }`
+/// - 400 Bad Request: Empty name
+/// - 403 Forbidden: Not the owner
+/// - 404 Not Found: Notebook doesn't exist
+async fn rename_notebook(
+    State(state): State<AppState>,
+    identity: AuthorIdentity,
+    Path(notebook_id): Path<Uuid>,
+    Json(request): Json<RenameNotebookRequest>,
+) -> ApiResult<Json<RenameNotebookResponse>> {
+    require_scope(&identity, "notebook:admin", state.config())?;
+    let author_id = identity.author_id;
+    let store = state.store();
+
+    let author_bytes = *author_id.as_bytes();
+
+    // Validate name is not empty
+    if request.name.trim().is_empty() {
+        return Err(ApiError::BadRequest(
+            "Notebook name cannot be empty".to_string(),
+        ));
+    }
+
+    // Get the notebook to check ownership
+    let notebook_row = store.get_notebook(notebook_id).await.map_err(|e| match e {
+        StoreError::NotebookNotFound(id) => {
+            ApiError::NotFound(format!("Notebook {} not found", id))
+        }
+        other => ApiError::Store(other),
+    })?;
+
+    // Check ownership
+    let owner_bytes: [u8; 32] = notebook_row
+        .owner_id
+        .as_slice()
+        .try_into()
+        .map_err(|_| ApiError::Internal("Invalid owner_id in database".to_string()))?;
+
+    if owner_bytes != author_bytes {
+        return Err(ApiError::Forbidden(
+            "Only the notebook owner can rename it".to_string(),
+        ));
+    }
+
+    // Rename the notebook
+    let updated = store
+        .rename_notebook(notebook_id, request.name.trim())
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "Failed to rename notebook");
+            ApiError::Store(e)
+        })?;
+
+    tracing::info!(
+        notebook_id = %notebook_id,
+        new_name = %updated.name,
+        "Notebook renamed"
+    );
+
+    Ok(Json(RenameNotebookResponse {
+        id: updated.id,
+        name: updated.name,
+    }))
+}
+
 /// DELETE /notebooks/{id} - Delete a notebook.
 ///
 /// Deletes a notebook. Only the owner can delete a notebook.
@@ -384,7 +475,10 @@ async fn delete_notebook(
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/notebooks", get(list_notebooks).post(create_notebook))
-        .route("/notebooks/{id}", delete(delete_notebook))
+        .route(
+            "/notebooks/{id}",
+            delete(delete_notebook).patch(rename_notebook),
+        )
 }
 
 // ============================================================================

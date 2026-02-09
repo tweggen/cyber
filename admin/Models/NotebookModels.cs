@@ -390,6 +390,24 @@ public class ParticipantDto
 }
 
 /// <summary>
+/// DTO for renaming a notebook via Rust API.
+/// </summary>
+public class RenameNotebookRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
+public class RenameNotebookResponse
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
+/// <summary>
 /// Response for deleting a notebook.
 /// </summary>
 public class DeleteNotebookResponse

@@ -61,12 +61,55 @@ else if (notebooks != null)
             @foreach (var nb in notebooks)
             {
                 <tr>
-                    <td>@nb.Name</td>
+                    <td>
+                        @if (renamingNotebookId == nb.Id)
+                        {
+                            <div class="d-flex gap-1">
+                                <input type="text" class="form-control form-control-sm"
+                                       @bind="renameValue" @bind:event="oninput"
+                                       @onkeydown="HandleRenameKeyDown" />
+                                <button class="btn btn-sm btn-primary" @onclick="ConfirmRename"
+                                        disabled="@(isRenaming || string.IsNullOrWhiteSpace(renameValue))">Save</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="CancelRename"
+                                        disabled="@isRenaming">Cancel</button>
+                            </div>
+                            @if (renameError != null)
+                            {
+                                <div class="text-danger small mt-1">@renameError</div>
+                            }
+                        }
+                        else
+                        {
+                            @nb.Name
+                        }
+                    </td>
                     <td>@nb.TotalEntries</td>
                     <td>@nb.TotalEntropy.ToString("F2")</td>
                     <td>@nb.ParticipantCount</td>
                     <td>
                         <a href="/notebooks/@nb.Id" class="btn btn-sm btn-outline-primary">View</a>
+                        @if (nb.IsOwner)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary ms-1"
+                                    @onclick="() => StartRename(nb)"
+                                    disabled="@(renamingNotebookId != null || deletingNotebookId != null)">Rename</button>
+
+                            @if (deletingNotebookId == nb.Id)
+                            {
+                                <span class="ms-1">
+                                    <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(nb.Id)"
+                                            disabled="@isDeleting">Yes, Delete</button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="CancelDelete"
+                                            disabled="@isDeleting">Cancel</button>
+                                </span>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-danger ms-1"
+                                        @onclick="() => StartDelete(nb.Id)"
+                                        disabled="@(renamingNotebookId != null || deletingNotebookId != null)">Delete</button>
+                            }
+                        }
                     </td>
                 </tr>
             }
@@ -91,6 +134,16 @@ else if (notebooks != null)
     private string? createError;
     private string? authorId;
 
+    // Rename state
+    private Guid? renamingNotebookId;
+    private string? renameValue;
+    private bool isRenaming;
+    private string? renameError;
+
+    // Delete state
+    private Guid? deletingNotebookId;
+    private bool isDeleting;
+
     protected override async Task OnInitializedAsync()
     {
         var state = AuthState != null ? await AuthState : null;
@@ -111,6 +164,8 @@ else if (notebooks != null)
             errorMessage = $"Could not connect to notebook API: {ex.Message}";
         }
     }
+
+    // ===== Create =====
 
     private void ShowCreateForm()
     {
@@ -151,6 +206,94 @@ else if (notebooks != null)
         finally
         {
             isCreating = false;
+        }
+    }
+
+    // ===== Rename =====
+
+    private void StartRename(NotebookSummary nb)
+    {
+        renamingNotebookId = nb.Id;
+        renameValue = nb.Name;
+        renameError = null;
+    }
+
+    private void CancelRename()
+    {
+        renamingNotebookId = null;
+        renameValue = null;
+        renameError = null;
+    }
+
+    private async Task HandleRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await ConfirmRename();
+        else if (e.Key == "Escape")
+            CancelRename();
+    }
+
+    private async Task ConfirmRename()
+    {
+        if (renamingNotebookId == null || string.IsNullOrWhiteSpace(renameValue) || authorId == null)
+            return;
+
+        isRenaming = true;
+        renameError = null;
+
+        try
+        {
+            await ApiClient.RenameNotebookAsync(authorId, renamingNotebookId.Value, renameValue.Trim());
+            renamingNotebookId = null;
+            renameValue = null;
+
+            var response = await ApiClient.ListNotebooksAsync(authorId);
+            notebooks = response?.Notebooks ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            renameError = $"Failed to rename: {ex.Message}";
+        }
+        finally
+        {
+            isRenaming = false;
+        }
+    }
+
+    // ===== Delete =====
+
+    private void StartDelete(Guid notebookId)
+    {
+        deletingNotebookId = notebookId;
+    }
+
+    private void CancelDelete()
+    {
+        deletingNotebookId = null;
+    }
+
+    private async Task ConfirmDelete(Guid notebookId)
+    {
+        if (authorId == null) return;
+
+        isDeleting = true;
+
+        try
+        {
+            await ApiClient.DeleteNotebookAsync(authorId, notebookId);
+            deletingNotebookId = null;
+
+            var response = await ApiClient.ListNotebooksAsync(authorId);
+            notebooks = response?.Notebooks ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to delete notebook: {ex.Message}";
+            deletingNotebookId = null;
+        }
+        finally
+        {
+            isDeleting = false;
         }
     }
 }

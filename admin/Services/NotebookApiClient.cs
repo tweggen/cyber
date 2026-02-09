@@ -189,6 +189,22 @@ public class NotebookApiClient
     }
 
     /// <summary>
+    /// Rename a notebook (owner only).
+    /// </summary>
+    public async Task<RenameNotebookResponse?> RenameNotebookAsync(
+        string authorIdHex, Guid notebookId, string newName)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Patch,
+            $"/notebooks/{notebookId}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(
+            new RenameNotebookRequest { Name = newName }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<RenameNotebookResponse>(JsonOptions);
+    }
+
+    /// <summary>
     /// Delete a notebook (owner only).
     /// </summary>
     public async Task<DeleteNotebookResponse?> DeleteNotebookAsync(
