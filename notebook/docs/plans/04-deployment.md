@@ -66,7 +66,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgres://notebook:notebook_dev@postgres:5432/notebook
+      DATABASE_URL: postgres://notebook:notebook_dev@notebook-postgres:5432/notebook
       PORT: "3000"
       LOG_LEVEL: info
       DATABASE_RUN_MIGRATIONS: "true"
