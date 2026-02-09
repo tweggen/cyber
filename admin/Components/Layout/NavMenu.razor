@@ -1,5 +1,4 @@
 @using Microsoft.AspNetCore.Components.Authorization
-@inject IJSRuntime JS
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -66,21 +65,11 @@
         </AuthorizeView>
     </nav>
 
-    <div class="theme-switcher" @onclick:stopPropagation="true">
+    <div class="theme-switcher" onclick="event.stopPropagation()">
         <label for="theme-select">Theme</label>
-        <select id="theme-select" @onchange="OnThemeChanged" value="@currentTheme">
+        <select id="theme-select" onchange="setTheme(this.value)">
             <option value="crt">Amber CRT</option>
             <option value="twm">X11 TWM</option>
         </select>
     </div>
 </div>
-
-@code {
-    private string currentTheme = "crt";
-
-    private async Task OnThemeChanged(ChangeEventArgs e)
-    {
-        currentTheme = e.Value?.ToString() ?? "crt";
-        await JS.InvokeVoidAsync("setTheme", currentTheme);
-    }
-}
