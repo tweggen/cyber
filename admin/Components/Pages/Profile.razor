@@ -9,6 +9,8 @@
 @inject QuotaService QuotaService
 @inject NotebookApiClient ApiClient
 @inject NavigationManager Navigation
+@inject TokenService TokenService
+@inject IJSRuntime JS
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
 
@@ -58,6 +60,36 @@ else
         </div>
     }
 
+    <div class="card mb-3">
+        <div class="card-header">CLI Token</div>
+        <div class="card-body">
+            <p class="text-muted small mb-2">
+                Generate a JWT token to authenticate the notebook CLI.
+                Tokens expire after @tokenExpiryMinutes minutes.
+            </p>
+
+            @if (cliToken == null)
+            {
+                <button class="btn btn-primary btn-sm" @onclick="GenerateCliToken">Generate Token</button>
+            }
+            else
+            {
+                <div class="mb-2">
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@cliToken" readonly />
+                        <button class="btn btn-outline-secondary" @onclick="CopyToken" title="Copy to clipboard">
+                            @(tokenCopied ? "Copied" : "Copy")
+                        </button>
+                    </div>
+                </div>
+                <p class="text-muted small mb-2">Usage:</p>
+                <pre class="p-2 small mb-2" style="background: var(--t-input-bg, #1a1a1a); border-radius: 4px; overflow-x: auto;">export NOTEBOOK_TOKEN="@cliToken"
+notebook list</pre>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="GenerateCliToken">Regenerate</button>
+            }
+        </div>
+    </div>
+
     @if (successMessage != null)
     {
         <div class="alert alert-success">@successMessage</div>
@@ -91,6 +123,9 @@ else
     private ProfileEditModel editModel = new();
     private string? successMessage;
     private string? errorMessage;
+    private string? cliToken;
+    private bool tokenCopied;
+    private int tokenExpiryMinutes = 60;
 
     public class ProfileEditModel
     {
@@ -119,6 +154,27 @@ else
             ownedNotebooks = notebooks?.Notebooks.Count(n => n.IsOwner) ?? 0;
         }
         catch { ownedNotebooks = 0; }
+    }
+
+    private void GenerateCliToken()
+    {
+        if (user == null) return;
+        cliToken = TokenService.GenerateToken(user.AuthorIdHex);
+        tokenCopied = false;
+    }
+
+    private async Task CopyToken()
+    {
+        if (cliToken == null) return;
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", cliToken);
+            tokenCopied = true;
+        }
+        catch
+        {
+            // Clipboard API may not be available
+        }
     }
 
     private async Task UpdateProfile()
