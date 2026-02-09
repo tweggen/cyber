@@ -1,0 +1,347 @@
+# =============================================================================
+# docker-compose.annotated.yml — Annotated reference for the cyber stack
+# =============================================================================
+#
+# DEPLOYMENT CONTEXT
+# ------------------
+# This compose file is designed to run behind Coolify (https://coolify.io),
+# which manages a shared Traefik reverse-proxy instance. Coolify's Traefik
+# reads Docker labels from *all* containers on the "coolify" network and
+# auto-generates routing rules — no separate traefik.yml is needed.
+#
+# Traffic flow:
+#
+#   Internet
+#     │
+#     ▼
+#   Traefik (managed by Coolify, listens on :80 and :443)
+#     │  ┌── Host: notebook.nassau-records.de ──▶ notebook-server:3000
+#     │  └── Host: cyber.nassau-records.de    ──▶ admin:5000
+#     ▼
+#   Docker "coolify" network (shared between Traefik and our services)
+#
+#   Internally, postgres ◀──▶ notebook-server ◀──▶ admin
+#   all talk over the private "notebook-net" bridge.
+#
+# =============================================================================
+
+version: "3.9"
+# Compose file format 3.9 — requires Docker Engine 19.03+.
+# Defines services, volumes, and networks for the full stack.
+
+services:
+
+  # ===========================================================================
+  # POSTGRES — Apache AGE on PostgreSQL 16
+  # ===========================================================================
+  postgres:
+    # Apache AGE is a PostgreSQL extension that adds graph-database capabilities
+    # (Cypher queries). This image bundles PG 16 + AGE 1.6.0.
+    image: apache/age:release_PG16_1.6.0
+    container_name: notebook-postgres
+    # container_name: Gives the container a fixed DNS name on the Docker
+    # network, so other services can reach it as "notebook-postgres".
+
+    environment:
+      # These three env vars are read by the official postgres entrypoint
+      # script on first start to create the default database and superuser.
+      POSTGRES_USER: notebook
+      POSTGRES_PASSWORD: notebook_dev
+      POSTGRES_DB: notebook
+      # NOTE: These are dev credentials. For production on Coolify, override
+      # them via Coolify's environment-variable UI or a .env file.
+
+    ports:
+      - "5432:5432"
+      # Maps host port 5432 → container port 5432.
+      # Useful for local development (psql, pgAdmin, etc.).
+      # In production behind Coolify, you may want to REMOVE this mapping
+      # so Postgres is only reachable from within the Docker network.
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Named volume for persistent database storage. Survives container
+      # rebuilds and restarts. Defined in the `volumes:` section below.
+
+      # --- Bootstrap SQL scripts ---
+      # Files placed in /docker-entrypoint-initdb.d/ are executed IN
+      # ALPHABETICAL ORDER on the very first container start (when the
+      # data directory is empty). They are NOT re-run on subsequent starts.
+      #
+      # We prefix with 00-, 01-, 02-, 03- to enforce execution order:
+      - ./notebook/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
+      #   00: Creates the separate "notebook_admin" database used by the
+      #       admin service (ASP.NET). ":ro" = read-only mount.
+      - ./notebook/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      #   01: Core initialization — enables extensions (uuid-ossp, age, etc.),
+      #       sets up the search path.
+      - ./notebook/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      #   02: Creates the notebook tables (entries, notebooks, authors, etc.).
+      - ./notebook/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
+      #   03: Sets up the Apache AGE graph for causal-reference traversal.
+
+    healthcheck:
+      # Docker periodically runs this command inside the container.
+      # Other services that use `depends_on: condition: service_healthy`
+      # will wait until this check passes before starting.
+      test: ["CMD-SHELL", "pg_isready -U notebook -d notebook"]
+      #   pg_isready: lightweight PG utility that checks if the server is
+      #   accepting connections. Returns 0 on success.
+      interval: 10s   # Check every 10 seconds
+      timeout: 5s     # Fail the check if it takes longer than 5s
+      retries: 5      # Mark unhealthy after 5 consecutive failures
+      # Total worst-case startup wait: 5 * 10s = 50 seconds.
+
+    restart: unless-stopped
+    # Restart policy: always restart the container unless it was explicitly
+    # stopped by the user (docker stop / docker-compose stop).
+    # This means it auto-starts on host reboot and recovers from crashes.
+
+    networks:
+      - notebook-net
+      # Only on the private internal network. Postgres has no Traefik labels
+      # because it should NEVER be exposed to the internet via the reverse proxy.
+
+
+  # ===========================================================================
+  # NOTEBOOK-SERVER — Rust/Axum HTTP API
+  # ===========================================================================
+  notebook-server:
+    build:
+      context: ./notebook        # Build context is the notebook/ subdirectory
+      dockerfile: Dockerfile     # Multi-stage Rust build (see notebook/Dockerfile)
+    container_name: notebook-server
+
+    environment:
+      DATABASE_URL: postgres://notebook:notebook_dev@notebook-postgres:5432/notebook
+      # Connection string using the container DNS name "notebook-postgres"
+      # (resolves over the notebook-net bridge network).
+      PORT: "3000"
+      LOG_LEVEL: info
+
+    ports:
+      - "3000:3000"
+      # Exposes port 3000 on the host for direct access / debugging.
+      # In a pure Coolify/Traefik setup this is optional — Traefik routes
+      # traffic over the Docker network, not via published host ports.
+      # Keeping it is fine for convenience but not required for production.
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+        # Don't start until the postgres healthcheck passes.
+        # Without this, the server would crash-loop trying to connect
+        # to a database that isn't ready yet.
+
+    restart: unless-stopped
+
+    # -------------------------------------------------------------------------
+    # TRAEFIK LABELS — This is how Coolify's Traefik discovers and routes to
+    # this container. Traefik watches Docker events and reads these labels
+    # from any container on a network it's connected to.
+    # -------------------------------------------------------------------------
+    labels:
+      - "traefik.enable=true"
+      # REQUIRED. Tells Traefik "this container should be proxied."
+      # Without this, Traefik ignores the container entirely.
+      # Coolify's Traefik defaults to traefik.enable=false for unlabeled
+      # containers, so this opt-in is necessary.
+
+      - "traefik.http.routers.notebook-server.rule=Host(`notebook.nassau-records.de`)"
+      # ROUTER RULE — Creates a Traefik "router" named "notebook-server".
+      #
+      # Host(`...`) means: match incoming requests whose HTTP Host header
+      # (i.e., the domain name in the URL) equals "notebook.nassau-records.de".
+      #
+      # The name "notebook-server" here is arbitrary but must be consistent
+      # across all labels that configure this same router.
+      #
+      # Other rule types exist (PathPrefix, Headers, etc.) but Host is the
+      # most common for service-per-subdomain setups.
+
+      - "traefik.http.routers.notebook-server.entrypoints=websecure"
+      # ENTRYPOINT — Which Traefik listener this router should attach to.
+      #
+      # "websecure" is Coolify's name for the HTTPS listener (port 443).
+      # "web" would be the HTTP listener (port 80).
+      #
+      # By only specifying "websecure", this service is ONLY reachable
+      # over HTTPS. Coolify typically configures automatic HTTP→HTTPS
+      # redirect globally, so http://notebook.nassau-records.de will
+      # redirect to https://notebook.nassau-records.de.
+      #
+      # TROUBLESHOOTING: If the site is unreachable, verify that Coolify's
+      # Traefik actually defines an entrypoint named "websecure". You can
+      # check in Coolify's UI under Settings → Proxy or by inspecting
+      # Traefik's own config.
+
+      - "traefik.http.routers.notebook-server.tls.certresolver=letsencrypt"
+      # TLS CERTIFICATE — Tells Traefik to automatically obtain and renew
+      # a Let's Encrypt TLS certificate for the domain in the Host rule.
+      #
+      # "letsencrypt" is the name of the certificate resolver configured
+      # in Coolify's Traefik setup. It typically uses the HTTP-01 or
+      # TLS-ALPN-01 challenge.
+      #
+      # PREREQUISITES for this to work:
+      #   1. DNS for notebook.nassau-records.de must point to this server's
+      #      public IP (A record or CNAME).
+      #   2. Port 443 (and often 80 for HTTP-01 challenge) must be open
+      #      in the firewall.
+      #   3. The certresolver name must match what Coolify configured
+      #      (usually "letsencrypt" by default).
+      #
+      # TROUBLESHOOTING: If you see TLS errors or "certificate not valid",
+      # check Traefik's logs (docker logs <traefik-container>) for ACME
+      # challenge failures. Common causes:
+      #   - DNS not pointing to this server
+      #   - Port 80 blocked (needed for HTTP-01 challenge)
+      #   - Rate limiting by Let's Encrypt (5 certs/domain/week)
+
+      - "traefik.http.services.notebook-server.loadbalancer.server.port=3000"
+      # SERVICE PORT — Tells Traefik which port INSIDE the container to
+      # forward traffic to.
+      #
+      # This is the port the application is listening on (not a host port).
+      # Traefik connects to this port over the shared Docker network.
+      #
+      # Note the label path says "services" (not "routers") — this
+      # configures the Traefik *service* (backend), not the router.
+      #
+      # If your container exposes only one port, Traefik can auto-detect
+      # it, but it's best practice to be explicit — especially when
+      # multiple ports are exposed (EXPOSE in Dockerfile vs mapped ports).
+      #
+      # IMPORTANT: This must match the PORT env var / EXPOSE in the
+      # Dockerfile. If they disagree, Traefik will get connection refused.
+
+    networks:
+      - notebook-net
+      # Private network for talking to Postgres.
+      - coolify
+      # CRITICAL: This connects the container to Coolify's shared Traefik
+      # network. Without this, Traefik cannot route traffic to the
+      # container — even if all the labels are correct.
+      #
+      # This is the #1 cause of "502 Bad Gateway" errors after deploy:
+      # the container has correct labels but isn't on the same network
+      # as Traefik.
+
+
+  # ===========================================================================
+  # ADMIN — ASP.NET admin dashboard
+  # ===========================================================================
+  admin:
+    build:
+      context: ./admin
+      dockerfile: Dockerfile     # Multi-stage .NET 10 build
+    container_name: notebook-admin
+
+    environment:
+      ASPNETCORE_URLS: "http://+:5000"
+      # Tells Kestrel (ASP.NET's web server) to listen on all interfaces,
+      # port 5000. The "+" means bind to 0.0.0.0, not just localhost.
+      # This is necessary inside a container — binding to localhost would
+      # make the service unreachable from other containers/Traefik.
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=notebook-postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev"
+      # Double underscore (__) maps to nested JSON config in .NET:
+      # { "ConnectionStrings": { "DefaultConnection": "..." } }
+      # Uses the separate "notebook_admin" database created by 00-admin-db.sql.
+      NotebookApi__BaseUrl: "http://notebook-server:3000"
+      # Internal URL for the admin service to call the notebook API.
+      # Uses Docker DNS ("notebook-server") — no TLS needed for internal traffic.
+      Jwt__Issuer: notebook-admin
+      Jwt__ExpiryMinutes: "60"
+      Jwt__PrivateKey: "MC4CAQAwBQYDK2VwBCIEIOGNGtqlxyJMP96I4UXCqdHFhYFSLjbtMmLmzjP+t6a0"
+      # Ed25519 private key for signing JWT tokens (PKCS#8 DER, base64).
+      # WARNING: This is checked into source control. For production,
+      # override via Coolify's secret management or a .env file.
+      # ADMIN_USERNAME: "admin"      # Uncomment to seed initial admin user
+      # ADMIN_PASSWORD: "changeme"   # Uncomment to seed initial admin user
+
+    ports:
+      - "5000:5000"
+      # Same note as notebook-server: optional for production since Traefik
+      # routes over the Docker network, but handy for local dev/debugging.
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    # -------------------------------------------------------------------------
+    # TRAEFIK LABELS — Same pattern as notebook-server, different domain.
+    # -------------------------------------------------------------------------
+    labels:
+      - "traefik.enable=true"
+      # Opt this container into Traefik routing.
+
+      - "traefik.http.routers.admin.rule=Host(`cyber.nassau-records.de`)"
+      # Router named "admin", matches requests for cyber.nassau-records.de.
+      # The router name "admin" is independent of the container name —
+      # it just needs to be unique across all Traefik routers.
+
+      - "traefik.http.routers.admin.entrypoints=websecure"
+      # HTTPS only, same as notebook-server.
+
+      - "traefik.http.routers.admin.tls.certresolver=letsencrypt"
+      # Auto-provision TLS cert for cyber.nassau-records.de.
+
+      - "traefik.http.services.admin.loadbalancer.server.port=5000"
+      # Forward traffic to port 5000 inside the container.
+
+    networks:
+      - notebook-net
+      - coolify
+      # Same dual-network setup: internal (notebook-net) + Traefik (coolify).
+
+
+# =============================================================================
+# VOLUMES
+# =============================================================================
+volumes:
+  postgres_data:
+    driver: local
+    # Creates a Docker-managed named volume on the host filesystem.
+    # Data persists across container rebuilds, image updates, and restarts.
+    # Location on host: /var/lib/docker/volumes/cyber_postgres_data/_data
+    # (prefix "cyber_" comes from the project directory name).
+    #
+    # To back up: docker run --rm -v cyber_postgres_data:/data -v $(pwd):/backup
+    #             alpine tar czf /backup/pg-backup.tar.gz /data
+    # To destroy: docker volume rm cyber_postgres_data (DELETES ALL DATA)
+
+
+# =============================================================================
+# NETWORKS
+# =============================================================================
+networks:
+  notebook-net:
+    driver: bridge
+    # Private bridge network for inter-service communication (postgres,
+    # notebook-server, admin). Isolated from the outside world.
+    # Docker provides automatic DNS resolution: containers can reach each
+    # other by container_name (e.g., "notebook-postgres", "notebook-server").
+
+  coolify:
+    external: true
+    # CRITICAL — This network is NOT created by this compose file.
+    # It must already exist, created by Coolify during its setup.
+    #
+    # "external: true" means Docker Compose will fail with an error if
+    # the network doesn't exist, rather than silently creating a new one.
+    #
+    # Coolify's Traefik reverse proxy is also connected to this network.
+    # Any container that needs to receive traffic from Traefik MUST be
+    # on this network.
+    #
+    # To verify it exists:  docker network ls | grep coolify
+    # To inspect it:        docker network inspect coolify
+    #
+    # TROUBLESHOOTING: If compose fails with "network coolify not found":
+    #   - You're running outside of Coolify (e.g., local dev). Either:
+    #     a) Create it manually:  docker network create coolify
+    #     b) Use a local-dev override file that removes the coolify network
+    #        requirement (docker-compose.override.yml)
