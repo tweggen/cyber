@@ -13,7 +13,7 @@
 //!
 //! Configuration via environment:
 //! - NOTEBOOK_URL: Base URL of the notebook server (default: http://localhost:3000)
-//! - NOTEBOOK_AUTHOR_ID: Author ID for authenticated operations (optional)
+//! - NOTEBOOK_TOKEN: JWT Bearer token for authentication
 
 mod commands;
 
@@ -45,6 +45,10 @@ struct Cli {
         global = true
     )]
     url: String,
+
+    /// JWT Bearer token for authentication
+    #[arg(long, env = "NOTEBOOK_TOKEN", global = true)]
+    token: Option<String>,
 
     #[command(subcommand)]
     command: Commands,
@@ -84,16 +88,36 @@ enum Commands {
 async fn main() {
     let cli = Cli::parse();
 
+    let client = match commands::build_client(cli.token.as_deref()) {
+        Ok(c) => c,
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            std::process::exit(1);
+        }
+    };
+
     let result = match cli.command {
-        Commands::Write(args) => commands::write::execute(&cli.url, cli.human, args).await,
-        Commands::Revise(args) => commands::revise::execute(&cli.url, cli.human, args).await,
-        Commands::Read(args) => commands::read::execute(&cli.url, cli.human, args).await,
-        Commands::Browse(args) => commands::browse::execute(&cli.url, cli.human, args).await,
-        Commands::Share(args) => commands::share::execute(&cli.url, cli.human, args).await,
-        Commands::Observe(args) => commands::observe::execute(&cli.url, cli.human, args).await,
-        Commands::List(args) => commands::list::execute(&cli.url, cli.human, args).await,
-        Commands::Create(args) => commands::create::execute(&cli.url, cli.human, args).await,
-        Commands::Delete(args) => commands::delete::execute(&cli.url, cli.human, args).await,
+        Commands::Write(args) => commands::write::execute(&client, &cli.url, cli.human, args).await,
+        Commands::Revise(args) => {
+            commands::revise::execute(&client, &cli.url, cli.human, args).await
+        }
+        Commands::Read(args) => commands::read::execute(&client, &cli.url, cli.human, args).await,
+        Commands::Browse(args) => {
+            commands::browse::execute(&client, &cli.url, cli.human, args).await
+        }
+        Commands::Share(args) => {
+            commands::share::execute(&client, &cli.url, cli.human, args).await
+        }
+        Commands::Observe(args) => {
+            commands::observe::execute(&client, &cli.url, cli.human, args).await
+        }
+        Commands::List(args) => commands::list::execute(&client, &cli.url, cli.human, args).await,
+        Commands::Create(args) => {
+            commands::create::execute(&client, &cli.url, cli.human, args).await
+        }
+        Commands::Delete(args) => {
+            commands::delete::execute(&client, &cli.url, cli.human, args).await
+        }
     };
 
     if let Err(e) = result {

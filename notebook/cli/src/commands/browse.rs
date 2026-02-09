@@ -103,8 +103,7 @@ impl HumanReadable for BrowseResponse {
 }
 
 /// Execute the browse command.
-pub async fn execute(base_url: &str, human: bool, args: BrowseArgs) -> Result<()> {
-    let client = reqwest::Client::new();
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: BrowseArgs) -> Result<()> {
     let mut url = format!("{}/notebooks/{}/browse", base_url, args.notebook_id);
 
     // Build query string
@@ -119,7 +118,7 @@ pub async fn execute(base_url: &str, human: bool, args: BrowseArgs) -> Result<()
         url = format!("{}?{}", url, params.join("&"));
     }
 
-    let response: BrowseResponse = make_request(&client, client.get(&url)).await?;
+    let response: BrowseResponse = make_request(client, client.get(&url)).await?;
 
     output(&response, human)
 }

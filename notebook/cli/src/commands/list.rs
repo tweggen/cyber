@@ -134,11 +134,10 @@ impl HumanReadable for ListNotebooksResponse {
 }
 
 /// Execute the list command.
-pub async fn execute(base_url: &str, human: bool, _args: ListArgs) -> Result<()> {
-    let client = reqwest::Client::new();
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, _args: ListArgs) -> Result<()> {
     let url = format!("{}/notebooks", base_url);
 
-    let response: ListNotebooksResponse = make_request(&client, client.get(&url)).await?;
+    let response: ListNotebooksResponse = make_request(client, client.get(&url)).await?;
 
     output(&response, human)
 }

@@ -16,6 +16,7 @@ pub mod share;
 pub mod write;
 
 use anyhow::Result;
+use reqwest::header::{HeaderMap, HeaderValue, AUTHORIZATION};
 use serde::Serialize;
 
 /// Common error type for HTTP requests.
@@ -26,6 +27,21 @@ pub enum CliError {
 
     #[error("Server error ({status}): {message}")]
     Server { status: u16, message: String },
+}
+
+/// Build an HTTP client, optionally configured with a Bearer token.
+pub fn build_client(token: Option<&str>) -> Result<reqwest::Client> {
+    let mut builder = reqwest::Client::builder();
+
+    if let Some(token) = token {
+        let mut headers = HeaderMap::new();
+        let value = HeaderValue::from_str(&format!("Bearer {}", token))
+            .map_err(|e| anyhow::anyhow!("Invalid token value: {}", e))?;
+        headers.insert(AUTHORIZATION, value);
+        builder = builder.default_headers(headers);
+    }
+
+    Ok(builder.build()?)
 }
 
 /// Print output in JSON or human-readable format.

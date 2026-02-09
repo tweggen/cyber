@@ -131,15 +131,14 @@ impl HumanReadable for ObserveResponse {
 }
 
 /// Execute the observe command.
-pub async fn execute(base_url: &str, human: bool, args: ObserveArgs) -> Result<()> {
-    let client = reqwest::Client::new();
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: ObserveArgs) -> Result<()> {
     let mut url = format!("{}/notebooks/{}/observe", base_url, args.notebook_id);
 
     if let Some(since) = args.since {
         url = format!("{}?since={}", url, since);
     }
 
-    let response: ObserveResponse = make_request(&client, client.get(&url)).await?;
+    let response: ObserveResponse = make_request(client, client.get(&url)).await?;
 
     output(&response, human)
 }

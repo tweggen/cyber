@@ -147,9 +147,7 @@ impl HumanReadable for ParticipantsResponse {
 }
 
 /// Execute the share command.
-pub async fn execute(base_url: &str, human: bool, args: ShareArgs) -> Result<()> {
-    let client = reqwest::Client::new();
-
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: ShareArgs) -> Result<()> {
     match args.action {
         ShareAction::Grant {
             author_id,
@@ -162,7 +160,7 @@ pub async fn execute(base_url: &str, human: bool, args: ShareArgs) -> Result<()>
                 permissions: Permissions { read, write },
             };
             let response: ShareResponse =
-                make_request(&client, client.post(&url).json(&request_body)).await?;
+                make_request(client, client.post(&url).json(&request_body)).await?;
             output(&response, human)
         }
 
@@ -171,13 +169,13 @@ pub async fn execute(base_url: &str, human: bool, args: ShareArgs) -> Result<()>
                 "{}/notebooks/{}/share/{}",
                 base_url, args.notebook_id, author_id
             );
-            let response: RevokeResponse = make_request(&client, client.delete(&url)).await?;
+            let response: RevokeResponse = make_request(client, client.delete(&url)).await?;
             output(&response, human)
         }
 
         ShareAction::List => {
             let url = format!("{}/notebooks/{}/participants", base_url, args.notebook_id);
-            let response: ParticipantsResponse = make_request(&client, client.get(&url)).await?;
+            let response: ParticipantsResponse = make_request(client, client.get(&url)).await?;
             output(&response, human)
         }
     }

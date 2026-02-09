@@ -35,7 +35,7 @@ impl HumanReadable for DeleteNotebookResponse {
 }
 
 /// Execute the delete command.
-pub async fn execute(base_url: &str, human: bool, args: DeleteArgs) -> Result<()> {
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: DeleteArgs) -> Result<()> {
     // Confirmation prompt for interactive use
     if human && !args.yes {
         eprint!(
@@ -56,10 +56,9 @@ pub async fn execute(base_url: &str, human: bool, args: DeleteArgs) -> Result<()
         }
     }
 
-    let client = reqwest::Client::new();
     let url = format!("{}/notebooks/{}", base_url, args.notebook_id);
 
-    let response: DeleteNotebookResponse = make_request(&client, client.delete(&url)).await?;
+    let response: DeleteNotebookResponse = make_request(client, client.delete(&url)).await?;
 
     output(&response, human)
 }

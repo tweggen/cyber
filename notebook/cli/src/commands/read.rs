@@ -199,8 +199,7 @@ impl HumanReadable for ReadEntryResponse {
 }
 
 /// Execute the read command.
-pub async fn execute(base_url: &str, human: bool, args: ReadArgs) -> Result<()> {
-    let client = reqwest::Client::new();
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: ReadArgs) -> Result<()> {
     let mut url = format!(
         "{}/notebooks/{}/entries/{}",
         base_url, args.notebook_id, args.entry_id
@@ -210,7 +209,7 @@ pub async fn execute(base_url: &str, human: bool, args: ReadArgs) -> Result<()> 
         url = format!("{}?revision={}", url, rev);
     }
 
-    let response: ReadEntryResponse = make_request(&client, client.get(&url)).await?;
+    let response: ReadEntryResponse = make_request(client, client.get(&url)).await?;
 
     output(&response, human)
 }

@@ -47,14 +47,13 @@ impl HumanReadable for CreateNotebookResponse {
 }
 
 /// Execute the create command.
-pub async fn execute(base_url: &str, human: bool, args: CreateArgs) -> Result<()> {
-    let client = reqwest::Client::new();
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: CreateArgs) -> Result<()> {
     let url = format!("{}/notebooks", base_url);
 
     let request_body = CreateNotebookRequest { name: args.name };
 
     let response: CreateNotebookResponse =
-        make_request(&client, client.post(&url).json(&request_body)).await?;
+        make_request(client, client.post(&url).json(&request_body)).await?;
 
     output(&response, human)
 }

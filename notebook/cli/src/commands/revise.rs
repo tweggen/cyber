@@ -92,8 +92,7 @@ impl HumanReadable for ReviseEntryResponse {
 }
 
 /// Execute the revise command.
-pub async fn execute(base_url: &str, human: bool, args: ReviseArgs) -> Result<()> {
-    let client = reqwest::Client::new();
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: ReviseArgs) -> Result<()> {
     let url = format!(
         "{}/notebooks/{}/entries/{}",
         base_url, args.notebook_id, args.entry_id
@@ -120,7 +119,7 @@ pub async fn execute(base_url: &str, human: bool, args: ReviseArgs) -> Result<()
     };
 
     let response: ReviseEntryResponse =
-        make_request(&client, client.put(&url).json(&request_body)).await?;
+        make_request(client, client.put(&url).json(&request_body)).await?;
 
     output(&response, human)
 }

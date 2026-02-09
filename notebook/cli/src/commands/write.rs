@@ -100,8 +100,7 @@ impl HumanReadable for CreateEntryResponse {
 }
 
 /// Execute the write command.
-pub async fn execute(base_url: &str, human: bool, args: WriteArgs) -> Result<()> {
-    let client = reqwest::Client::new();
+pub async fn execute(client: &reqwest::Client, base_url: &str, human: bool, args: WriteArgs) -> Result<()> {
     let url = format!("{}/notebooks/{}/entries", base_url, args.notebook_id);
 
     // Handle special content sources
@@ -127,7 +126,7 @@ pub async fn execute(base_url: &str, human: bool, args: WriteArgs) -> Result<()>
     };
 
     let response: CreateEntryResponse =
-        make_request(&client, client.post(&url).json(&request_body)).await?;
+        make_request(client, client.post(&url).json(&request_body)).await?;
 
     output(&response, human)
 }
