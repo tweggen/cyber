@@ -23,12 +23,10 @@ services:
       retries: 5
     restart: unless-stopped
     networks:
-      - notebook-net
+      - coolify
 
   notebook-server:
-    build:
-      context: ./notebook
-      dockerfile: Dockerfile
+    image: ghcr.io/tweggen/notebook-server:latest
     container_name: notebook-server
     environment:
       DATABASE_URL: postgres://notebook:notebook_dev@notebook-postgres:5432/notebook
@@ -47,13 +45,10 @@ services:
       - "traefik.http.routers.notebook-server.tls.certresolver=letsencrypt"
       - "traefik.http.services.notebook-server.loadbalancer.server.port=3000"
     networks:
-      - notebook-net
       - coolify
 
   admin:
-    build:
-      context: ./admin
-      dockerfile: Dockerfile
+    image: ghcr.io/tweggen/notebook-admin:latest
     container_name: notebook-admin
     environment:
       ASPNETCORE_URLS: "http://+:5000"
@@ -78,7 +73,6 @@ services:
       - "traefik.http.routers.admin.tls.certresolver=letsencrypt"
       - "traefik.http.services.admin.loadbalancer.server.port=5000"
     networks:
-      - notebook-net
       - coolify
 
 volumes:
@@ -86,7 +80,5 @@ volumes:
     driver: local
 
 networks:
-  notebook-net:
-    driver: bridge
   coolify:
     external: true
