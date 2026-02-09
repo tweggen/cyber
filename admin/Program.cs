@@ -51,6 +51,7 @@ builder.Services.AddScoped<CurrentUserService>();
 // Add Razor Components with Server interactivity
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+builder.Services.AddCascadingAuthenticationState();
 
 var app = builder.Build();
 
