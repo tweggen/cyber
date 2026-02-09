@@ -71,11 +71,11 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.admin.rule=Host(`cyber.nassau-records.de`)"
-      - "traefik.http.routers.admin.entrypoints=https"
-      - "traefik.http.routers.admin.tls=true"
-      - "traefik.http.routers.admin.tls.certresolver=letsencrypt"
-      - "traefik.http.services.admin.loadbalancer.server.port=5000"
+      - "traefik.http.routers.notebook-admin.rule=Host(`cyber.nassau-records.de`)"
+      - "traefik.http.routers.notebook-admin.entrypoints=https"
+      - "traefik.http.routers.notebook-admin.tls=true"
+      - "traefik.http.routers.notebook-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.services.notebook-admin.loadbalancer.server.port=5000"
     networks:
       - internal
       - coolify
