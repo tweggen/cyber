@@ -1,5 +1,6 @@
 @page "/notebooks/{NotebookId:guid}/entries/{EntryId:guid}"
 @using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @using NotebookAdmin.Models
 @using NotebookAdmin.Services
 @inject NotebookApiClient ApiClient

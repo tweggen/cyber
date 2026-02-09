@@ -1,5 +1,6 @@
 @page "/notebooks"
 @using Microsoft.AspNetCore.Components.Authorization
+@attribute [Authorize]
 @using NotebookAdmin.Models
 @using NotebookAdmin.Services
 @inject NotebookApiClient ApiClient
