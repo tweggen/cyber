@@ -1,19 +1,21 @@
 html, body {
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: var(--t-font-family, 'Helvetica Neue', Helvetica, Arial, sans-serif);
+    background-color: var(--t-bg);
+    color: var(--t-fg);
 }
 
 a, .btn-link {
-    color: #006bb7;
+    color: var(--t-link-color, #006bb7);
 }
 
 .btn-primary {
-    color: #fff;
-    background-color: #1b6ec2;
-    border-color: #1861ac;
+    color: var(--t-btn-primary-fg, #fff);
+    background-color: var(--t-btn-primary-bg, #1b6ec2);
+    border-color: var(--t-btn-primary-border, #1861ac);
 }
 
 .btn:focus, .btn:active:focus, .btn-link.nav-link:focus, .form-control:focus, .form-check-input:focus {
-  box-shadow: 0 0 0 0.1rem white, 0 0 0 0.25rem #258cfb;
+  box-shadow: 0 0 0 0.1rem var(--t-bg, white), 0 0 0 0.25rem var(--t-btn-focus-ring, #258cfb);
 }
 
 .content {
@@ -24,16 +26,20 @@ h1:focus {
     outline: none;
 }
 
+h1, h2, h3, h4, h5, h6 {
+    text-shadow: var(--t-text-shadow, none);
+}
+
 .valid.modified:not([type=checkbox]) {
-    outline: 1px solid #26b050;
+    outline: 1px solid var(--t-valid-color, #26b050);
 }
 
 .invalid {
-    outline: 1px solid #e50000;
+    outline: 1px solid var(--t-invalid-color, #e50000);
 }
 
 .validation-message {
-    color: #e50000;
+    color: var(--t-invalid-color, #e50000);
 }
 
 .blazor-error-boundary {

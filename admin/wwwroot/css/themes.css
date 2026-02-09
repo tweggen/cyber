@@ -1,0 +1,244 @@
+/* ==========================================================================
+   Theme definitions — Amber CRT & X11 TWM
+   Each theme sets the same --t-* custom properties; structural CSS references them.
+   To add a theme: create a new html[data-theme="name"] block with the full variable set.
+   ========================================================================== */
+
+/* ---------- Amber CRT (default) ---------- */
+:root,
+html[data-theme="crt"] {
+    /* Typography */
+    --t-font-family: 'VT323', monospace;
+    --t-font-size-base: 1.1rem;
+
+    /* Core palette */
+    --t-bg: #0A0A0A;
+    --t-fg: #FFB000;
+    --t-fg-dim: #CC8800;
+    --t-fg-bright: #FFD966;
+
+    /* Sidebar */
+    --t-sidebar-bg: #0D0D0D;
+    --t-sidebar-fg: #FFB000;
+    --t-sidebar-active-bg: rgba(255, 176, 0, 0.2);
+    --t-sidebar-active-fg: #FFD966;
+    --t-sidebar-hover-bg: rgba(255, 176, 0, 0.1);
+    --t-sidebar-hover-fg: #FFD966;
+    --t-sidebar-brand-fg: #FFB000;
+    --t-sidebar-top-bg: rgba(0, 0, 0, 0.6);
+
+    /* Top bar */
+    --t-topbar-bg: #111;
+    --t-topbar-fg: #FFB000;
+    --t-topbar-border: #FFB000;
+
+    /* Links & buttons */
+    --t-link-color: #FFB000;
+    --t-btn-primary-bg: #FFB000;
+    --t-btn-primary-fg: #0A0A0A;
+    --t-btn-primary-border: #CC8800;
+    --t-btn-focus-ring: rgba(255, 176, 0, 0.5);
+
+    /* Borders */
+    --t-border-color: #FFB000;
+    --t-border-radius: 0;
+
+    /* Cards */
+    --t-card-bg: #111;
+    --t-card-fg: #FFB000;
+    --t-card-border: #FFB000;
+
+    /* Forms */
+    --t-input-bg: #0A0A0A;
+    --t-input-fg: #FFB000;
+    --t-input-border: #CC8800;
+
+    /* Validation */
+    --t-valid-color: #33CC55;
+    --t-invalid-color: #FF3333;
+
+    /* Effects */
+    --t-text-shadow: 0 0 8px rgba(255, 176, 0, 0.4);
+    --t-box-shadow: 0 0 12px rgba(255, 176, 0, 0.15);
+
+    /* Bootstrap overrides */
+    --bs-body-bg: #0A0A0A;
+    --bs-body-color: #FFB000;
+    --bs-border-radius: 0;
+    --bs-border-radius-sm: 0;
+    --bs-border-radius-lg: 0;
+    --bs-border-color: #FFB000;
+    --bs-card-bg: #111;
+    --bs-card-color: #FFB000;
+    --bs-card-border-color: #FFB000;
+    --bs-card-cap-bg: #0D0D0D;
+    --bs-table-bg: #0A0A0A;
+    --bs-table-color: #FFB000;
+    --bs-table-border-color: #CC8800;
+    --bs-table-striped-bg: #111;
+    --bs-table-hover-bg: rgba(255, 176, 0, 0.08);
+    --bs-link-color: #FFB000;
+    --bs-link-hover-color: #FFD966;
+    --bs-secondary-color: #CC8800;
+    --bs-tertiary-bg: #111;
+    --bs-emphasis-color: #FFD966;
+    color-scheme: dark;
+}
+
+/* ---------- X11 TWM ---------- */
+html[data-theme="twm"] {
+    /* Typography */
+    --t-font-family: 'Courier New', Courier, monospace;
+    --t-font-size-base: 0.95rem;
+
+    /* Core palette */
+    --t-bg: #C0C0C0;
+    --t-fg: #000000;
+    --t-fg-dim: #333333;
+    --t-fg-bright: #000000;
+
+    /* Sidebar */
+    --t-sidebar-bg: #A0A0A0;
+    --t-sidebar-fg: #000000;
+    --t-sidebar-active-bg: #000080;
+    --t-sidebar-active-fg: #FFFFFF;
+    --t-sidebar-hover-bg: #B0B0B0;
+    --t-sidebar-hover-fg: #000000;
+    --t-sidebar-brand-fg: #000000;
+    --t-sidebar-top-bg: #A0A0A0;
+
+    /* Top bar */
+    --t-topbar-bg: #C0C0C0;
+    --t-topbar-fg: #000000;
+    --t-topbar-border: #000000;
+
+    /* Links & buttons */
+    --t-link-color: #000080;
+    --t-btn-primary-bg: #C0C0C0;
+    --t-btn-primary-fg: #000000;
+    --t-btn-primary-border: #000000;
+    --t-btn-focus-ring: rgba(0, 0, 128, 0.4);
+
+    /* Borders */
+    --t-border-color: #000000;
+    --t-border-radius: 0;
+
+    /* Cards */
+    --t-card-bg: #C0C0C0;
+    --t-card-fg: #000000;
+    --t-card-border: #000000;
+
+    /* Forms */
+    --t-input-bg: #FFFFFF;
+    --t-input-fg: #000000;
+    --t-input-border: #000000;
+
+    /* Validation */
+    --t-valid-color: #008000;
+    --t-invalid-color: #CC0000;
+
+    /* Effects */
+    --t-text-shadow: none;
+    --t-box-shadow: none;
+
+    /* Bootstrap overrides */
+    --bs-body-bg: #C0C0C0;
+    --bs-body-color: #000000;
+    --bs-border-radius: 0;
+    --bs-border-radius-sm: 0;
+    --bs-border-radius-lg: 0;
+    --bs-border-color: #000000;
+    --bs-card-bg: #C0C0C0;
+    --bs-card-color: #000000;
+    --bs-card-border-color: #000000;
+    --bs-card-cap-bg: #B0B0B0;
+    --bs-table-bg: #C0C0C0;
+    --bs-table-color: #000000;
+    --bs-table-border-color: #000000;
+    --bs-table-striped-bg: #B8B8B8;
+    --bs-table-hover-bg: #B0B0B0;
+    --bs-link-color: #000080;
+    --bs-link-hover-color: #0000CC;
+    --bs-secondary-color: #333333;
+    --bs-tertiary-bg: #B0B0B0;
+    --bs-emphasis-color: #000000;
+    color-scheme: light;
+}
+
+/* ---------- Theme-aware global resets ---------- */
+
+html {
+    background-color: var(--t-bg);
+}
+
+body {
+    background-color: var(--t-bg);
+    color: var(--t-fg);
+    font-family: var(--t-font-family);
+    font-size: var(--t-font-size-base);
+}
+
+/* Bootstrap component overrides that require selectors */
+
+.card {
+    background-color: var(--t-card-bg);
+    color: var(--t-card-fg);
+    border-color: var(--t-card-border);
+    border-radius: var(--t-border-radius);
+}
+
+.table {
+    --bs-table-bg: var(--t-bg);
+    --bs-table-color: var(--t-fg);
+    --bs-table-border-color: var(--t-border-color);
+}
+
+.form-control,
+.form-select {
+    background-color: var(--t-input-bg);
+    color: var(--t-input-fg);
+    border-color: var(--t-input-border);
+    border-radius: var(--t-border-radius);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background-color: var(--t-input-bg);
+    color: var(--t-input-fg);
+    border-color: var(--t-fg);
+    box-shadow: 0 0 0 0.2rem var(--t-btn-focus-ring);
+}
+
+.btn {
+    border-radius: var(--t-border-radius);
+}
+
+.btn-primary {
+    background-color: var(--t-btn-primary-bg);
+    color: var(--t-btn-primary-fg);
+    border-color: var(--t-btn-primary-border);
+}
+
+.btn-primary:hover {
+    background-color: var(--t-fg-bright);
+    color: var(--t-btn-primary-fg);
+    border-color: var(--t-fg-bright);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    text-shadow: var(--t-text-shadow);
+    color: var(--t-fg-bright);
+}
+
+a {
+    color: var(--t-link-color);
+}
+
+a:hover {
+    color: var(--t-fg-bright);
+}
+
+/* TWM stippled sidebar top-row */
+html[data-theme="twm"] .top-row.navbar-dark {
+    background: repeating-conic-gradient(#A0A0A0 0% 25%, #808080 0% 50%) 50% / 4px 4px;
+}
