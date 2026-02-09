@@ -65,6 +65,8 @@ services:
       # ADMIN_PASSWORD: "changeme"   # Set to seed initial admin user
     ports:
       - "5000:5000"
+    volumes:
+      - dataprotection:/root/.aspnet/DataProtection-Keys
     depends_on:
       postgres:
         condition: service_healthy
@@ -83,6 +85,7 @@ services:
 volumes:
   postgres_data:
     driver: local
+  dataprotection:
 
 networks:
   internal:
