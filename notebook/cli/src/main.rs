@@ -9,6 +9,7 @@
 //! - observe: Watch for changes
 //! - list: List accessible notebooks
 //! - create: Create new notebooks
+//! - rename: Rename notebooks
 //! - delete: Delete notebooks
 //!
 //! Configuration via environment:
@@ -21,7 +22,8 @@ use clap::{Parser, Subcommand};
 
 use commands::{
     browse::BrowseArgs, create::CreateArgs, delete::DeleteArgs, list::ListArgs,
-    observe::ObserveArgs, read::ReadArgs, revise::ReviseArgs, share::ShareArgs, write::WriteArgs,
+    observe::ObserveArgs, read::ReadArgs, rename::RenameArgs, revise::ReviseArgs,
+    share::ShareArgs, write::WriteArgs,
 };
 
 /// Knowledge Exchange Platform CLI
@@ -80,6 +82,9 @@ enum Commands {
     /// Create a new notebook
     Create(CreateArgs),
 
+    /// Rename a notebook
+    Rename(RenameArgs),
+
     /// Delete a notebook
     Delete(DeleteArgs),
 }
@@ -114,6 +119,9 @@ async fn main() {
         Commands::List(args) => commands::list::execute(&client, &cli.url, cli.human, args).await,
         Commands::Create(args) => {
             commands::create::execute(&client, &cli.url, cli.human, args).await
+        }
+        Commands::Rename(args) => {
+            commands::rename::execute(&client, &cli.url, cli.human, args).await
         }
         Commands::Delete(args) => {
             commands::delete::execute(&client, &cli.url, cli.human, args).await

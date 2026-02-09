@@ -11,6 +11,7 @@ pub mod delete;
 pub mod list;
 pub mod observe;
 pub mod read;
+pub mod rename;
 pub mod revise;
 pub mod share;
 pub mod write;
