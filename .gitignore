@@ -1,3 +1,6 @@
 # .NET build artifacts
 admin/bin/
 admin/obj/
+
+# Copied from mcp/notebook_mcp.py by CI before Docker build
+admin/wwwroot/scripts/notebook_mcp.py
