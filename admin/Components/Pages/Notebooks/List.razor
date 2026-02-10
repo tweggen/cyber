@@ -377,12 +377,12 @@ else if (notebooks != null)
     {
         try
         {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", command);
+            await JS.InvokeAsync<bool>("clipboardCopy", command);
             copiedField = command == bashCommand ? "bash" : "ps";
         }
         catch
         {
-            // Clipboard API may not be available
+            // Clipboard may not be available
         }
     }
 }

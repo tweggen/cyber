@@ -168,12 +168,12 @@ notebook list</pre>
         if (cliToken == null) return;
         try
         {
-            await JS.InvokeVoidAsync("navigator.clipboard.writeText", cliToken);
+            await JS.InvokeAsync<bool>("clipboardCopy", cliToken);
             tokenCopied = true;
         }
         catch
         {
-            // Clipboard API may not be available
+            // Clipboard may not be available
         }
     }
 
