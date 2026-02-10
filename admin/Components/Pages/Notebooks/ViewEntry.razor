@@ -1,6 +1,7 @@
 @page "/notebooks/{NotebookId:guid}/entries/{EntryId:guid}"
 @using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
+@using System.Text.RegularExpressions
 @using NotebookAdmin.Models
 @using NotebookAdmin.Services
 @inject NotebookApiClient ApiClient
@@ -32,7 +33,7 @@ else if (entryData != null)
             <span class="text-muted ms-2">@entryData.Entry.ContentType</span>
         </div>
         <div class="card-body">
-            <pre class="mb-0">@GetContentText(entryData.Entry.Content)</pre>
+            <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word;">@((MarkupString)LinkifyEntryIds(GetContentText(entryData.Entry.Content)))</pre>
         </div>
         <div class="card-footer text-muted">
             <small>
@@ -169,6 +170,21 @@ else if (entryData != null)
         if (content == null) return string.Empty;
         // Content can be a string (text) or an object with data+encoding (binary)
         return content.ToString() ?? string.Empty;
+    }
+
+    private static readonly Regex UuidRegex = new(
+        @"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
+        RegexOptions.Compiled);
+
+    private string LinkifyEntryIds(string text)
+    {
+        var escaped = System.Net.WebUtility.HtmlEncode(text);
+        return UuidRegex.Replace(escaped, match =>
+        {
+            var id = match.Value;
+            var href = $"/notebooks/{NotebookId}/entries/{id}";
+            return $"<a href=\"{href}\">{id}</a>";
+        });
     }
 
     private async Task HandleRevise()
