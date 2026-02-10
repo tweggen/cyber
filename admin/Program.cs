@@ -209,6 +209,13 @@ app.MapPost("/auth/token", async (
     });
 }).AllowAnonymous();
 
+// Logout endpoint — signs out and redirects to landing page
+app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.Redirect("/");
+});
+
 // Serve install scripts as plain text (anonymous access for curl | sh)
 app.MapGet("/scripts/{filename}", (string filename, IWebHostEnvironment env) =>
 {
