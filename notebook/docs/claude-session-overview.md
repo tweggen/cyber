@@ -127,7 +127,8 @@ cyber/
 ### MCP integration - complete
 - mcp/notebook_mcp.py: JSON-RPC MCP server for Claude Desktop
 - Exposes all 6 operations as tools via stdin/stdout
-- Configurable via NOTEBOOK_URL, NOTEBOOK_ID, AUTHOR env vars
+- Configurable via NOTEBOOK_URL, NOTEBOOK_ID, NOTEBOOK_TOKEN, AUTHOR env vars
+- JWT Bearer token authentication via NOTEBOOK_TOKEN
 
 ### Bootstrap server - complete
 - bootstrap/bootstrap_notebook.py: minimal Python HTTP server (738 lines)

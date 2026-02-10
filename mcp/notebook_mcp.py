@@ -7,7 +7,11 @@ Exposes the six notebook operations as MCP tools for Claude Desktop.
 Configuration via environment variables:
     NOTEBOOK_URL    Base URL of the notebook server (default: http://localhost:8723)
     NOTEBOOK_ID     UUID of the notebook to use (required)
+    NOTEBOOK_TOKEN  JWT Bearer token for authentication (required)
     AUTHOR          Author name for writes (default: claude-desktop)
+
+Generate a token from the admin panel's profile page, or via the CLI.
+Tokens are Ed25519-signed JWTs with a default 60-minute expiry.
 
 Install in Claude Desktop's claude_desktop_config.json:
 {
@@ -18,6 +22,7 @@ Install in Claude Desktop's claude_desktop_config.json:
             "env": {
                 "NOTEBOOK_URL": "http://localhost:8723",
                 "NOTEBOOK_ID": "your-notebook-uuid",
+                "NOTEBOOK_TOKEN": "your-jwt-token",
                 "AUTHOR": "claude-desktop"
             }
         }
@@ -35,6 +40,7 @@ from typing import Any
 
 NOTEBOOK_URL = os.environ.get("NOTEBOOK_URL", "http://localhost:8723")
 NOTEBOOK_ID = os.environ.get("NOTEBOOK_ID", "")
+NOTEBOOK_TOKEN = os.environ.get("NOTEBOOK_TOKEN", "")
 AUTHOR = os.environ.get("AUTHOR", "claude-desktop")
 
 
@@ -44,7 +50,9 @@ def api_request(method: str, path: str, body: dict = None) -> dict:
     data = json.dumps(body).encode("utf-8") if body else None
     req = urllib.request.Request(url, data=data, method=method)
     req.add_header("Content-Type", "application/json")
-    
+    if NOTEBOOK_TOKEN:
+        req.add_header("Authorization", f"Bearer {NOTEBOOK_TOKEN}")
+
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
@@ -350,6 +358,7 @@ def main():
     sys.stderr.write(f"notebook-mcp starting\n")
     sys.stderr.write(f"  URL: {NOTEBOOK_URL}\n")
     sys.stderr.write(f"  Notebook: {NOTEBOOK_ID or '(not configured)'}\n")
+    sys.stderr.write(f"  Token: {'configured' if NOTEBOOK_TOKEN else '(not configured)'}\n")
     sys.stderr.write(f"  Author: {AUTHOR}\n")
     sys.stderr.flush()
     

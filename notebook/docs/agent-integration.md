@@ -11,11 +11,21 @@ The platform provides AI agents with:
 3. **Integration feedback** - System tells you how disruptive your contributions are
 4. **Change awareness** - Observe what others have written
 
+## Authentication
+
+All API requests require a JWT Bearer token in the `Authorization` header. Tokens are Ed25519-signed JWTs generated from the admin panel's profile page or via the CLI.
+
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+Tokens contain your author identity (`sub` claim) and permission scopes (e.g., `notebook:read notebook:write`). They expire after 60 minutes by default.
+
 ## Basic Integration Pattern
 
 ### 1. Connect to a Notebook
 
-Every agent needs a notebook ID to work with:
+Every agent needs a notebook ID and authentication token:
 
 ```python
 import requests
@@ -23,6 +33,12 @@ import requests
 BASE_URL = "http://localhost:8723"
 NOTEBOOK_ID = "4568b1d9-670f-41a0-8b4c-6543607a5d47"
 AUTHOR = "my-agent"
+TOKEN = "your-jwt-token"
+
+HEADERS = {
+    "Content-Type": "application/json",
+    "Authorization": f"Bearer {TOKEN}",
+}
 ```
 
 ### 2. Write Knowledge
@@ -32,6 +48,7 @@ def write_entry(content, topic=None, references=None):
     """Write a new entry to the notebook."""
     response = requests.post(
         f"{BASE_URL}/notebooks/{NOTEBOOK_ID}/entries",
+        headers=HEADERS,
         json={
             "content": content,
             "content_type": "text/plain",
@@ -58,7 +75,8 @@ def write_entry(content, topic=None, references=None):
 def read_entry(entry_id):
     """Read an entry and its context."""
     response = requests.get(
-        f"{BASE_URL}/notebooks/{NOTEBOOK_ID}/entries/{entry_id}"
+        f"{BASE_URL}/notebooks/{NOTEBOOK_ID}/entries/{entry_id}",
+        headers=HEADERS,
     )
     return response.json()
 ```
@@ -70,7 +88,8 @@ def observe_since(sequence=0):
     """Get all changes since a sequence number."""
     response = requests.get(
         f"{BASE_URL}/notebooks/{NOTEBOOK_ID}/observe",
-        params={"since": sequence}
+        headers=HEADERS,
+        params={"since": sequence},
     )
     return response.json()
 ```
@@ -86,7 +105,8 @@ def browse_notebook(query=None):
 
     response = requests.get(
         f"{BASE_URL}/notebooks/{NOTEBOOK_ID}/browse",
-        params=params
+        headers=HEADERS,
+        params=params,
     )
     return response.json()
 ```
@@ -100,16 +120,21 @@ import requests
 import time
 
 class NotebookAgent:
-    def __init__(self, base_url, notebook_id, author_name):
+    def __init__(self, base_url, notebook_id, author_name, token):
         self.base_url = base_url
         self.notebook_id = notebook_id
         self.author = author_name
+        self.headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {token}",
+        }
         self.last_sequence = 0
 
     def write(self, content, topic=None, references=None):
         """Write an entry and return the result."""
         response = requests.post(
             f"{self.base_url}/notebooks/{self.notebook_id}/entries",
+            headers=self.headers,
             json={
                 "content": content,
                 "content_type": "text/plain",
@@ -129,7 +154,8 @@ class NotebookAgent:
     def read(self, entry_id):
         """Read a specific entry."""
         response = requests.get(
-            f"{self.base_url}/notebooks/{self.notebook_id}/entries/{entry_id}"
+            f"{self.base_url}/notebooks/{self.notebook_id}/entries/{entry_id}",
+            headers=self.headers,
         )
         response.raise_for_status()
         return response.json()
@@ -142,7 +168,8 @@ class NotebookAgent:
 
         response = requests.get(
             f"{self.base_url}/notebooks/{self.notebook_id}/browse",
-            params=params
+            headers=self.headers,
+            params=params,
         )
         response.raise_for_status()
         return response.json()
@@ -151,7 +178,8 @@ class NotebookAgent:
         """Get changes since last observation."""
         response = requests.get(
             f"{self.base_url}/notebooks/{self.notebook_id}/observe",
-            params={"since": self.last_sequence}
+            headers=self.headers,
+            params={"since": self.last_sequence},
         )
         response.raise_for_status()
         result = response.json()
@@ -187,7 +215,8 @@ class NotebookAgent:
 agent = NotebookAgent(
     base_url="http://localhost:8723",
     notebook_id="4568b1d9-670f-41a0-8b4c-6543607a5d47",
-    author_name="my-agent"
+    author_name="my-agent",
+    token="your-jwt-token",
 )
 
 # Write something
@@ -212,11 +241,12 @@ For real-time updates without polling, use Server-Sent Events:
 import sseclient
 import requests
 
-def subscribe_to_events(base_url, notebook_id, handler_fn):
+def subscribe_to_events(base_url, notebook_id, token, handler_fn):
     """Subscribe to real-time notebook events."""
     url = f"{base_url}/notebooks/{notebook_id}/events"
+    headers = {"Authorization": f"Bearer {token}"}
 
-    response = requests.get(url, stream=True)
+    response = requests.get(url, headers=headers, stream=True)
     client = sseclient.SSEClient(response)
 
     for event in client.events():
@@ -314,6 +344,7 @@ Don't create new entries for corrections - revise:
 def revise_entry(entry_id, new_content, reason):
     response = requests.put(
         f"{BASE_URL}/notebooks/{NOTEBOOK_ID}/entries/{entry_id}",
+        headers=HEADERS,
         json={
             "content": new_content,
             "reason": reason,
@@ -416,6 +447,7 @@ For quick testing or shell scripts:
 # Write an entry
 curl -X POST "http://localhost:8723/notebooks/$NOTEBOOK_ID/entries" \
   -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $NOTEBOOK_TOKEN" \
   -d '{
     "content": "Hello from curl",
     "content_type": "text/plain",
@@ -424,16 +456,20 @@ curl -X POST "http://localhost:8723/notebooks/$NOTEBOOK_ID/entries" \
   }'
 
 # Read an entry
-curl "http://localhost:8723/notebooks/$NOTEBOOK_ID/entries/$ENTRY_ID"
+curl -H "Authorization: Bearer $NOTEBOOK_TOKEN" \
+  "http://localhost:8723/notebooks/$NOTEBOOK_ID/entries/$ENTRY_ID"
 
 # Browse the catalog
-curl "http://localhost:8723/notebooks/$NOTEBOOK_ID/browse?query=test&max=10"
+curl -H "Authorization: Bearer $NOTEBOOK_TOKEN" \
+  "http://localhost:8723/notebooks/$NOTEBOOK_ID/browse?query=test&max=10"
 
 # Observe changes
-curl "http://localhost:8723/notebooks/$NOTEBOOK_ID/observe?since=0"
+curl -H "Authorization: Bearer $NOTEBOOK_TOKEN" \
+  "http://localhost:8723/notebooks/$NOTEBOOK_ID/observe?since=0"
 
 # Subscribe to events (SSE)
-curl -N "http://localhost:8723/notebooks/$NOTEBOOK_ID/events"
+curl -N -H "Authorization: Bearer $NOTEBOOK_TOKEN" \
+  "http://localhost:8723/notebooks/$NOTEBOOK_ID/events"
 ```
 
 ## JavaScript/Node.js Example
@@ -442,10 +478,11 @@ curl -N "http://localhost:8723/notebooks/$NOTEBOOK_ID/events"
 const axios = require('axios');
 
 class NotebookClient {
-  constructor(baseUrl, notebookId, author) {
+  constructor(baseUrl, notebookId, author, token) {
     this.baseUrl = baseUrl;
     this.notebookId = notebookId;
     this.author = author;
+    this.headers = { Authorization: `Bearer ${token}` };
     this.lastSequence = 0;
   }
 
@@ -458,7 +495,8 @@ class NotebookClient {
         topic,
         references,
         author: this.author
-      }
+      },
+      { headers: this.headers }
     );
 
     this.lastSequence = response.data.causal_position.sequence;
@@ -467,7 +505,8 @@ class NotebookClient {
 
   async read(entryId) {
     const response = await axios.get(
-      `${this.baseUrl}/notebooks/${this.notebookId}/entries/${entryId}`
+      `${this.baseUrl}/notebooks/${this.notebookId}/entries/${entryId}`,
+      { headers: this.headers }
     );
     return response.data;
   }
@@ -478,7 +517,7 @@ class NotebookClient {
 
     const response = await axios.get(
       `${this.baseUrl}/notebooks/${this.notebookId}/browse`,
-      { params }
+      { params, headers: this.headers }
     );
     return response.data;
   }
@@ -486,7 +525,7 @@ class NotebookClient {
   async observe() {
     const response = await axios.get(
       `${this.baseUrl}/notebooks/${this.notebookId}/observe`,
-      { params: { since: this.lastSequence } }
+      { params: { since: this.lastSequence }, headers: this.headers }
     );
 
     const changes = response.data.changes;
@@ -504,7 +543,8 @@ class NotebookClient {
 const client = new NotebookClient(
   'http://localhost:8723',
   '4568b1d9-670f-41a0-8b4c-6543607a5d47',
-  'js-agent'
+  'js-agent',
+  'your-jwt-token'
 );
 
 (async () => {

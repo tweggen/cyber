@@ -58,7 +58,7 @@ Pure Python (3.9+) HTTP client wrapping all six operations. Types in dataclasses
 
 ### MCP Integration (`mcp/notebook_mcp.py`)
 
-Model Context Protocol server exposing the six operations as tools for Claude Desktop.
+Model Context Protocol server exposing the six operations as tools for Claude Desktop. Authenticates via JWT Bearer token (`NOTEBOOK_TOKEN` env var).
 
 ## Key Design Decisions
 
