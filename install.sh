@@ -4,7 +4,7 @@ set -euo pipefail
 # Install notebook MCP server for Claude Code (Mac / Linux / WSL)
 # Usage: ./install.sh <notebook-id> <token> [--url <url>] [--author <author>]
 
-DEFAULT_URL="https://cyber.nassau-records.de"
+DEFAULT_URL="https://notebook.nassau-records.de"
 DEFAULT_AUTHOR="claude-code"
 
 usage() {

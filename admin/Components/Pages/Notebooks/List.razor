@@ -9,6 +9,7 @@
 @inject NavigationManager Navigation
 @inject TokenService TokenService
 @inject IJSRuntime JS
+@inject IConfiguration Configuration
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
 <PageTitle>Notebooks</PageTitle>
@@ -356,11 +357,12 @@ else if (notebooks != null)
 
         var token = TokenService.GenerateToken(authorId);
         var baseUrl = Navigation.BaseUri.TrimEnd('/');
+        var apiUrl = Configuration["NotebookApi:PublicUrl"] ?? baseUrl;
 
         connectNotebookId = nb.Id;
         connectNotebookName = nb.Name;
-        bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {nb.Id} {token}";
-        psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{nb.Id}' -Token '{token}'";
+        bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {nb.Id} {token} --url {apiUrl}";
+        psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{nb.Id}' -Token '{token}' -Url '{apiUrl}'";
         copiedField = null;
     }
 

@@ -8,7 +8,7 @@ param(
     [Parameter(Mandatory=$true, Position=1)]
     [string]$Token,
 
-    [string]$Url = "https://cyber.nassau-records.de",
+    [string]$Url = "https://notebook.nassau-records.de",
 
     [string]$Author = "claude-code"
 )

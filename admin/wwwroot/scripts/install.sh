@@ -4,7 +4,7 @@ set -euo pipefail
 # Install notebook MCP server for Claude Code
 # Usage: curl -fsSL https://cyber.nassau-records.de/scripts/install.sh | bash -s -- <notebook-id> <token> [options]
 
-DEFAULT_URL="https://cyber.nassau-records.de"
+DEFAULT_URL="https://notebook.nassau-records.de"
 DEFAULT_AUTHOR="claude-code"
 
 usage() {
