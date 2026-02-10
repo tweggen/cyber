@@ -4,6 +4,39 @@
    To add a theme: create a new html[data-theme="name"] block with the full variable set.
    ========================================================================== */
 
+/* ---------- Terminus font (X11 TWM theme) ---------- */
+@font-face {
+    font-family: 'Terminus';
+    src: url('../fonts/TerminusTTF.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Terminus';
+    src: url('../fonts/TerminusTTF-Bold.ttf') format('truetype');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Terminus';
+    src: url('../fonts/TerminusTTF-Italic.ttf') format('truetype');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Terminus';
+    src: url('../fonts/TerminusTTF-Bold-Italic.ttf') format('truetype');
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
 /* ---------- Amber CRT (default) ---------- */
 :root,
 html[data-theme="crt"] {
@@ -88,7 +121,7 @@ html[data-theme="crt"] {
 /* ---------- X11 TWM ---------- */
 html[data-theme="twm"] {
     /* Typography */
-    --t-font-family: 'Courier New', Courier, monospace;
+    --t-font-family: 'Terminus', 'Courier New', Courier, monospace;
     --t-font-size-base: 0.95rem;
 
     /* Core palette */
