@@ -182,12 +182,14 @@ def tool_get_context() -> dict:
         "GET",
         f"/notebooks/{NOTEBOOK_ID}/browse?query={urllib.parse.quote('notebook:purpose')}&max=5",
     )
+    if purpose_result.get("error"):
+        return {"error": purpose_result["error"]}
+
     purpose_text = None
-    if not purpose_result.get("error"):
-        for entry in purpose_result.get("entries", []):
-            if entry.get("topic") == "notebook:purpose":
-                purpose_text = entry.get("content") or entry.get("summary")
-                break
+    for entry in purpose_result.get("entries", []):
+        if entry.get("topic") == "notebook:purpose":
+            purpose_text = entry.get("content") or entry.get("summary")
+            break
     context["purpose"] = purpose_text
 
     # Fetch open questions
@@ -195,15 +197,17 @@ def tool_get_context() -> dict:
         "GET",
         f"/notebooks/{NOTEBOOK_ID}/browse?query={urllib.parse.quote('open-question')}&max=50",
     )
+    if questions_result.get("error"):
+        return {"error": questions_result["error"]}
+
     questions = []
-    if not questions_result.get("error"):
-        for entry in questions_result.get("entries", []):
-            if entry.get("topic") == "open-question":
-                questions.append({
-                    "entry_id": entry.get("entry_id"),
-                    "content": entry.get("content") or entry.get("summary"),
-                    "integration_cost": entry.get("integration_cost"),
-                })
+    for entry in questions_result.get("entries", []):
+        if entry.get("topic") == "open-question":
+            questions.append({
+                "entry_id": entry.get("entry_id"),
+                "content": entry.get("content") or entry.get("summary"),
+                "integration_cost": entry.get("integration_cost"),
+            })
     context["open_questions"] = questions
 
     # Fetch full catalog summary
@@ -211,10 +215,10 @@ def tool_get_context() -> dict:
         "GET",
         f"/notebooks/{NOTEBOOK_ID}/browse?max=30",
     )
-    if not catalog_result.get("error"):
-        context["catalog"] = catalog_result
-    else:
-        context["catalog"] = catalog_result
+    if catalog_result.get("error"):
+        return {"error": catalog_result["error"]}
+
+    context["catalog"] = catalog_result
 
     return context
 
