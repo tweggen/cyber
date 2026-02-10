@@ -209,6 +209,15 @@ app.MapPost("/auth/token", async (
     });
 }).AllowAnonymous();
 
+// Serve install scripts as plain text (anonymous access for curl | sh)
+app.MapGet("/scripts/{filename}", (string filename, IWebHostEnvironment env) =>
+{
+    if (filename is not ("install.sh" or "install.ps1" or "notebook_mcp.py"))
+        return Results.NotFound();
+    var path = Path.Combine(env.WebRootPath, "scripts", filename);
+    return File.Exists(path) ? Results.File(path, "text/plain") : Results.NotFound();
+}).AllowAnonymous();
+
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();

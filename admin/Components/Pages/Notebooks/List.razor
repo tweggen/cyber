@@ -7,6 +7,8 @@
 @inject NotebookApiClient ApiClient
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
+@inject TokenService TokenService
+@inject IJSRuntime JS
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
 <PageTitle>Notebooks</PageTitle>
@@ -109,12 +111,54 @@ else if (notebooks != null)
                                         @onclick="() => StartDelete(nb.Id)"
                                         disabled="@(renamingNotebookId != null || deletingNotebookId != null)">Delete</button>
                             }
+                            <button class="btn btn-sm btn-outline-info ms-1"
+                                    @onclick="() => ShowConnect(nb)"
+                                    disabled="@(renamingNotebookId != null || deletingNotebookId != null)">Connect</button>
                         }
                     </td>
                 </tr>
             }
         </tbody>
     </table>
+
+    @if (connectNotebookId != null)
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Connect <strong>@connectNotebookName</strong> to Claude Code</span>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CloseConnect">Close</button>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Run one of these commands to register the notebook MCP server with Claude Code:</p>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold mb-1">Bash (Mac / Linux / WSL)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@bashCommand" readonly />
+                        <button class="btn btn-outline-secondary" @onclick="() => CopyCommand(bashCommand!)"
+                                title="Copy to clipboard">
+                            @(copiedField == "bash" ? "Copied" : "Copy")
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold mb-1">PowerShell (Windows)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@psCommand" readonly />
+                        <button class="btn btn-outline-secondary" @onclick="() => CopyCommand(psCommand!)"
+                                title="Copy to clipboard">
+                            @(copiedField == "ps" ? "Copied" : "Copy")
+                        </button>
+                    </div>
+                </div>
+
+                <p class="text-muted small mb-0">
+                    Token is short-lived. Click <strong>Connect</strong> again to generate a fresh command.
+                </p>
+            </div>
+        </div>
+    }
 
     @if (notebooks.Count == 0)
     {
@@ -143,6 +187,13 @@ else if (notebooks != null)
     // Delete state
     private Guid? deletingNotebookId;
     private bool isDeleting;
+
+    // Connect state
+    private Guid? connectNotebookId;
+    private string? connectNotebookName;
+    private string? bashCommand;
+    private string? psCommand;
+    private string? copiedField;
 
     protected override async Task OnInitializedAsync()
     {
@@ -294,6 +345,44 @@ else if (notebooks != null)
         finally
         {
             isDeleting = false;
+        }
+    }
+
+    // ===== Connect =====
+
+    private void ShowConnect(NotebookSummary nb)
+    {
+        if (authorId == null) return;
+
+        var token = TokenService.GenerateToken(authorId);
+        var baseUrl = Navigation.BaseUri.TrimEnd('/');
+
+        connectNotebookId = nb.Id;
+        connectNotebookName = nb.Name;
+        bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {nb.Id} {token}";
+        psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{nb.Id}' -Token '{token}'";
+        copiedField = null;
+    }
+
+    private void CloseConnect()
+    {
+        connectNotebookId = null;
+        connectNotebookName = null;
+        bashCommand = null;
+        psCommand = null;
+        copiedField = null;
+    }
+
+    private async Task CopyCommand(string command)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", command);
+            copiedField = command == bashCommand ? "bash" : "ps";
+        }
+        catch
+        {
+            // Clipboard API may not be available
         }
     }
 }
