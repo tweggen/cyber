@@ -199,7 +199,7 @@ app.MapPost("/auth/token", async (
 
     var token = tokenService.GenerateToken(user.AuthorIdHex);
     var expiryMinutes = int.TryParse(
-        app.Configuration["Jwt:ExpiryMinutes"], out var exp) ? exp : 60;
+        app.Configuration["Jwt:ExpiryMinutes"], out var exp) ? exp : 131400;
 
     return Results.Ok(new TokenResponse
     {

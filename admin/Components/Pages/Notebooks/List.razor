@@ -8,7 +8,6 @@
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
 @inject TokenService TokenService
-@inject IJSRuntime JS
 @inject IConfiguration Configuration
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 
@@ -136,10 +135,9 @@ else if (notebooks != null)
                     <label class="form-label small fw-bold mb-1">Bash (Mac / Linux / WSL)</label>
                     <div class="input-group input-group-sm">
                         <input type="text" class="form-control font-monospace" value="@bashCommand" readonly />
-                        <button class="btn btn-outline-secondary" @onclick="() => CopyCommand(bashCommand!)"
-                                title="Copy to clipboard">
-                            @(copiedField == "bash" ? "Copied" : "Copy")
-                        </button>
+                        <button class="btn btn-outline-secondary"
+                                onclick="clipboardCopyFromSibling(this)"
+                                title="Copy to clipboard">Copy</button>
                     </div>
                 </div>
 
@@ -147,10 +145,9 @@ else if (notebooks != null)
                     <label class="form-label small fw-bold mb-1">PowerShell (Windows)</label>
                     <div class="input-group input-group-sm">
                         <input type="text" class="form-control font-monospace" value="@psCommand" readonly />
-                        <button class="btn btn-outline-secondary" @onclick="() => CopyCommand(psCommand!)"
-                                title="Copy to clipboard">
-                            @(copiedField == "ps" ? "Copied" : "Copy")
-                        </button>
+                        <button class="btn btn-outline-secondary"
+                                onclick="clipboardCopyFromSibling(this)"
+                                title="Copy to clipboard">Copy</button>
                     </div>
                 </div>
 
@@ -194,7 +191,7 @@ else if (notebooks != null)
     private string? connectNotebookName;
     private string? bashCommand;
     private string? psCommand;
-    private string? copiedField;
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -363,7 +360,6 @@ else if (notebooks != null)
         connectNotebookName = nb.Name;
         bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {nb.Id} {token} --url {apiUrl}";
         psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{nb.Id}' -Token '{token}' -Url '{apiUrl}'";
-        copiedField = null;
     }
 
     private void CloseConnect()
@@ -372,19 +368,5 @@ else if (notebooks != null)
         connectNotebookName = null;
         bashCommand = null;
         psCommand = null;
-        copiedField = null;
-    }
-
-    private async Task CopyCommand(string command)
-    {
-        try
-        {
-            await JS.InvokeAsync<bool>("clipboardCopy", command);
-            copiedField = command == bashCommand ? "bash" : "ps";
-        }
-        catch
-        {
-            // Clipboard may not be available
-        }
     }
 }

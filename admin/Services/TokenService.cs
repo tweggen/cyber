@@ -20,7 +20,7 @@ public class TokenService
     {
         _logger = logger;
         _issuer = configuration["Jwt:Issuer"] ?? "notebook-admin";
-        _expiryMinutes = int.TryParse(configuration["Jwt:ExpiryMinutes"], out var exp) ? exp : 60;
+        _expiryMinutes = int.TryParse(configuration["Jwt:ExpiryMinutes"], out var exp) ? exp : 131400;
 
         var privateKeyBase64 = configuration["Jwt:PrivateKey"]
             ?? throw new InvalidOperationException("Jwt:PrivateKey not configured");
