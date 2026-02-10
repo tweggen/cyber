@@ -5,6 +5,7 @@ set -euo pipefail
 # Usage: curl -fsSL https://cyber.nassau-records.de/scripts/install.sh | bash -s -- <notebook-id> <token> [options]
 
 DEFAULT_URL="https://notebook.nassau-records.de"
+DEFAULT_SCRIPTS_URL="https://cyber.nassau-records.de"
 DEFAULT_AUTHOR="claude-code"
 
 usage() {
@@ -62,7 +63,7 @@ fi
 CYBER_DIR="$HOME/.cyber"
 mkdir -p "$CYBER_DIR"
 echo "Downloading notebook_mcp.py..."
-curl -fsSL "$URL/scripts/notebook_mcp.py" -o "$CYBER_DIR/notebook_mcp.py"
+curl -fsSL "$DEFAULT_SCRIPTS_URL/scripts/notebook_mcp.py" -o "$CYBER_DIR/notebook_mcp.py"
 echo "Saved to $CYBER_DIR/notebook_mcp.py"
 
 # Build the JSON config
