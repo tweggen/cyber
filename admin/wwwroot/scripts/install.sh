@@ -73,7 +73,8 @@ JSON=$(cat <<EOF
 EOF
 )
 
-# Register with Claude Code
+# Register with Claude Code (remove first in case it already exists)
+claude mcp remove notebook-mcp 2>/dev/null || true
 claude mcp add-json notebook-mcp "$JSON"
 
 echo ""

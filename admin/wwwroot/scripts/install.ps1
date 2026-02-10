@@ -34,7 +34,8 @@ $Json = @"
 {"type":"stdio","command":"python","args":["$McpScript"],"env":{"NOTEBOOK_URL":"$Url","NOTEBOOK_ID":"$NotebookId","NOTEBOOK_TOKEN":"$Token","AUTHOR":"$Author"}}
 "@
 
-# Register with Claude Code
+# Register with Claude Code (remove first in case it already exists)
+try { claude mcp remove notebook-mcp 2>$null } catch {}
 claude mcp add-json notebook-mcp $Json
 
 Write-Host ""
