@@ -51,8 +51,17 @@ builder.Services.AddScoped<CurrentUserService>();
 
 // Add Razor Components with Server interactivity
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents(options =>
+    {
+        // Keep disconnected circuits alive longer so overnight WebSocket drops
+        // can recover without a full page reload.
+        options.DisconnectedCircuitRetentionPeriod = TimeSpan.FromMinutes(10);
+    });
 builder.Services.AddCascadingAuthenticationState();
+
+// Health checks (used by Docker healthcheck and monitoring)
+builder.Services.AddHealthChecks()
+    .AddDbContextCheck<ApplicationDbContext>("database");
 
 var app = builder.Build();
 
@@ -142,6 +151,8 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.UseAuthentication();
 app.UseAuthorization();
