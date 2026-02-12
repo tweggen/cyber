@@ -59,9 +59,10 @@ builder.Services.AddRazorComponents()
     });
 builder.Services.AddCascadingAuthenticationState();
 
-// Health checks (used by Docker healthcheck and monitoring)
-builder.Services.AddHealthChecks()
-    .AddDbContextCheck<ApplicationDbContext>("database");
+// Liveness health check (used by Docker healthcheck / Traefik routing).
+// Intentionally does NOT check the database — a slow DB should not make the
+// entire site unreachable via Traefik 503/504.
+builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 

@@ -60,7 +60,7 @@ services:
     environment:
       ASPNETCORE_URLS: "http://+:5000"
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev"
+      ConnectionStrings__DefaultConnection: "Host=postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev;Timeout=5;Command Timeout=10"
       NotebookApi__BaseUrl: "http://notebook-server:3000"
       Jwt__Issuer: notebook-admin
       Jwt__ExpiryMinutes: "60"

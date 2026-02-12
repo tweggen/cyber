@@ -1,6 +1,7 @@
 @page "/admin/dashboard"
 @attribute [Authorize]
 @using Microsoft.AspNetCore.Identity
+@using Microsoft.EntityFrameworkCore
 @using NotebookAdmin.Models
 @using NotebookAdmin.Services
 @inject UserManager<ApplicationUser> UserManager
@@ -68,7 +69,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        userCount = UserManager.Users.Count();
+        userCount = await UserManager.Users.CountAsync();
 
         // Try to get notebook stats from the Rust API using a zero author (admin mode)
         try
