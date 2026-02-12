@@ -63,7 +63,7 @@ services:
       ConnectionStrings__DefaultConnection: "Host=postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev;Timeout=5;Command Timeout=10"
       NotebookApi__BaseUrl: "http://notebook-server:3000"
       Jwt__Issuer: notebook-admin
-      Jwt__ExpiryMinutes: "60"
+      Jwt__ExpiryMinutes: "131400"
       Jwt__PrivateKey: "MC4CAQAwBQYDK2VwBCIEIOGNGtqlxyJMP96I4UXCqdHFhYFSLjbtMmLmzjP+t6a0"
       # ADMIN_USERNAME: "admin"      # Set to seed initial admin user
       # ADMIN_PASSWORD: "changeme"   # Set to seed initial admin user
