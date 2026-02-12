@@ -10,6 +10,8 @@ param(
 
     [string]$Url = "https://notebook.nassau-records.de",
 
+    [string]$ScriptsUrl = "https://cyber.nassau-records.de",
+
     [string]$Author = "claude-code"
 )
 
@@ -23,7 +25,7 @@ if (-not (Test-Path $CyberDir)) {
 
 $Dest = Join-Path $CyberDir "notebook_mcp.py"
 Write-Host "Downloading notebook_mcp.py..."
-Invoke-WebRequest -Uri "$Url/scripts/notebook_mcp.py" -OutFile $Dest
+Invoke-WebRequest -Uri "$ScriptsUrl/scripts/notebook_mcp.py" -OutFile $Dest
 Write-Host "Saved to $Dest"
 
 # Use forward slashes in the JSON config (Python handles both on Windows)
