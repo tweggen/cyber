@@ -60,7 +60,7 @@ else if (notebooks != null)
             </tr>
         </thead>
         <tbody>
-            @foreach (var nb in notebooks)
+            @foreach (var nb in notebooks.OrderBy(n => n.Name, StringComparer.OrdinalIgnoreCase))
             {
                 <tr>
                     <td>
