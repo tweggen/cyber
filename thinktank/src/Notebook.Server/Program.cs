@@ -32,5 +32,7 @@ app.UseAuthorization();
 app.MapBatchEndpoints();
 app.MapClaimsEndpoints();
 app.MapJobEndpoints();
+app.MapBrowseEndpoints();
+app.MapSearchEndpoints();
 
 app.Run();
