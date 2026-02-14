@@ -21,6 +21,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Notebook.Core\Notebook.Core.csproj" />
     <ProjectReference Include="..\..\src\Notebook.Data\Notebook.Data.csproj" />
+    <ProjectReference Include="..\..\src\Notebook.Server\Notebook.Server.csproj" />
   </ItemGroup>
 
 </Project>

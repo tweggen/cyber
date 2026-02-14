@@ -13,6 +13,7 @@ public class NotebookDbContext : DbContext
 
     public DbSet<Entry> Entries => Set<Entry>();
     public DbSet<JobEntity> Jobs => Set<JobEntity>();
+    public DbSet<NotebookEntity> Notebooks => Set<NotebookEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
