@@ -45,6 +45,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
       - "traefik.http.routers.notebook-server.rule=Host(`notebook.nassau-records.de`)"
       - "traefik.http.routers.notebook-server.entrypoints=https"
       - "traefik.http.routers.notebook-server.tls=true"
@@ -83,6 +84,7 @@ services:
     restart: unless-stopped
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
       - "traefik.http.routers.notebook-admin.rule=Host(`cyber.nassau-records.de`)"
       - "traefik.http.routers.notebook-admin.entrypoints=https"
       - "traefik.http.routers.notebook-admin.tls=true"
