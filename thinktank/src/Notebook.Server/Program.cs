@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Notebook.Data;
 using Notebook.Data.Repositories;
 using Notebook.Server.Endpoints;
+using Notebook.Server.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +17,7 @@ builder.Services.AddDbContext<NotebookDbContext>(options =>
 // Repositories
 builder.Services.AddScoped<IEntryRepository, EntryRepository>();
 builder.Services.AddScoped<IJobRepository, JobRepository>();
+builder.Services.AddScoped<IJobResultProcessor, JobResultProcessor>();
 
 // Authentication — JWT Bearer validated externally (admin app issues tokens)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -29,5 +31,6 @@ app.UseAuthorization();
 
 app.MapBatchEndpoints();
 app.MapClaimsEndpoints();
+app.MapJobEndpoints();
 
 app.Run();

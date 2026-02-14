@@ -87,4 +87,29 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
 
         return rows.Select(r => (r.Id, r.Claims)).ToList();
     }
+
+    public async Task AppendComparisonAsync(Guid entryId, JsonElement comparison, CancellationToken ct)
+    {
+        var friction = comparison.TryGetProperty("friction", out var f) ? f.GetDouble() : 0.0;
+        var comparisonJson = JsonSerializer.Serialize(comparison);
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            UPDATE entries SET
+              comparisons = comparisons || jsonb_build_array({0}::jsonb),
+              max_friction = GREATEST(COALESCE(max_friction, 0.0), {1}),
+              needs_review = (GREATEST(COALESCE(max_friction, 0.0), {1}) > 0.2)
+            WHERE id = {2}
+            """,
+            [comparisonJson, friction, entryId],
+            ct);
+    }
+
+    public async Task UpdateEntryTopicAsync(Guid entryId, string topic, CancellationToken ct)
+    {
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE entries SET topic = {0} WHERE id = {1}",
+            [topic, entryId],
+            ct);
+    }
 }
