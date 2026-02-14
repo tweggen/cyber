@@ -3,6 +3,8 @@
 //! The `Store` type provides all CRUD operations for entries,
 //! notebooks, authors, and access control.
 
+use std::time::Duration;
+
 use sqlx::postgres::{PgPool, PgPoolOptions};
 use uuid::Uuid;
 
@@ -91,6 +93,9 @@ impl Store {
         let pool = PgPoolOptions::new()
             .max_connections(config.max_connections)
             .min_connections(config.min_connections)
+            .idle_timeout(Duration::from_secs(600))
+            .max_lifetime(Duration::from_secs(1800))
+            .acquire_timeout(Duration::from_secs(5))
             .connect(&config.database_url)
             .await?;
 
