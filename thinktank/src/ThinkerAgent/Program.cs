@@ -1,13 +1,14 @@
 using Microsoft.AspNetCore.SignalR;
 using Serilog;
 using ThinkerAgent;
+using ThinkerAgent.Configuration;
 using ThinkerAgent.Hubs;
 using ThinkerAgent.Services;
+using ThinkerAgent.Tools;
 
-// Cross-platform log directory
-var logDir = OperatingSystem.IsWindows()
-    ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "ThinkerAgent", "logs")
-    : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".thinkeragent", "logs");
+// Bootstrap: detect environment early so log dir resolves correctly.
+// IsDevelopment defaults to false here; updated below once the host builder is available.
+var logDir = EnvironmentDetector.GetLogDir("ThinkerAgent");
 
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
@@ -22,6 +23,9 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
+    // Propagate environment flag so EnvironmentDetector picks the right directories
+    EnvironmentDetector.IsDevelopment = builder.Environment.IsDevelopment();
+
     builder.Host.UseSerilog();
 
     if (OperatingSystem.IsWindows())
@@ -30,6 +34,15 @@ try
         builder.Host.UseSystemd();
 
     builder.WebHost.UseUrls("http://localhost:5948");
+
+    // Layered configuration: appsettings → config.json → env → CLI
+    var configHelper = new ConfigHelper<ThinkerOptions>(
+        "ThinkerAgent", args, builder.Environment.EnvironmentName);
+    builder.Configuration.AddConfiguration(configHelper.Configuration);
+    builder.Services.AddSingleton(configHelper);
+
+    Log.Information("Using configDirectory {ConfigDir}", Path.GetDirectoryName(configHelper.ConfigPath));
+    Log.Information("envName = {Env}", builder.Environment.EnvironmentName);
 
     builder.Services.AddSignalR();
     builder.Services.AddThinkerServices(builder.Configuration);
@@ -50,17 +63,17 @@ try
     app.MapGet("/status", (WorkerState ws) => Results.Ok(ws.GetSnapshot()));
 
     app.MapGet("/config", (
-        Microsoft.Extensions.Options.IOptionsSnapshot<ThinkerAgent.Configuration.ThinkerOptions> opts) =>
+        Microsoft.Extensions.Options.IOptionsSnapshot<ThinkerOptions> opts) =>
         Results.Ok(opts.Value));
 
-    app.MapPut("/config", async (ThinkerAgent.Configuration.ThinkerOptions newConfig) =>
+    app.MapPut("/config", async (ThinkerOptions newConfig,
+        ConfigHelper<ThinkerOptions> helper) =>
     {
-        var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
-        var json = await File.ReadAllTextAsync(path);
-        var doc = System.Text.Json.Nodes.JsonNode.Parse(json)!;
-        doc["Thinker"] = System.Text.Json.JsonSerializer.SerializeToNode(newConfig);
-        await File.WriteAllTextAsync(path, doc.ToJsonString(
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        // Protect infrastructure-only fields: OllamaUrl is determined by the
+        // local environment, not the desktop UI.
+        newConfig.OllamaUrl = null!;
+
+        await helper.Save(newConfig);
         return Results.Ok(new { status = "saved", restart_required = true });
     });
 
