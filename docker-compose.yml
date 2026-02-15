@@ -1,7 +1,7 @@
 version: "3.9"
 
 services:
-  postgres:
+  notebook-db:
     image: apache/age:release_PG16_1.6.0
     container_name: notebook-postgres
     environment:
@@ -30,7 +30,7 @@ services:
     image: ghcr.io/tweggen/notebook-server:latest
     container_name: notebook-server
     environment:
-      DATABASE_URL: postgres://notebook:notebook_dev@postgres:5432/notebook
+      DATABASE_URL: postgres://notebook:notebook_dev@notebook-db:5432/notebook
       PORT: "3000"
       LOG_LEVEL: info
       JWT_PUBLIC_KEY: |
@@ -40,7 +40,7 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      postgres:
+      notebook-db:
         condition: service_healthy
     restart: unless-stopped
     labels:
@@ -61,7 +61,7 @@ services:
     environment:
       ASPNETCORE_URLS: "http://+:5000"
       ASPNETCORE_ENVIRONMENT: Production
-      ConnectionStrings__DefaultConnection: "Host=postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev;Timeout=5;Command Timeout=10"
+      ConnectionStrings__DefaultConnection: "Host=notebook-db;Database=notebook_admin;Username=notebook;Password=notebook_dev;Timeout=5;Command Timeout=10"
       NotebookApi__BaseUrl: "http://notebook-server:3000"
       Jwt__Issuer: notebook-admin
       Jwt__ExpiryMinutes: "131400"
@@ -79,7 +79,7 @@ services:
       retries: 3
       start_period: 15s
     depends_on:
-      postgres:
+      notebook-db:
         condition: service_healthy
     restart: unless-stopped
     labels:
