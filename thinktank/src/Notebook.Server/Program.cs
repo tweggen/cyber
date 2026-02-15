@@ -18,6 +18,7 @@ builder.Services.AddDbContext<NotebookDbContext>(options =>
 builder.Services.AddScoped<IEntryRepository, EntryRepository>();
 builder.Services.AddScoped<IJobRepository, JobRepository>();
 builder.Services.AddScoped<IJobResultProcessor, JobResultProcessor>();
+builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
 
 // Authentication — JWT Bearer validated externally (admin app issues tokens)
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -29,6 +30,7 @@ var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapNotebookEndpoints();
 app.MapBatchEndpoints();
 app.MapClaimsEndpoints();
 app.MapJobEndpoints();
