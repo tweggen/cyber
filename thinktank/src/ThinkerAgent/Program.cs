@@ -29,7 +29,7 @@ try
     else if (OperatingSystem.IsLinux())
         builder.Host.UseSystemd();
 
-    builder.WebHost.UseUrls("http://localhost:5941");
+    builder.WebHost.UseUrls("http://localhost:5948");
 
     builder.Services.AddSignalR();
     builder.Services.AddThinkerServices(builder.Configuration);
