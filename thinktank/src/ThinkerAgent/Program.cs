@@ -53,6 +53,17 @@ try
         Microsoft.Extensions.Options.IOptionsSnapshot<ThinkerAgent.Configuration.ThinkerOptions> opts) =>
         Results.Ok(opts.Value));
 
+    app.MapPut("/config", async (ThinkerAgent.Configuration.ThinkerOptions newConfig) =>
+    {
+        var path = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
+        var json = await File.ReadAllTextAsync(path);
+        var doc = System.Text.Json.Nodes.JsonNode.Parse(json)!;
+        doc["Thinker"] = System.Text.Json.JsonSerializer.SerializeToNode(newConfig);
+        await File.WriteAllTextAsync(path, doc.ToJsonString(
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true }));
+        return Results.Ok(new { status = "saved", restart_required = true });
+    });
+
     app.MapPost("/start", (WorkerState ws) =>
     {
         // Workers are started via BackgroundService on host start.

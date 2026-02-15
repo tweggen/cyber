@@ -1,0 +1,158 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="500"
+        x:Class="YourCyber.ConfigWindow"
+        Title="ThinkerAgent Configuration"
+        Height="500" Width="450"
+        WindowStartupLocation="CenterScreen"
+        CanResize="False">
+
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="120"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Server URL -->
+        <TextBlock Grid.Row="0" Grid.Column="0"
+                   Text="Server URL:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="0" Grid.Column="1"
+                 Name="ServerUrlTextBox"
+                 Margin="5,5,5,0"/>
+        <TextBlock Grid.Row="1" Grid.Column="1"
+                   Name="ServerUrlErrorText"
+                   Foreground="Red"
+                   FontSize="11"
+                   Margin="5,0,5,5"
+                   TextWrapping="Wrap"
+                   IsVisible="False"/>
+
+        <!-- Notebook ID -->
+        <TextBlock Grid.Row="2" Grid.Column="0"
+                   Text="Notebook ID:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="2" Grid.Column="1"
+                 Name="NotebookIdTextBox"
+                 Margin="5,5,5,0"/>
+        <TextBlock Grid.Row="3" Grid.Column="1"
+                   Name="NotebookIdErrorText"
+                   Foreground="Red"
+                   FontSize="11"
+                   Margin="5,0,5,5"
+                   TextWrapping="Wrap"
+                   IsVisible="False"/>
+
+        <!-- Token -->
+        <TextBlock Grid.Row="4" Grid.Column="0"
+                   Text="Token:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="4" Grid.Column="1"
+                 Name="TokenTextBox"
+                 PasswordChar="&#x2022;"
+                 Margin="5,5,5,0"/>
+        <TextBlock Grid.Row="5" Grid.Column="1"
+                   Name="TokenErrorText"
+                   Foreground="Red"
+                   FontSize="11"
+                   Margin="5,0,5,5"
+                   TextWrapping="Wrap"
+                   IsVisible="False"/>
+
+        <!-- Ollama URL -->
+        <TextBlock Grid.Row="6" Grid.Column="0"
+                   Text="Ollama URL:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="6" Grid.Column="1"
+                 Name="OllamaUrlTextBox"
+                 Margin="5,5,5,0"/>
+        <TextBlock Grid.Row="7" Grid.Column="1"
+                   Name="OllamaUrlErrorText"
+                   Foreground="Red"
+                   FontSize="11"
+                   Margin="5,0,5,5"
+                   TextWrapping="Wrap"
+                   IsVisible="False"/>
+
+        <!-- Model -->
+        <TextBlock Grid.Row="8" Grid.Column="0"
+                   Text="Model:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="8" Grid.Column="1"
+                 Name="ModelTextBox"
+                 Margin="5,5,5,5"/>
+
+        <!-- Worker Count -->
+        <TextBlock Grid.Row="9" Grid.Column="0"
+                   Text="Worker Count:"
+                   VerticalAlignment="Center"/>
+        <NumericUpDown Grid.Row="9" Grid.Column="1"
+                       Name="WorkerCountUpDown"
+                       Minimum="1" Maximum="16"
+                       Value="1"
+                       Margin="5,5,5,5"/>
+
+        <!-- Poll Interval -->
+        <TextBlock Grid.Row="10" Grid.Column="0"
+                   Text="Poll Interval (s):"
+                   VerticalAlignment="Center"/>
+        <NumericUpDown Grid.Row="10" Grid.Column="1"
+                       Name="PollIntervalUpDown"
+                       Minimum="1" Maximum="300"
+                       Value="5"
+                       FormatString="F1"
+                       Margin="5,5,5,5"/>
+
+        <!-- Status message -->
+        <TextBlock Grid.Row="11" Grid.ColumnSpan="2"
+                   Name="StatusText"
+                   Foreground="Green"
+                   FontSize="11"
+                   Margin="5"
+                   TextWrapping="Wrap"
+                   HorizontalAlignment="Center"
+                   IsVisible="False"/>
+
+        <!-- Buttons -->
+        <StackPanel Grid.Row="16" Grid.ColumnSpan="2"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right"
+                    Margin="5">
+            <Button Content="Apply"
+                    Name="ApplyButton"
+                    Width="80"
+                    Margin="5"
+                    Click="OnApplyClicked"/>
+            <Button Content="Save"
+                    Name="SaveButton"
+                    Width="80"
+                    Margin="5"
+                    Click="OnSaveClicked"/>
+            <Button Content="Cancel"
+                    Width="80"
+                    Margin="5"
+                    Click="OnCancelClicked"/>
+        </StackPanel>
+    </Grid>
+</Window>

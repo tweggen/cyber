@@ -1,0 +1,160 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:YourCyber.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="500" d:DesignHeight="400"
+        x:Class="YourCyber.StatusWindow"
+        x:DataType="vm:AgentStatusViewModel"
+        Title="ThinkerAgent Workers"
+        Height="400" Width="500"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Heading -->
+        <TextBlock Grid.Row="0"
+                   Text="ThinkerAgent Workers"
+                   FontSize="16"
+                   FontWeight="Bold"
+                   Margin="10,10,10,5"/>
+
+        <!-- Aggregate panel -->
+        <Border Grid.Row="1"
+                Margin="10,5,10,10"
+                Background="#30808080"
+                CornerRadius="6"
+                Padding="12"
+                IsVisible="{Binding IsRunning}">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0" Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0" Orientation="Horizontal">
+                        <TextBlock Text="Ollama: " Opacity="0.7"/>
+                        <TextBlock Text="{Binding OllamaStatusText}"
+                                   FontWeight="SemiBold"/>
+                    </StackPanel>
+
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding UptimeFormatted, StringFormat='Uptime: {0}'}"
+                               Opacity="0.7"/>
+                </Grid>
+
+                <Grid Grid.Row="1" Margin="0,0,0,4">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock Grid.Column="0"
+                               Text="{Binding TotalCompleted, StringFormat='{}{0} jobs completed'}"
+                               FontSize="13"/>
+                    <TextBlock Grid.Column="1"
+                               Text="{Binding TotalFailed, StringFormat='{}{0} failed'}"
+                               Foreground="#FF6B6B"
+                               FontSize="13"
+                               IsVisible="{Binding TotalFailed}"/>
+                </Grid>
+
+                <TextBlock Grid.Row="2"
+                           Text="{Binding StatusSummary}"
+                           Opacity="0.6"
+                           FontSize="12"/>
+            </Grid>
+        </Border>
+
+        <!-- Worker list -->
+        <ScrollViewer Grid.Row="2"
+                      VerticalScrollBarVisibility="Auto"
+                      Margin="10,0,10,10">
+            <ItemsControl ItemsSource="{Binding Workers}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="vm:WorkerViewModel">
+                        <Border Margin="0,4"
+                                Background="#20808080"
+                                CornerRadius="6"
+                                Padding="10">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" MinWidth="60"/>
+                                    <ColumnDefinition Width="Auto" MinWidth="80"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto" MinWidth="80"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Grid.Column="0"
+                                           Text="{Binding Id}"
+                                           FontWeight="SemiBold"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Status}"
+                                           FontSize="12"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding CurrentJobType}"
+                                           FontSize="12"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center"
+                                           TextTrimming="CharacterEllipsis"
+                                           Margin="0,0,8,0"/>
+
+                                <TextBlock Grid.Column="3"
+                                           Text="{Binding JobsCompleted, StringFormat='{}{0} done'}"
+                                           FontSize="11"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"/>
+
+                                <TextBlock Grid.Column="4"
+                                           Text="{Binding JobsFailed, StringFormat='{}{0} fail'}"
+                                           FontSize="11"
+                                           Foreground="#FF6B6B"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,8,0"
+                                           IsVisible="{Binding JobsFailed}"/>
+
+                                <TextBlock Grid.Column="5"
+                                           Text="{Binding TokensPerSecondFormatted}"
+                                           FontSize="11"
+                                           Opacity="0.7"
+                                           VerticalAlignment="Center"
+                                           HorizontalAlignment="Right"/>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+
+        <!-- Empty state -->
+        <TextBlock Grid.Row="2"
+                   Text="No workers running"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"
+                   Opacity="0.5"
+                   FontSize="14"
+                   IsVisible="{Binding IsEmpty}"/>
+    </Grid>
+</Window>
