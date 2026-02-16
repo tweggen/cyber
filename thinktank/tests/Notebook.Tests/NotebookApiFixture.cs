@@ -8,16 +8,28 @@ using Npgsql;
 namespace Notebook.Tests;
 
 /// <summary>
-/// Shared test fixture that creates a temporary PostgreSQL test database and boots
-/// Notebook.Server via WebApplicationFactory. The test database is dropped on disposal.
+/// Shared test fixture that creates a temporary PostgreSQL test database, applies
+/// the real SQL migrations (from notebook/migrations/), and boots Notebook.Server
+/// via WebApplicationFactory. The test database is dropped on disposal.
 /// </summary>
 public class NotebookApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
-    // Connect to the same PostgreSQL instance used for development, but with a separate database.
     private const string Host = "localhost";
     private const int Port = 5432;
     private const string Username = "postgres";
     private const string Password = "admin";
+
+    /// <summary>
+    /// Migrations to run in order. These are the same SQL files used by the Rust server,
+    /// minus init.sql and 003_graph.sql which require Apache AGE.
+    /// </summary>
+    private static readonly string[] Migrations =
+    [
+        "002_schema.sql",
+        "004_coherence_links.sql",
+        "006_notebook_sequence.sql",
+        "007_claims_and_jobs.sql",
+    ];
 
     private readonly string _testDb = $"thinktank_test_{Guid.NewGuid():N}";
 
@@ -29,20 +41,32 @@ public class NotebookApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
     public async Task InitializeAsync()
     {
+        // Create the test database
         await using var conn = new NpgsqlConnection(AdminConnectionString);
         await conn.OpenAsync();
-        await using var cmd = conn.CreateCommand();
-        cmd.CommandText = $"CREATE DATABASE \"{_testDb}\"";
-        await cmd.ExecuteNonQueryAsync();
+        await using var createCmd = conn.CreateCommand();
+        createCmd.CommandText = $"CREATE DATABASE \"{_testDb}\"";
+        await createCmd.ExecuteNonQueryAsync();
+
+        // Apply the real SQL migrations
+        await using var testConn = new NpgsqlConnection(TestConnectionString);
+        await testConn.OpenAsync();
+
+        var migrationsDir = Path.Combine(AppContext.BaseDirectory, "Migrations");
+        foreach (var file in Migrations)
+        {
+            var sql = await File.ReadAllTextAsync(Path.Combine(migrationsDir, file));
+            await using var cmd = testConn.CreateCommand();
+            cmd.CommandText = sql;
+            await cmd.ExecuteNonQueryAsync();
+        }
     }
 
     async Task IAsyncLifetime.DisposeAsync()
     {
-        // Drop the test database
         await using var conn = new NpgsqlConnection(AdminConnectionString);
         await conn.OpenAsync();
         await using var cmd = conn.CreateCommand();
-        // Terminate any remaining connections first
         cmd.CommandText = $"""
             SELECT pg_terminate_backend(pid)
             FROM pg_stat_activity
@@ -59,13 +83,5 @@ public class NotebookApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
         builder.UseSetting("ConnectionStrings:Notebook", TestConnectionString);
         builder.UseSetting("AllowDevIdentity", "true");
-
-        builder.ConfigureServices(services =>
-        {
-            var sp = services.BuildServiceProvider();
-            using var scope = sp.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<NotebookDbContext>();
-            db.Database.EnsureCreated();
-        });
     }
 }

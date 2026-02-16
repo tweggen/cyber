@@ -19,6 +19,12 @@ public class NotebookRepository(NotebookDbContext db) : INotebookRepository
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
 
+        // Ensure the author exists in the authors table (required by notebooks.owner_id FK).
+        // Uses the author_id as a synthetic public_key placeholder when no real key is available.
+        await db.Database.ExecuteSqlRawAsync(
+            "INSERT INTO authors (id, public_key) VALUES ({0}, {1}) ON CONFLICT DO NOTHING",
+            [ownerId, ownerId], ct);
+
         var notebook = new NotebookEntity
         {
             Id = Guid.NewGuid(),

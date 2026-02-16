@@ -27,4 +27,12 @@
     <ProjectReference Include="..\..\src\Notebook.Server\Notebook.Server.csproj" />
   </ItemGroup>
 
+  <!-- Link real SQL migration files so the test DB matches production schema -->
+  <ItemGroup>
+    <Content Include="..\..\..\notebook\migrations\002_schema.sql" Link="Migrations\002_schema.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\notebook\migrations\004_coherence_links.sql" Link="Migrations\004_coherence_links.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\notebook\migrations\006_notebook_sequence.sql" Link="Migrations\006_notebook_sequence.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\notebook\migrations\007_claims_and_jobs.sql" Link="Migrations\007_claims_and_jobs.sql" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>
