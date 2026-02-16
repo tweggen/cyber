@@ -59,16 +59,21 @@ The artifact entry's claims summarize across all fragments.
 
 ## Fragmentation Rules
 
+### Input assumption
+
+Fragmentation always operates on **markdown** content. The server normalizes all content on write (see `07-NORMALIZATION.md`), so by the time fragmentation runs, HTML and other formats have already been converted to markdown. This means fragmentation logic is format-agnostic — it only needs to understand markdown structure.
+
 ### When to fragment
 
 An entry should be fragmented when its content exceeds a size threshold. Suggested threshold: ~4,000 tokens (roughly 3,000 words). This keeps each fragment within comfortable range for a cheap LLM to distill.
 
 ### How to fragment
 
-1. Split content at natural boundaries (headings, paragraphs, sections)
-2. Write each fragment as a separate entry with `fragment_of` pointing to the artifact entry
-3. Each fragment gets its own claims (distilled by a robot worker)
-4. The artifact entry gets claims that synthesize across all fragment claims
+1. Split content at **markdown heading boundaries** (`#`, `##`, `###`, etc.) — these are the natural section breaks after normalization
+2. If a section still exceeds the threshold, split at paragraph boundaries within that section
+3. Write each fragment as a separate entry with `fragment_of` pointing to the artifact entry
+4. Each fragment gets its own claims (distilled by a robot worker)
+5. The artifact entry gets claims that synthesize across all fragment claims
 
 ### Fragment chain
 

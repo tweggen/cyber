@@ -13,7 +13,8 @@ The current notebook routes ALL operations through LLM instances via MCP. Every 
 | Work Type | Example | Processor | Cost |
 |-----------|---------|-----------|------|
 | Storage I/O | Write entry, retrieve entry | Server (native) | ~$0 |
-| Text extraction | HTML → readable text | Script (no LLM) | ~$0 |
+| Normalization | HTML → markdown, strip markup | Server (on write) | ~$0 |
+| Text extraction | Parse source files, extract metadata | Script (no LLM) | ~$0 |
 | Claim distillation | Content → N top claims | Cheap LLM (Haiku) | ~$0.001/entry |
 | Claim comparison | Entropy/friction scoring | Cheap LLM (Haiku) | ~$0.001/pair |
 | Contradiction resolution | Analyze conflicting claims | Strong LLM (Sonnet/Opus) | ~$0.05/case |
@@ -38,6 +39,8 @@ The current notebook routes ALL operations through LLM instances via MCP. Every 
 │  Interface: pull job from server, push result   │
 ├─────────────────────────────────────────────────┤
 │  Notebook Server (no LLM)                       │
+│  - Content normalization on write               │
+│    (HTML→markdown, passthrough text/plain)       │
 │  - Storage (entries, claims, originals)         │
 │  - Job queue (pending work for robots)          │
 │  - Entropy/friction state                       │
@@ -46,9 +49,9 @@ The current notebook routes ALL operations through LLM instances via MCP. Every 
 │  - Index maintenance triggers                   │
 ├─────────────────────────────────────────────────┤
 │  Ingest Scripts (no LLM)                        │
-│  - HTML parsing, text extraction                │
 │  - Metadata extraction (titles, paths, dates)   │
-│  - Batch upload to server                       │
+│  - Fragmentation (split markdown at headings)   │
+│  - Batch upload to server (raw or normalized)   │
 └─────────────────────────────────────────────────┘
 ```
 
@@ -62,6 +65,7 @@ The current notebook routes ALL operations through LLM instances via MCP. Every 
 | `04-ROBOT-WORKERS.md` | Stateless cheap-LLM workers: job types, interface, scaling |
 | `05-INGEST-PIPELINE.md` | End-to-end flow for bulk content (e.g., 14K Confluence pages) |
 | `06-MIGRATION.md` | How to evolve from current v1 to v2 without breaking existing entries |
+| `07-NORMALIZATION.md` | Content normalization: server-side format conversion to markdown |
 
 ## Existing Context
 

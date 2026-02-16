@@ -11,16 +11,25 @@ Ingest 14,000 HTML pages from a Confluence dump into the notebook, with all info
             │
             ▼
  ┌──────────────────────┐
- │  Phase 1: EXTRACT    │  No LLM. Python script.
- │  HTML → clean text   │  Seconds per file.
- │  + metadata          │
+ │  Phase 1a: EXTRACT   │  No LLM. Python script.
+ │  Parse source files  │  Seconds per file.
+ │  + extract metadata  │
+ └──────────┬───────────┘
+            │
+            ▼
+ ┌──────────────────────┐
+ │  Phase 1b: FRAGMENT  │  No LLM. Python script.
+ │  Split at markdown   │  Operates on markdown.
+ │  heading boundaries  │  (pre- or post-normalization)
+ │  if > token budget   │
  └──────────┬───────────┘
             │
             ▼
  ┌──────────────────────┐
  │  Phase 2: UPLOAD     │  No LLM. Batch write API.
- │  Batch write to      │  100 entries per call.
- │  notebook server     │  ~140 API calls total.
+ │  Batch write to      │  Server normalizes on write
+ │  notebook server     │  (HTML→markdown, etc.)
+ │  (raw or normalized) │  ~140 API calls total.
  └──────────┬───────────┘
             │
             ▼
@@ -47,29 +56,33 @@ Ingest 14,000 HTML pages from a Confluence dump into the notebook, with all info
  └──────────────────────┘
 ```
 
-## Phase 1: Extract
+## Phase 1a: Extract
 
 ### Script: `confluence_extract.py`
 
 Input: Directory of HTML files from Confluence export.
 
+The extract phase focuses on **metadata extraction and source-specific cleanup** — not format conversion. Format conversion (HTML→markdown) is handled by the server's normalization layer on write (see `07-NORMALIZATION.md`). Ingest scripts MAY pre-normalize for efficiency or control, but it is not required.
+
 Per file:
-1. Parse HTML with BeautifulSoup or html2text
-2. Remove Confluence-specific boilerplate (navigation, sidebars, macros markup, empty containers)
-3. Extract:
+1. Extract metadata:
    - **Title**: from `<title>` or first `<h1>`
-   - **Content**: readable text, preserving headings and structure
    - **Space**: Confluence space key (from path or metadata)
    - **Page ID**: Confluence page ID (from filename or metadata)
    - **Parent page**: if available in metadata (for hierarchy reconstruction)
    - **Labels/tags**: if present
-4. If content exceeds ~4,000 tokens: split at heading boundaries into fragments
+2. Strip Confluence-specific boilerplate that is not meaningful content:
+   - `<ac:*>` macro tags (Confluence-specific)
+   - `<ri:*>` resource identifier tags
+   - Empty containers, navigation, sidebars
+   - Table of contents macros, user profile cards, page metadata blocks
+   - "Created by / Last modified by" footers
+3. Pass content with `content_type: "text/html"` — the server normalizes on write
 
-Output: JSON Lines file, one object per page (or per fragment):
+Output: JSON Lines file, one object per page:
 
 ```jsonl
-{"title": "CI/CD Pipeline Setup", "space": "ENG", "page_id": "12345", "content": "...", "topic": "confluence/ENG/ci-cd", "fragment_of": null, "fragment_index": null}
-{"title": "CI/CD Pipeline Setup (part 2)", "space": "ENG", "page_id": "12345", "content": "...", "topic": "confluence/ENG/ci-cd", "fragment_of": "12345", "fragment_index": 1}
+{"title": "CI/CD Pipeline Setup", "space": "ENG", "page_id": "12345", "content": "<h1>CI/CD Pipeline...</h1>...", "content_type": "text/html", "topic": "confluence/ENG/ci-cd"}
 ```
 
 ### Topic derivation
@@ -79,29 +92,46 @@ Use the Confluence space hierarchy to derive topics automatically:
 - Page path `ENG > DevOps > CI/CD Pipeline` → `confluence/ENG/devops/ci-cd-pipeline`
 - This gives a reasonable starting taxonomy without any LLM involvement
 
-### Content cleaning heuristics
+### Alternative: pre-normalize in the script
 
-Confluence HTML is notoriously messy. Key things to strip:
-- `<ac:*>` macro tags (Confluence-specific)
-- `<ri:*>` resource identifier tags
-- Empty `<div>`, `<span>`, `<p>` elements
-- Table of contents macros (the notebook's index layer replaces this)
-- User profile cards, page metadata blocks
-- "Created by / Last modified by" footers
+Ingest scripts can optionally normalize before upload (e.g., using `html2text` or BeautifulSoup) and upload as `content_type: "text/markdown"`. This is useful when:
+- The source format needs domain-specific cleanup the server's generic normalizer can't handle
+- You want to verify the normalization output before uploading
+- You're processing locally and want to reduce server-side work
 
-Preserve:
-- Headings (convert to markdown `#` or plain text with markers)
-- Code blocks (wrap in triple backticks)
-- Tables (convert to markdown or plain text tabular format)
-- Lists (preserve structure)
-- Links (preserve URL and link text)
-- Images: store reference/alt text, not the image data
+When pre-normalizing, preserve:
+- Headings (as markdown `#`)
+- Code blocks (triple backticks)
+- Tables (markdown table format)
+- Lists (markdown list syntax)
+- Links (markdown link syntax)
+- Images: alt text reference, not image data
+
+## Phase 1b: Fragment
+
+### Format-agnostic fragmentation
+
+Fragmentation operates on **markdown** content. If the ingest script pre-normalizes, it can fragment before upload. If not, the server normalizes on write, and fragmentation happens on the normalized markdown.
+
+If content exceeds ~4,000 tokens:
+1. Split at markdown heading boundaries (`#`, `##`, `###`)
+2. If a section still exceeds the threshold, split at paragraph boundaries
+3. Each fragment becomes a separate entry with `fragment_of` pointing to the artifact entry
+
+Output with fragments:
+
+```jsonl
+{"title": "CI/CD Pipeline Setup", "space": "ENG", "page_id": "12345", "content": "...", "content_type": "text/markdown", "topic": "confluence/ENG/ci-cd", "fragment_of": null, "fragment_index": null}
+{"title": "CI/CD Pipeline Setup (part 2)", "space": "ENG", "page_id": "12345", "content": "...", "content_type": "text/markdown", "topic": "confluence/ENG/ci-cd", "fragment_of": "12345", "fragment_index": 1}
+```
 
 ## Phase 2: Upload
 
 ### Script: `confluence_upload.py`
 
 Reads the JSON Lines file from Phase 1 and batch-writes to the notebook server.
+
+The `content_type` field tells the server what format the content is in. If `content_type` is `text/html`, the server normalizes it to markdown on write. If the ingest script pre-normalized, it should set `content_type: "text/markdown"` and the server passes it through.
 
 ```python
 import requests
@@ -118,10 +148,9 @@ with open("extracted.jsonl") as f:
         entries.append({
             "content": page["content"],
             "topic": page["topic"],
-            "content_type": "text/plain",
+            "content_type": page.get("content_type", "text/html"),
             "fragment_of": page.get("fragment_of"),
             "fragment_index": page.get("fragment_index"),
-            # Store original metadata in content header
         })
 
 # Upload in batches
@@ -137,6 +166,7 @@ for i in range(0, len(entries), BATCH_SIZE):
 ### Duration estimate
 - 14,000 entries ÷ 100 per batch = 140 API calls
 - At ~100ms per call: ~14 seconds total
+- Server normalization adds negligible overhead (HTML→markdown is CPU-cheap)
 
 ## Phase 3: Distill (Robot Workers)
 
@@ -207,8 +237,8 @@ Not all high-friction entries are equally important. The agent should process:
 
 | Phase | Processor | Duration (4 robots) | Cost |
 |-------|-----------|---------------------|------|
-| Extract | Python script | ~5 minutes | $0 |
-| Upload | Python script + server | ~15 seconds | $0 |
+| Extract + Fragment | Python script | ~5 minutes | $0 |
+| Upload + Normalize | Python script + server | ~15 seconds | $0 |
 | Distill | Haiku robots | ~30 minutes | ~$3 |
 | Compare | Haiku robots | ~30 minutes | ~$3 |
 | Review | Sonnet/Opus agent | hours (interactive) | ~$50-100 |
