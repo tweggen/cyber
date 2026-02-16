@@ -231,7 +231,7 @@ app.MapPost("/auth/logout", async (SignInManager<ApplicationUser> signInManager)
 // Serve install scripts as plain text (anonymous access for curl | sh)
 app.MapGet("/scripts/{filename}", (string filename, IWebHostEnvironment env) =>
 {
-    if (filename is not ("install.sh" or "install.ps1" or "notebook_mcp.py"))
+    if (filename is not ("install.sh" or "install-gitbash.sh" or "install.ps1" or "notebook_mcp.py"))
         return Results.NotFound();
     var path = Path.Combine(env.WebRootPath, "scripts", filename);
     return File.Exists(path) ? Results.File(path, "text/plain") : Results.NotFound();

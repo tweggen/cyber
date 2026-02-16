@@ -125,11 +125,20 @@ else if (notebooks != null)
     {
         <div class="card mb-3">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <span>Connect <strong>@connectNotebookName</strong> to Claude Code</span>
+                <div class="d-flex align-items-center gap-2">
+                    <span>Connect <strong>@connectNotebookName</strong> to</span>
+                    <select class="form-select form-select-sm" style="width: auto;"
+                            @onchange="OnTargetChanged" value="@connectTarget">
+                        @foreach (var kv in TargetLabels)
+                        {
+                            <option value="@kv.Key">@kv.Value</option>
+                        }
+                    </select>
+                </div>
                 <button class="btn btn-sm btn-outline-secondary" @onclick="CloseConnect">Close</button>
             </div>
             <div class="card-body">
-                <p class="text-muted small">Run one of these commands to register the notebook MCP server with Claude Code:</p>
+                <p class="text-muted small">Run one of these commands to register the notebook MCP server:</p>
 
                 <div class="mb-3">
                     <label class="form-label small fw-bold mb-1">Bash (Mac / Linux / WSL)</label>
@@ -199,9 +208,17 @@ else if (notebooks != null)
     // Connect state
     private Guid? connectNotebookId;
     private string? connectNotebookName;
+    private string? connectToken;
+    private string connectTarget = "claude";
     private string? bashCommand;
     private string? gitBashCommand;
     private string? psCommand;
+
+    private static readonly Dictionary<string, string> TargetLabels = new()
+    {
+        ["claude"] = "Claude Code",
+        ["cursor"] = "Cursor",
+    };
 
 
     protected override async Task OnInitializedAsync()
@@ -363,21 +380,40 @@ else if (notebooks != null)
     {
         if (authorId == null) return;
 
-        var token = TokenService.GenerateToken(authorId);
-        var baseUrl = Navigation.BaseUri.TrimEnd('/');
-        var apiUrl = Configuration["NotebookApi:PublicUrl"] ?? baseUrl;
-
         connectNotebookId = nb.Id;
         connectNotebookName = nb.Name;
-        bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {nb.Id} {token} --url {apiUrl}";
-        gitBashCommand = $"curl -fsSL {baseUrl}/scripts/install-gitbash.sh | bash -s -- {nb.Id} {token} --url {apiUrl}";
-        psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{nb.Id}' -Token '{token}' -Url '{apiUrl}'";
+        connectToken = TokenService.GenerateToken(authorId);
+        connectTarget = "claude";
+        RegenerateConnectCommands();
+    }
+
+    private void OnTargetChanged(ChangeEventArgs e)
+    {
+        connectTarget = e.Value?.ToString() ?? "claude";
+        RegenerateConnectCommands();
+    }
+
+    private void RegenerateConnectCommands()
+    {
+        if (connectNotebookId == null || connectToken == null) return;
+
+        var baseUrl = Navigation.BaseUri.TrimEnd('/');
+        var apiUrl = Configuration["NotebookApi:PublicUrl"] ?? baseUrl;
+        var id = connectNotebookId.Value;
+        var targetSuffix = connectTarget != "claude" ? $" --target {connectTarget}" : "";
+        var psTargetSuffix = connectTarget != "claude" ? $" -Target '{connectTarget}'" : "";
+
+        bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {id} {connectToken} --url {apiUrl}{targetSuffix}";
+        gitBashCommand = $"curl -fsSL {baseUrl}/scripts/install-gitbash.sh | bash -s -- {id} {connectToken} --url {apiUrl}{targetSuffix}";
+        psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{id}' -Token '{connectToken}' -Url '{apiUrl}'{psTargetSuffix}";
     }
 
     private void CloseConnect()
     {
         connectNotebookId = null;
         connectNotebookName = null;
+        connectToken = null;
+        connectTarget = "claude";
         bashCommand = null;
         gitBashCommand = null;
         psCommand = null;

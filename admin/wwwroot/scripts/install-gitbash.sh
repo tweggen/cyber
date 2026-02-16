@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install notebook MCP server for Claude Code (Windows Git Bash)
+# Install notebook MCP server for Claude Code or Cursor (Windows Git Bash)
 # Usage: curl -fsSL https://cyber.nassau-records.de/scripts/install-gitbash.sh | bash -s -- <notebook-id> <token> [options]
 #
 # Same as install.sh but converts Unix-style paths (/c/Users/...)
@@ -9,10 +9,11 @@ set -euo pipefail
 
 DEFAULT_URL="https://notebook.nassau-records.de"
 DEFAULT_SCRIPTS_URL="https://cyber.nassau-records.de"
-DEFAULT_AUTHOR="claude-code"
+DEFAULT_AUTHOR=""
+DEFAULT_TARGET="claude"
 
 usage() {
-    echo "Usage: curl -fsSL <url>/scripts/install-gitbash.sh | bash -s -- <notebook-id> <token> [--url <url>] [--author <author>]"
+    echo "Usage: curl -fsSL <url>/scripts/install-gitbash.sh | bash -s -- <notebook-id> <token> [--url <url>] [--author <author>] [--target <target>]"
     echo ""
     echo "Arguments:"
     echo "  notebook-id   UUID of the notebook"
@@ -20,7 +21,8 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --url <url>       Server URL (default: $DEFAULT_URL)"
-    echo "  --author <author> Author name (default: $DEFAULT_AUTHOR)"
+    echo "  --author <author> Author name (default: claude-code or cursor, per target)"
+    echo "  --target <target> Registration target: claude or cursor (default: claude)"
     exit 1
 }
 
@@ -34,6 +36,7 @@ shift 2
 
 URL="$DEFAULT_URL"
 AUTHOR="$DEFAULT_AUTHOR"
+TARGET="$DEFAULT_TARGET"
 
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -45,12 +48,25 @@ while [ $# -gt 0 ]; do
             AUTHOR="$2"
             shift 2
             ;;
+        --target)
+            TARGET="$2"
+            shift 2
+            ;;
         *)
             echo "Unknown option: $1"
             usage
             ;;
     esac
 done
+
+# Default author per target if not explicitly set
+if [ -z "$AUTHOR" ]; then
+    case "$TARGET" in
+        claude) AUTHOR="claude-code" ;;
+        cursor) AUTHOR="cursor" ;;
+        *)      AUTHOR="$TARGET" ;;
+    esac
+fi
 
 # Detect python
 if command -v python3 &>/dev/null; then
@@ -78,12 +94,52 @@ JSON=$(cat <<EOF
 EOF
 )
 
-# Register with Claude Code (remove first in case it already exists)
-claude mcp remove notebook-mcp 2>/dev/null || true
-claude mcp add-json notebook-mcp "$JSON"
+register_claude() {
+    claude mcp remove notebook-mcp 2>/dev/null || true
+    claude mcp add-json notebook-mcp "$JSON"
+    echo ""
+    echo "Done! MCP server 'notebook-mcp' registered with Claude Code."
+}
 
-echo ""
-echo "Done! MCP server 'notebook-mcp' registered with Claude Code."
+register_cursor() {
+    local CONFIG_DIR
+    CONFIG_DIR=$(cygpath -w "$HOME/.cursor")
+    local CONFIG_FILE="$CONFIG_DIR\\mcp.json"
+    mkdir -p "$HOME/.cursor"
+
+    $PYTHON -c "
+import json, sys, os
+config_file = sys.argv[1]
+server_json = json.loads(sys.argv[2])
+config = {}
+if os.path.exists(config_file):
+    with open(config_file) as f:
+        config = json.load(f)
+if 'mcpServers' not in config:
+    config['mcpServers'] = {}
+config['mcpServers']['notebook-mcp'] = server_json
+with open(config_file, 'w') as f:
+    json.dump(config, f, indent=2)
+" "$CONFIG_FILE" "$JSON"
+
+    echo ""
+    echo "Done! MCP server 'notebook-mcp' registered with Cursor."
+    echo "  Config: $CONFIG_FILE"
+}
+
+case "$TARGET" in
+    claude)
+        register_claude
+        ;;
+    cursor)
+        register_cursor
+        ;;
+    *)
+        echo "Error: unknown target '$TARGET'. Supported: claude, cursor"
+        exit 1
+        ;;
+esac
+
 echo "  Notebook: $NOTEBOOK_ID"
 echo "  URL:      $URL"
 echo "  Author:   $AUTHOR"
