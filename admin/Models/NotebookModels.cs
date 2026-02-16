@@ -156,6 +156,9 @@ public class ClusterSummary
 
     [JsonPropertyName("stability")]
     public ulong Stability { get; set; }
+
+    [JsonPropertyName("representative_entry_ids")]
+    public List<Guid> RepresentativeEntryIds { get; set; } = [];
 }
 
 /// <summary>
@@ -189,6 +192,12 @@ public class ChangeEntry
 
     [JsonPropertyName("integration_cost")]
     public IntegrationCost IntegrationCost { get; set; } = new();
+
+    [JsonPropertyName("causal_position")]
+    public CausalPosition CausalPosition { get; set; } = new();
+
+    [JsonPropertyName("created")]
+    public DateTime Created { get; set; }
 }
 
 // ============================================================================

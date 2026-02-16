@@ -69,39 +69,101 @@ else if (browseResult != null)
         </div>
     }
 
-    @if (recentChanges != null && recentChanges.Count > 0)
+    @* ================================================================== *@
+    @* Entries: search + paginated table                                   *@
+    @* ================================================================== *@
+
+    <h4>Entries</h4>
+
+    <div class="row g-2 mb-3 align-items-end">
+        <div class="col-auto" style="min-width: 280px;">
+            <input type="text" class="form-control form-control-sm" placeholder="Search topic or content..."
+                @bind="searchQuery" @bind:event="oninput" @onkeyup="OnSearchChanged" />
+        </div>
+        <div class="col-auto">
+            <select class="form-select form-select-sm" @bind="sortField" @bind:after="OnSortChanged">
+                <option value="sequence">Newest first</option>
+                <option value="sequence_asc">Oldest first</option>
+                <option value="topic">Topic A-Z</option>
+                <option value="cost">Cost (high to low)</option>
+            </select>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            <div class="col-auto">
+                <span class="text-muted small">@filteredEntries.Count result(s)</span>
+            </div>
+        }
+    </div>
+
+    @if (allEntries == null || allEntries.Count == 0)
     {
-        <h4>Recent Entries</h4>
+        <p class="text-muted">No entries in this notebook yet.</p>
+    }
+    else
+    {
         <table class="table table-sm table-striped">
             <thead>
                 <tr>
-                    <th>Operation</th>
+                    <th style="width: 60px;">Seq</th>
+                    <th style="width: 80px;">Op</th>
                     <th>Topic</th>
-                    <th>Cost</th>
-                    <th>Actions</th>
+                    <th style="width: 90px;">Cost</th>
+                    <th style="width: 160px;">Created</th>
+                    <th style="width: 60px;"></th>
                 </tr>
             </thead>
             <tbody>
-                @foreach (var change in recentChanges.Take(20))
+                @foreach (var entry in PagedEntries)
                 {
                     <tr>
-                        <td><span class="badge @(change.Operation == "write" ? "bg-success" : "bg-info")">@change.Operation</span></td>
-                        <td>@(change.Topic ?? "-")</td>
-                        <td>@change.IntegrationCost.CatalogShift.ToString("F3")</td>
+                        <td class="text-muted">@entry.CausalPosition.Sequence</td>
                         <td>
-                            <a href="/notebooks/@NotebookId/entries/@change.EntryId" class="btn btn-sm btn-outline-secondary">View</a>
+                            <span class="badge @(entry.Operation == "write" ? "bg-success" : "bg-info")">@entry.Operation</span>
+                        </td>
+                        <td>@(entry.Topic ?? "-")</td>
+                        <td>@entry.IntegrationCost.CatalogShift.ToString("F3")</td>
+                        <td class="text-muted small">@entry.Created.ToString("yyyy-MM-dd HH:mm")</td>
+                        <td>
+                            <a href="/notebooks/@NotebookId/entries/@entry.EntryId"
+                               class="btn btn-sm btn-outline-secondary">View</a>
                         </td>
                     </tr>
                 }
             </tbody>
         </table>
+
+        @* Pagination controls *@
+        @if (TotalPages > 1)
+        {
+            <nav>
+                <ul class="pagination pagination-sm justify-content-center">
+                    <li class="page-item @(currentPage == 1 ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(currentPage - 1)">&laquo;</button>
+                    </li>
+                    @foreach (var p in VisiblePageNumbers)
+                    {
+                        <li class="page-item @(p == currentPage ? "active" : "")">
+                            <button class="page-link" @onclick="() => GoToPage(p)">@p</button>
+                        </li>
+                    }
+                    <li class="page-item @(currentPage == TotalPages ? "disabled" : "")">
+                        <button class="page-link" @onclick="() => GoToPage(currentPage + 1)">&raquo;</button>
+                    </li>
+                </ul>
+            </nav>
+        }
     }
 
-    <h4>Catalog</h4>
+    @* ================================================================== *@
+    @* Catalog                                                             *@
+    @* ================================================================== *@
+
+    <h4 class="mt-4">Catalog</h4>
 
     @if (browseResult.Catalog.Count == 0)
     {
-        <p class="text-muted">No entries in this notebook yet.</p>
+        <p class="text-muted">No clusters yet.</p>
     }
 
     @foreach (var cluster in browseResult.Catalog)
@@ -110,12 +172,29 @@ else if (browseResult != null)
             <div class="card-body">
                 <h6 class="card-title">@cluster.Topic</h6>
                 <p class="card-text">@cluster.Summary</p>
-                <small class="text-muted">
-                    @cluster.EntryCount entries | Cost: @cluster.CumulativeCost.ToString("F2") | Stability: @cluster.Stability
-                </small>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        @cluster.EntryCount entries | Cost: @cluster.CumulativeCost.ToString("F2") | Stability: @cluster.Stability
+                    </small>
+                    @if (cluster.RepresentativeEntryIds.Count > 0)
+                    {
+                        <div>
+                            @foreach (var eid in cluster.RepresentativeEntryIds.Take(3))
+                            {
+                                <a href="/notebooks/@NotebookId/entries/@eid"
+                                   class="btn btn-sm btn-outline-secondary me-1"
+                                   title="@eid">@eid.ToString()[..8]</a>
+                            }
+                        </div>
+                    }
+                </div>
             </div>
         </div>
     }
+
+    @* ================================================================== *@
+    @* Sharing (owner only)                                                *@
+    @* ================================================================== *@
 
     @if (isOwner)
     {
@@ -183,7 +262,8 @@ else if (browseResult != null)
     private Task<AuthenticationState>? AuthState { get; set; }
 
     private BrowseResponse? browseResult;
-    private List<ChangeEntry>? recentChanges;
+    private List<ChangeEntry>? allEntries;
+    private List<ChangeEntry> filteredEntries = [];
     private List<ParticipantDto>? participants;
     private string? errorMessage;
     private string? authorIdHex;
@@ -192,6 +272,32 @@ else if (browseResult != null)
     private string shareAuthorId = string.Empty;
     private string shareWrite = "false";
     private string? shareError;
+
+    // Search & pagination state
+    private string searchQuery = string.Empty;
+    private string sortField = "sequence";
+    private int currentPage = 1;
+    private const int PageSize = 25;
+
+    private int TotalPages => filteredEntries.Count == 0 ? 1 : (int)Math.Ceiling((double)filteredEntries.Count / PageSize);
+
+    private IEnumerable<ChangeEntry> PagedEntries =>
+        filteredEntries
+            .Skip((currentPage - 1) * PageSize)
+            .Take(PageSize);
+
+    private IEnumerable<int> VisiblePageNumbers
+    {
+        get
+        {
+            // Show at most 7 page numbers centered around current page
+            int total = TotalPages;
+            int start = Math.Max(1, currentPage - 3);
+            int end = Math.Min(total, start + 6);
+            start = Math.Max(1, end - 6);
+            return Enumerable.Range(start, end - start + 1);
+        }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -208,7 +314,9 @@ else if (browseResult != null)
             browseResult = await ApiClient.BrowseAsync(authorIdHex, NotebookId);
 
             var observeResult = await ApiClient.ObserveAsync(authorIdHex, NotebookId);
-            recentChanges = observeResult?.Changes ?? [];
+            allEntries = observeResult?.Changes ?? [];
+
+            ApplyFilterAndSort();
 
             var notebooksResp = await ApiClient.ListNotebooksAsync(authorIdHex);
             isOwner = notebooksResp?.Notebooks.Any(n => n.Id == NotebookId && n.IsOwner) ?? false;
@@ -223,6 +331,59 @@ else if (browseResult != null)
         {
             errorMessage = $"Could not connect to notebook API: {ex.Message}";
         }
+    }
+
+    private void ApplyFilterAndSort()
+    {
+        if (allEntries == null)
+        {
+            filteredEntries = [];
+            return;
+        }
+
+        IEnumerable<ChangeEntry> result = allEntries;
+
+        // Apply search filter
+        if (!string.IsNullOrWhiteSpace(searchQuery))
+        {
+            var q = searchQuery.Trim().ToLowerInvariant();
+            result = result.Where(e =>
+                (e.Topic != null && e.Topic.ToLowerInvariant().Contains(q)) ||
+                e.EntryId.ToString().StartsWith(q, StringComparison.OrdinalIgnoreCase));
+        }
+
+        // Apply sort
+        result = sortField switch
+        {
+            "sequence_asc" => result.OrderBy(e => e.CausalPosition.Sequence),
+            "topic" => result.OrderBy(e => e.Topic ?? "").ThenByDescending(e => e.CausalPosition.Sequence),
+            "cost" => result.OrderByDescending(e => e.IntegrationCost.CatalogShift),
+            _ => result.OrderByDescending(e => e.CausalPosition.Sequence), // "sequence" = newest first
+        };
+
+        filteredEntries = result.ToList();
+
+        // Reset to page 1 when filter/sort changes
+        if (currentPage > TotalPages)
+            currentPage = 1;
+    }
+
+    private void OnSearchChanged()
+    {
+        currentPage = 1;
+        ApplyFilterAndSort();
+    }
+
+    private void OnSortChanged()
+    {
+        currentPage = 1;
+        ApplyFilterAndSort();
+    }
+
+    private void GoToPage(int page)
+    {
+        if (page >= 1 && page <= TotalPages)
+            currentPage = page;
     }
 
     private void ConfirmDelete() => showDeleteConfirm = true;
