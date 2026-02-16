@@ -142,6 +142,16 @@ else if (notebooks != null)
                 </div>
 
                 <div class="mb-3">
+                    <label class="form-label small fw-bold mb-1">Git Bash (Windows)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@gitBashCommand" readonly />
+                        <button class="btn btn-outline-secondary"
+                                onclick="clipboardCopyFromSibling(this)"
+                                title="Copy to clipboard">Copy</button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
                     <label class="form-label small fw-bold mb-1">PowerShell (Windows)</label>
                     <div class="input-group input-group-sm">
                         <input type="text" class="form-control font-monospace" value="@psCommand" readonly />
@@ -190,6 +200,7 @@ else if (notebooks != null)
     private Guid? connectNotebookId;
     private string? connectNotebookName;
     private string? bashCommand;
+    private string? gitBashCommand;
     private string? psCommand;
 
 
@@ -359,6 +370,7 @@ else if (notebooks != null)
         connectNotebookId = nb.Id;
         connectNotebookName = nb.Name;
         bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {nb.Id} {token} --url {apiUrl}";
+        gitBashCommand = $"curl -fsSL {baseUrl}/scripts/install-gitbash.sh | bash -s -- {nb.Id} {token} --url {apiUrl}";
         psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{nb.Id}' -Token '{token}' -Url '{apiUrl}'";
     }
 
@@ -367,6 +379,7 @@ else if (notebooks != null)
         connectNotebookId = null;
         connectNotebookName = null;
         bashCommand = null;
+        gitBashCommand = null;
         psCommand = null;
     }
 }
