@@ -65,6 +65,21 @@ public sealed class RobotWorkerService : BackgroundService
                 var apiClient = scope.ServiceProvider.GetRequiredService<NotebookApiClient>();
                 var ollamaClient = scope.ServiceProvider.GetRequiredService<IOllamaClient>();
 
+                // Check Ollama BEFORE claiming a job — don't burn retry budgets while Ollama is down
+                var ollamaOk = await ollamaClient.IsRunningAsync(ct);
+                _state.OllamaConnected = ollamaOk;
+                if (!ollamaOk)
+                {
+                    worker.Status = WorkerStatus.Idle;
+                    worker.CurrentJobType = null;
+                    if (consecutiveEmpty % 12 == 0)
+                        _logger.LogWarning("Worker {WorkerId}: Ollama not reachable, waiting...", workerId);
+                    consecutiveEmpty++;
+                    _state.NotifyChanged();
+                    await Task.Delay(pollInterval, ct);
+                    continue;
+                }
+
                 // Pick a job type if filtered; server-side priority handles ordering
                 string? jobType = null;
                 if (_options.JobTypes is { Count: > 0 })
@@ -99,17 +114,6 @@ public sealed class RobotWorkerService : BackgroundService
 
                 try
                 {
-                    // Check ollama
-                    var ollamaOk = await ollamaClient.IsRunningAsync(ct);
-                    _state.OllamaConnected = ollamaOk;
-                    if (!ollamaOk)
-                    {
-                        await apiClient.FailJobAsync(jobId, workerId, "Ollama is not running", ct);
-                        worker.JobsFailed++;
-                        _state.NotifyChanged();
-                        await Task.Delay(pollInterval, ct);
-                        continue;
-                    }
 
                     // EMBED_CLAIMS: call embedding API instead of chat
                     if (jobTypeStr == "EMBED_CLAIMS")
