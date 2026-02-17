@@ -9,27 +9,27 @@ public sealed record ClaimComparison
 {
     /// <summary>The entry this was compared against.</summary>
     [JsonPropertyName("compared_against")]
-    public required Guid ComparedAgainst { get; init; }
+    public Guid? ComparedAgainst { get; init; }
 
     /// <summary>Novelty score: fraction of claims covering new ground (0.0 to 1.0).</summary>
     [JsonPropertyName("entropy")]
-    public required double Entropy { get; init; }
+    public double Entropy { get; init; }
 
     /// <summary>Contradiction score: fraction of claims that contradict existing claims (0.0 to 1.0).</summary>
     [JsonPropertyName("friction")]
-    public required double Friction { get; init; }
+    public double Friction { get; init; }
 
     /// <summary>Details for each contradiction found.</summary>
     [JsonPropertyName("contradictions")]
-    public required List<Contradiction> Contradictions { get; init; }
+    public List<Contradiction> Contradictions { get; init; } = [];
 
     /// <summary>When this comparison was computed.</summary>
     [JsonPropertyName("computed_at")]
-    public required DateTimeOffset ComputedAt { get; init; }
+    public DateTimeOffset? ComputedAt { get; init; }
 
     /// <summary>Which robot worker computed this.</summary>
     [JsonPropertyName("computed_by")]
-    public required string ComputedBy { get; init; }
+    public string? ComputedBy { get; init; }
 }
 
 /// <summary>A specific contradiction between two claims.</summary>

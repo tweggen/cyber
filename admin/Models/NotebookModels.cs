@@ -284,6 +284,21 @@ public class EntryDetail
 
     [JsonPropertyName("integration_cost")]
     public IntegrationCost IntegrationCost { get; set; } = new();
+
+    [JsonPropertyName("claims")]
+    public List<ClaimDto> Claims { get; set; } = [];
+
+    [JsonPropertyName("claims_status")]
+    public string? ClaimsStatus { get; set; }
+
+    [JsonPropertyName("comparisons")]
+    public List<ComparisonDto> Comparisons { get; set; } = [];
+
+    [JsonPropertyName("max_friction")]
+    public double? MaxFriction { get; set; }
+
+    [JsonPropertyName("needs_review")]
+    public bool NeedsReview { get; set; }
 }
 
 /// <summary>
@@ -329,6 +344,58 @@ public class EntrySummaryDto
 
     [JsonPropertyName("created")]
     public DateTime Created { get; set; }
+}
+
+// ============================================================================
+// Claims & Comparisons DTOs
+// ============================================================================
+
+/// <summary>
+/// A factual claim extracted from an entry's content.
+/// </summary>
+public class ClaimDto
+{
+    [JsonPropertyName("text")]
+    public string Text { get; set; } = string.Empty;
+
+    [JsonPropertyName("confidence")]
+    public double Confidence { get; set; }
+}
+
+/// <summary>
+/// Result of comparing two entries' claim-sets.
+/// </summary>
+public class ComparisonDto
+{
+    [JsonPropertyName("compared_against")]
+    public Guid ComparedAgainst { get; set; }
+
+    [JsonPropertyName("entropy")]
+    public double Entropy { get; set; }
+
+    [JsonPropertyName("friction")]
+    public double Friction { get; set; }
+
+    [JsonPropertyName("contradictions")]
+    public List<ContradictionDto> Contradictions { get; set; } = [];
+
+    [JsonPropertyName("computed_at")]
+    public DateTime ComputedAt { get; set; }
+}
+
+/// <summary>
+/// A specific contradiction between two claims.
+/// </summary>
+public class ContradictionDto
+{
+    [JsonPropertyName("claim_a")]
+    public string ClaimA { get; set; } = string.Empty;
+
+    [JsonPropertyName("claim_b")]
+    public string ClaimB { get; set; } = string.Empty;
+
+    [JsonPropertyName("severity")]
+    public double Severity { get; set; }
 }
 
 // ============================================================================

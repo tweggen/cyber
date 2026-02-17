@@ -57,6 +57,7 @@ app.MapJobEndpoints();
 app.MapBrowseEndpoints();
 app.MapObserveEndpoints();
 app.MapSearchEndpoints();
+app.MapReadEndpoints();
 
 app.Run();
 
