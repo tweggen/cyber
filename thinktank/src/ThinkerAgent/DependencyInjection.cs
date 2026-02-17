@@ -20,6 +20,7 @@ public static class DependencyInjection
             client.DefaultRequestHeaders.Authorization =
                 new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.Token);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.Timeout = TimeSpan.FromSeconds(30);
         });
 
         services.AddHttpClient<IOllamaClient, OllamaClient>(client =>
