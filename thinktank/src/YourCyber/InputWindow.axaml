@@ -1,0 +1,87 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:vm="clr-namespace:YourCyber.ViewModels"
+        mc:Ignorable="d" d:DesignWidth="600" d:DesignHeight="500"
+        x:Class="YourCyber.InputWindow"
+        x:DataType="vm:InputViewModel"
+        Title="Content Input"
+        Height="500" Width="600"
+        WindowStartupLocation="CenterScreen">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="2*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="1*"/>
+        </Grid.RowDefinitions>
+
+        <!-- Drop zone + toolbar -->
+        <Grid Grid.Row="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Toolbar -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="10,10,10,5" Spacing="10">
+                <Button Name="PickFilesButton" Content="Pick Files..." Click="OnPickFilesClick"
+                        IsEnabled="{Binding !IsProcessing}"/>
+                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center" Opacity="0.7"/>
+            </StackPanel>
+
+            <!-- Drop zone -->
+            <Border Grid.Row="1" Margin="10,5,10,10"
+                    BorderBrush="#60808080"
+                    BorderThickness="2"
+                    CornerRadius="8"
+                    Background="#10808080"
+                    DragDrop.AllowDrop="True"
+                    Name="DropZone">
+                <TextBlock Text="Drag and drop files here"
+                           HorizontalAlignment="Center"
+                           VerticalAlignment="Center"
+                           Opacity="0.5"
+                           FontSize="16"
+                           IsVisible="{Binding !IsProcessing}"/>
+            </Border>
+        </Grid>
+
+        <!-- Separator -->
+        <GridSplitter Grid.Row="1" Height="4" Background="Transparent"
+                      ResizeDirection="Rows"
+                      HorizontalAlignment="Stretch"/>
+
+        <!-- Log panel -->
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="Log" FontWeight="SemiBold" FontSize="12"
+                       Margin="10,5,10,2" Opacity="0.7"/>
+
+            <ListBox Grid.Row="1" Name="LogListBox"
+                     ItemsSource="{Binding LogEntries}"
+                     Margin="10,0,10,10"
+                     Background="#10808080"
+                     CornerRadius="4"
+                     FontFamily="Cascadia Mono, Consolas, Menlo, monospace"
+                     FontSize="12">
+                <ListBox.ItemTemplate>
+                    <DataTemplate x:DataType="vm:LogEntry">
+                        <StackPanel Orientation="Horizontal" Spacing="6">
+                            <TextBlock Text="{Binding Timestamp, StringFormat='{}{0:HH:mm:ss}'}"
+                                       Opacity="0.5"/>
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold"
+                                       IsVisible="{Binding FileName, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+                            <TextBlock Text="{Binding Message}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Grid>
+    </Grid>
+</Window>

@@ -26,6 +26,7 @@ public partial class App : Application
 
     private ConfigWindow? _configWindow;
     private StatusWindow? _statusWindow;
+    private InputWindow? _inputWindow;
 
     private readonly HttpClient _http = new() { BaseAddress = new Uri("http://localhost:5948") };
     private HubConnection? _hubConnection;
@@ -102,6 +103,9 @@ public partial class App : Application
         var workersItem = new NativeMenuItem("Workers...");
         workersItem.Click += (s, e) => ShowStatusWindow();
 
+        var inputItem = new NativeMenuItem("Input...");
+        inputItem.Click += (s, e) => ShowInputWindow();
+
         var exitItem = new NativeMenuItem("Exit YourCyber");
         exitItem.Click += (s, e) =>
         {
@@ -121,6 +125,7 @@ public partial class App : Application
             new NativeMenuItemSeparator(),
             configItem,
             workersItem,
+            inputItem,
             new NativeMenuItemSeparator(),
             exitItem
         };
@@ -236,6 +241,20 @@ public partial class App : Application
         else
         {
             _statusWindow.Activate();
+        }
+    }
+
+    private void ShowInputWindow()
+    {
+        if (_inputWindow == null || !_inputWindow.IsVisible)
+        {
+            _inputWindow = new InputWindow();
+            _inputWindow.Closed += (s, e) => _inputWindow = null;
+            _inputWindow.Show();
+        }
+        else
+        {
+            _inputWindow.Activate();
         }
     }
 
