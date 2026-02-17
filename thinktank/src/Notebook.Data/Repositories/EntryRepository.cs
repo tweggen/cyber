@@ -18,6 +18,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
         Guid notebookId, byte[] authorId, NewEntry newEntry, CancellationToken ct)
     {
         // Atomically increment the notebook's causal sequence counter
+        // AsAsyncEnumerable() required because UPDATE...RETURNING is non-composable SQL in EF Core 10
         var sequence = await db.Database
             .SqlQuery<long>(
                 $"""
@@ -25,6 +26,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
                 WHERE id = {notebookId}
                 RETURNING current_sequence
                 """)
+            .AsAsyncEnumerable()
             .SingleAsync(ct);
 
         var entry = new Entry
@@ -35,7 +37,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
             ContentType = newEntry.ContentType,
             Topic = newEntry.Topic,
             AuthorId = authorId,
-            Signature = [], // Batch writes don't carry Ed25519 signatures
+            Signature = new byte[64], // 64-byte zero placeholder (DB requires octet_length=64)
             References = newEntry.References,
             FragmentOf = newEntry.FragmentOf,
             FragmentIndex = newEntry.FragmentIndex,
