@@ -49,35 +49,67 @@ public sealed class OllamaClient : IOllamaClient
         return models;
     }
 
-    public async Task<OllamaChatResponse> ChatAsync(string model, string prompt, int maxTokens, CancellationToken ct)
+    public async Task<OllamaChatResponse> ChatAsync(string model, string prompt, int maxTokens,
+        IProgress<int>? tokenProgress = null, CancellationToken ct = default)
     {
         var request = new OllamaChatRequest
         {
             Model = model,
             Messages = [new OllamaChatMessage { Role = "user", Content = prompt }],
-            Stream = false,
+            Stream = true,
             Options = new OllamaChatOptions { NumPredict = maxTokens },
         };
 
-        var resp = await _http.PostAsJsonAsync("api/chat", request, ct);
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "api/chat")
+        {
+            Content = JsonContent.Create(request),
+        };
+
+        using var resp = await _http.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, ct);
         resp.EnsureSuccessStatusCode();
 
-        var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        var root = doc.RootElement;
+        await using var stream = await resp.Content.ReadAsStreamAsync(ct);
+        using var reader = new StreamReader(stream);
 
-        var content = root.GetProperty("message").GetProperty("content").GetString() ?? "";
-
+        var contentBuilder = new System.Text.StringBuilder();
+        var tokenCount = 0;
         double? tokensPerSecond = null;
-        if (root.TryGetProperty("eval_count", out var evalCount) &&
-            root.TryGetProperty("eval_duration", out var evalDuration))
+
+        while (await reader.ReadLineAsync(ct) is { } line)
         {
-            var count = evalCount.GetDouble();
-            var durationNs = evalDuration.GetDouble();
-            if (durationNs > 0)
-                tokensPerSecond = count / (durationNs / 1_000_000_000.0);
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            using var doc = JsonDocument.Parse(line);
+            var root = doc.RootElement;
+
+            if (root.TryGetProperty("message", out var message) &&
+                message.TryGetProperty("content", out var chunk))
+            {
+                var text = chunk.GetString();
+                if (!string.IsNullOrEmpty(text))
+                {
+                    contentBuilder.Append(text);
+                    tokenCount++;
+                    tokenProgress?.Report(tokenCount);
+                }
+            }
+
+            if (root.TryGetProperty("done", out var done) && done.GetBoolean())
+            {
+                if (root.TryGetProperty("eval_count", out var evalCount) &&
+                    root.TryGetProperty("eval_duration", out var evalDuration))
+                {
+                    var count = evalCount.GetDouble();
+                    var durationNs = evalDuration.GetDouble();
+                    if (durationNs > 0)
+                        tokensPerSecond = count / (durationNs / 1_000_000_000.0);
+                }
+                break;
+            }
         }
 
-        return new OllamaChatResponse(content, tokensPerSecond);
+        return new OllamaChatResponse(contentBuilder.ToString(), tokensPerSecond);
     }
 
     public async Task<OllamaEmbedResponse> EmbedAsync(string model, List<string> input, CancellationToken ct)

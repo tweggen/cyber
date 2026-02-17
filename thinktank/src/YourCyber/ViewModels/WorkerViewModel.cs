@@ -22,9 +22,23 @@ public partial class WorkerViewModel : ObservableObject
     [ObservableProperty]
     private double? _tokensPerSecond;
 
+    [ObservableProperty]
+    private int _tokensGenerated;
+
     public string TokensPerSecondFormatted =>
         TokensPerSecond.HasValue ? $"{TokensPerSecond.Value:F1} tok/s" : "--";
 
+    public string ProgressText =>
+        Status == "Processing" && TokensGenerated > 0
+            ? $"{TokensGenerated} tok"
+            : "";
+
     partial void OnTokensPerSecondChanged(double? value) =>
         OnPropertyChanged(nameof(TokensPerSecondFormatted));
+
+    partial void OnTokensGeneratedChanged(int value) =>
+        OnPropertyChanged(nameof(ProgressText));
+
+    partial void OnStatusChanged(string value) =>
+        OnPropertyChanged(nameof(ProgressText));
 }

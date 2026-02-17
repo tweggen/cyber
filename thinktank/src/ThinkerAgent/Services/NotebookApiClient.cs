@@ -16,7 +16,7 @@ public sealed class NotebookApiClient
         _options = options.Value;
     }
 
-    public async Task<JsonElement?> PullJobAsync(string workerId, string? jobType = null, CancellationToken ct = default)
+    public async Task<PollResult> PullJobAsync(string workerId, string? jobType = null, CancellationToken ct = default)
     {
         var url = $"notebooks/{_options.NotebookId}/jobs/next?worker_id={Uri.EscapeDataString(workerId)}";
         if (jobType is not null)
@@ -25,14 +25,24 @@ public sealed class NotebookApiClient
         var resp = await _http.GetAsync(url, ct);
 
         if (resp.StatusCode == HttpStatusCode.NoContent)
-            return null;
+            return new PollResult(null, 0);
 
         if (!resp.IsSuccessStatusCode)
-            return null;
+            return new PollResult(null, 0);
 
         var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        return doc.RootElement.Clone();
+        var root = doc.RootElement;
+
+        var queueDepth = root.TryGetProperty("queue_depth", out var qd) ? qd.GetInt64() : 0;
+
+        // If "id" is present, this is a real job; otherwise just queue status
+        if (root.TryGetProperty("id", out _))
+            return new PollResult(root.Clone(), queueDepth);
+
+        return new PollResult(null, queueDepth);
     }
+
+    public record PollResult(JsonElement? Job, long QueueDepth);
 
     public async Task<bool> CompleteJobAsync(Guid jobId, string workerId, JsonElement result, CancellationToken ct = default)
     {

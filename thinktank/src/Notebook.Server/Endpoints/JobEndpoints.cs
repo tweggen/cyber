@@ -32,9 +32,10 @@ public static class JobEndpoints
         await jobRepo.ReclaimTimedOutJobsAsync(notebookId, ct);
 
         var job = await jobRepo.ClaimNextJobAsync(notebookId, jobType, workerId, ct);
+        var queueDepth = await jobRepo.CountPendingAsync(notebookId, ct);
 
         if (job is null)
-            return Results.NoContent();
+            return Results.Ok(new { queue_depth = queueDepth });
 
         return Results.Ok(new JobResponse
         {
@@ -45,6 +46,7 @@ public static class JobEndpoints
             Created = job.Created,
             ClaimedAt = job.ClaimedAt,
             ClaimedBy = job.ClaimedBy,
+            QueueDepth = queueDepth,
         });
     }
 

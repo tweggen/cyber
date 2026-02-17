@@ -85,15 +85,16 @@ public sealed class RobotWorkerService : BackgroundService
                 if (_options.JobTypes is { Count: > 0 })
                     jobType = _options.JobTypes[_jobTypeIndex++ % _options.JobTypes.Count];
 
-                var job = await apiClient.PullJobAsync(workerId, jobType, ct);
+                var pollResult = await apiClient.PullJobAsync(workerId, jobType, ct);
+                _state.QueueDepth = pollResult.QueueDepth;
 
-                if (job is null)
+                if (pollResult.Job is null)
                 {
                     worker.Status = WorkerStatus.Idle;
                     worker.CurrentJobType = null;
                     consecutiveEmpty++;
                     if (consecutiveEmpty % 12 == 1)
-                        _logger.LogDebug("Worker {WorkerId}: no jobs available, waiting...", workerId);
+                        _logger.LogDebug("Worker {WorkerId}: no jobs available (queue: {QueueDepth}), waiting...", workerId, pollResult.QueueDepth);
 
                     _state.NotifyChanged();
                     await Task.Delay(pollInterval, ct);
@@ -101,7 +102,7 @@ public sealed class RobotWorkerService : BackgroundService
                 }
 
                 consecutiveEmpty = 0;
-                var jobElement = job.Value;
+                var jobElement = pollResult.Job.Value;
                 var jobId = jobElement.GetProperty("id").GetGuid();
                 var jobTypeStr = jobElement.GetProperty("job_type").GetString()!;
                 var payload = jobElement.GetProperty("payload");
@@ -162,8 +163,15 @@ public sealed class RobotWorkerService : BackgroundService
                     // Build prompt
                     var prompt = PromptBuilder.BuildPrompt(jobTypeStr, payload);
 
-                    // Call LLM
-                    var llmResponse = await ollamaClient.ChatAsync(_options.Model, prompt, 2048, ct);
+                    // Call LLM with streaming progress
+                    worker.TokensGenerated = 0;
+                    var progress = new Progress<int>(count =>
+                    {
+                        worker.TokensGenerated = count;
+                        _state.NotifyThrottled();
+                    });
+                    var llmResponse = await ollamaClient.ChatAsync(_options.Model, prompt, 2048, progress, ct);
+                    worker.TokensGenerated = 0;
                     worker.TokensPerSecond = llmResponse.TokensPerSecond;
 
                     // Parse result

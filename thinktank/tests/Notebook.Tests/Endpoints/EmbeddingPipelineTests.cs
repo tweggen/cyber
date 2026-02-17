@@ -235,10 +235,12 @@ public class EmbeddingPipelineTests : IClassFixture<NotebookApiFixture>
         var job2 = await nextJob2.Content.ReadFromJsonAsync<JobResponse>();
         Assert.Equal("DISTILL_CLAIMS", job2!.JobType);
 
-        // No EMBED_CLAIMS should exist yet
+        // No EMBED_CLAIMS should exist yet — response is 200 with just queue_depth, no "id"
         var embedCheck = await _client.GetAsync(
             $"/notebooks/{notebookId}/jobs/next?worker_id=test-worker&type=EMBED_CLAIMS");
-        Assert.Equal(HttpStatusCode.NoContent, embedCheck.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, embedCheck.StatusCode);
+        var embedBody = await embedCheck.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.False(embedBody.TryGetProperty("id", out _), "Expected no job, but got one");
     }
 
     [Fact]

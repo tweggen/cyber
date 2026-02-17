@@ -25,6 +25,9 @@ public sealed record JobResponse
 
     [JsonPropertyName("claimed_by")]
     public string? ClaimedBy { get; init; }
+
+    [JsonPropertyName("queue_depth")]
+    public long QueueDepth { get; init; }
 }
 
 public sealed record CompleteJobRequest

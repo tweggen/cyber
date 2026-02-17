@@ -127,4 +127,11 @@ public class JobRepository(NotebookDbContext db) : IJobRepository
             .Select(g => new JobStatusCount(g.Key.JobType, g.Key.Status, g.LongCount()))
             .ToListAsync(ct);
     }
+
+    public async Task<long> CountPendingAsync(Guid notebookId, CancellationToken ct)
+    {
+        return await db.Jobs
+            .Where(j => j.NotebookId == notebookId && j.Status == "pending")
+            .LongCountAsync(ct);
+    }
 }

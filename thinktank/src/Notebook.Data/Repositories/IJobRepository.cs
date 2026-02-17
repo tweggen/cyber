@@ -13,6 +13,7 @@ public interface IJobRepository
     Task ReturnToPendingAsync(Guid jobId, string error, CancellationToken ct);
     Task MarkFailedAsync(Guid jobId, string error, CancellationToken ct);
     Task<List<JobStatusCount>> GetStatsAsync(Guid notebookId, CancellationToken ct);
+    Task<long> CountPendingAsync(Guid notebookId, CancellationToken ct);
 }
 
 public record JobStatusCount(string JobType, string Status, long Count);

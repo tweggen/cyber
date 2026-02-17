@@ -93,6 +93,7 @@ public partial class AgentStatusViewModel : ObservableObject
             existing.JobsCompleted = ws.JobsCompleted;
             existing.JobsFailed = ws.JobsFailed;
             existing.TokensPerSecond = ws.TokensPerSecond;
+            existing.TokensGenerated = ws.TokensGenerated;
         }
 
         for (int i = Workers.Count - 1; i >= 0; i--)
@@ -124,4 +125,5 @@ public sealed class WorkerInfoSnapshot
     public int JobsCompleted { get; set; }
     public int JobsFailed { get; set; }
     public double? TokensPerSecond { get; set; }
+    public int TokensGenerated { get; set; }
 }
