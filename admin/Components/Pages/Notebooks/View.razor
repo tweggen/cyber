@@ -70,10 +70,57 @@ else if (browseResult != null)
     }
 
     @* ================================================================== *@
-    @* Entries: search + paginated table                                   *@
+    @* Entries: path browser + search + paginated table                    *@
     @* ================================================================== *@
 
     <h4>Entries</h4>
+
+    @* Path breadcrumb *@
+    <nav aria-label="Topic path" class="mb-2">
+        <ol class="breadcrumb mb-0" style="font-size: 0.9rem;">
+            <li class="breadcrumb-item @(pathFilter == "" ? "active" : "")">
+                @if (pathFilter == "")
+                {
+                    <span>/</span>
+                }
+                else
+                {
+                    <a href="#" @onclick="() => NavigatePath(string.Empty)" @onclick:preventDefault>/</a>
+                }
+            </li>
+            @{ var segments = PathSegments; }
+            @for (int i = 0; i < segments.Count; i++)
+            {
+                var segPath = string.Join("/", segments.Take(i + 1)) + "/";
+                var isLast = i == segments.Count - 1;
+                <li class="breadcrumb-item @(isLast ? "active" : "")">
+                    @if (isLast)
+                    {
+                        <span>@segments[i]</span>
+                    }
+                    else
+                    {
+                        var p = segPath;
+                        <a href="#" @onclick="() => NavigatePath(p)" @onclick:preventDefault>@segments[i]</a>
+                    }
+                </li>
+            }
+        </ol>
+    </nav>
+
+    @* Virtual directories at current path *@
+    @if (virtualDirectories.Count > 0)
+    {
+        <div class="mb-2 d-flex flex-wrap gap-1">
+            @foreach (var dir in virtualDirectories)
+            {
+                var target = pathFilter + dir + "/";
+                <button class="btn btn-sm btn-outline-primary" @onclick="() => NavigatePath(target)">
+                    @dir/ <span class="badge bg-secondary ms-1">@DirectoryEntryCount(target)</span>
+                </button>
+            }
+        </div>
+    }
 
     <div class="row g-2 mb-3 align-items-end">
         <div class="col-auto" style="min-width: 280px;">
@@ -88,7 +135,7 @@ else if (browseResult != null)
                 <option value="cost">Cost (high to low)</option>
             </select>
         </div>
-        @if (!string.IsNullOrWhiteSpace(searchQuery))
+        @if (!string.IsNullOrWhiteSpace(searchQuery) || pathFilter != "")
         {
             <div class="col-auto">
                 <span class="text-muted small">@filteredEntries.Count result(s)</span>
@@ -273,11 +320,16 @@ else if (browseResult != null)
     private string shareWrite = "false";
     private string? shareError;
 
-    // Search & pagination state
+    // Path browser, search & pagination state
+    private string pathFilter = "";
+    private List<string> virtualDirectories = [];
     private string searchQuery = string.Empty;
     private string sortField = "sequence";
     private int currentPage = 1;
     private const int PageSize = 25;
+
+    private List<string> PathSegments =>
+        pathFilter == "" ? [] : pathFilter.TrimEnd('/').Split('/').ToList();
 
     private int TotalPages => filteredEntries.Count == 0 ? 1 : (int)Math.Ceiling((double)filteredEntries.Count / PageSize);
 
@@ -338,12 +390,34 @@ else if (browseResult != null)
         if (allEntries == null)
         {
             filteredEntries = [];
+            virtualDirectories = [];
             return;
         }
 
+        // Compute virtual directories from all entries (ignoring search query)
+        ComputeVirtualDirectories();
+
         IEnumerable<ChangeEntry> result = allEntries;
 
-        // Apply search filter
+        // Apply path filter: show only direct children of the current path
+        if (pathFilter == "")
+        {
+            // Root: entries whose topic has no '/' (direct children)
+            result = result.Where(e => e.Topic != null && !e.Topic.Contains('/'));
+        }
+        else
+        {
+            // Show entries whose topic starts with pathFilter and has no further '/' after it
+            result = result.Where(e =>
+            {
+                if (e.Topic == null || !e.Topic.StartsWith(pathFilter))
+                    return false;
+                var remainder = e.Topic[pathFilter.Length..];
+                return !remainder.Contains('/');
+            });
+        }
+
+        // Apply search filter (within path-filtered results)
         if (!string.IsNullOrWhiteSpace(searchQuery))
         {
             var q = searchQuery.Trim().ToLowerInvariant();
@@ -366,6 +440,49 @@ else if (browseResult != null)
         // Reset to page 1 when filter/sort changes
         if (currentPage > TotalPages)
             currentPage = 1;
+    }
+
+    private void ComputeVirtualDirectories()
+    {
+        if (allEntries == null)
+        {
+            virtualDirectories = [];
+            return;
+        }
+
+        var dirs = new HashSet<string>();
+        foreach (var entry in allEntries)
+        {
+            if (entry.Topic == null) continue;
+
+            // Only consider topics that start with the current path
+            if (pathFilter != "" && !entry.Topic.StartsWith(pathFilter))
+                continue;
+
+            var remainder = pathFilter == "" ? entry.Topic : entry.Topic[pathFilter.Length..];
+
+            // If remainder contains '/', the first segment is a virtual directory
+            var slashIdx = remainder.IndexOf('/');
+            if (slashIdx > 0)
+            {
+                dirs.Add(remainder[..slashIdx]);
+            }
+        }
+
+        virtualDirectories = dirs.OrderBy(d => d).ToList();
+    }
+
+    private int DirectoryEntryCount(string dirPath)
+    {
+        if (allEntries == null) return 0;
+        return allEntries.Count(e => e.Topic != null && e.Topic.StartsWith(dirPath));
+    }
+
+    private void NavigatePath(string path)
+    {
+        pathFilter = path;
+        currentPage = 1;
+        ApplyFilterAndSort();
     }
 
     private void OnSearchChanged()
