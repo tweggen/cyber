@@ -25,5 +25,6 @@ public class JobConfiguration : IEntityTypeConfiguration<JobEntity>
         builder.Property(j => j.TimeoutSeconds).HasColumnName("timeout_seconds").HasDefaultValue(120);
         builder.Property(j => j.RetryCount).HasColumnName("retry_count").HasDefaultValue(0);
         builder.Property(j => j.MaxRetries).HasColumnName("max_retries").HasDefaultValue(3);
+        builder.Property(j => j.Priority).HasColumnName("priority").HasDefaultValue(0);
     }
 }

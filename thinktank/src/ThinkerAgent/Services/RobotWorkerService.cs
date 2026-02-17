@@ -47,6 +47,8 @@ public sealed class RobotWorkerService : BackgroundService
         _state.NotifyChanged();
     }
 
+    private int _jobTypeIndex;
+
     private async Task RunWorkerLoop(string workerId, CancellationToken ct)
     {
         var worker = _state.GetOrCreateWorker(workerId);
@@ -63,10 +65,10 @@ public sealed class RobotWorkerService : BackgroundService
                 var apiClient = scope.ServiceProvider.GetRequiredService<NotebookApiClient>();
                 var ollamaClient = scope.ServiceProvider.GetRequiredService<IOllamaClient>();
 
-                // Pick a job type if filtered
+                // Pick a job type if filtered; server-side priority handles ordering
                 string? jobType = null;
                 if (_options.JobTypes is { Count: > 0 })
-                    jobType = _options.JobTypes[consecutiveEmpty % _options.JobTypes.Count];
+                    jobType = _options.JobTypes[_jobTypeIndex++ % _options.JobTypes.Count];
 
                 var job = await apiClient.PullJobAsync(workerId, jobType, ct);
 

@@ -6,6 +6,14 @@ namespace Notebook.Data.Repositories;
 
 public class JobRepository(NotebookDbContext db) : IJobRepository
 {
+    private static readonly Dictionary<string, int> JobTypePriority = new()
+    {
+        ["EMBED_CLAIMS"] = 30,    // Fast, unblocks comparisons
+        ["COMPARE_CLAIMS"] = 20,  // Produces user-visible friction scores
+        ["CLASSIFY_TOPIC"] = 10,  // Produces topic labels for navigation
+        ["DISTILL_CLAIMS"] = 0,   // Background intake, can wait
+    };
+
     public async Task<Guid> InsertJobAsync(
         Guid notebookId, string jobType, JsonDocument payload, CancellationToken ct)
     {
@@ -17,6 +25,7 @@ public class JobRepository(NotebookDbContext db) : IJobRepository
             Status = "pending",
             Payload = payload,
             Created = DateTimeOffset.UtcNow,
+            Priority = JobTypePriority.GetValueOrDefault(jobType, 0),
         };
 
         db.Jobs.Add(job);
@@ -56,7 +65,7 @@ public class JobRepository(NotebookDbContext db) : IJobRepository
                 WHERE notebook_id = {1}
                   AND status = 'pending'
                   AND ({2}::text IS NULL OR job_type = {2})
-                ORDER BY created ASC
+                ORDER BY priority DESC, created ASC
                 LIMIT 1
                 FOR UPDATE SKIP LOCKED
             )

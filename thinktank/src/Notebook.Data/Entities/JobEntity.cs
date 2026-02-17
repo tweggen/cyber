@@ -18,4 +18,5 @@ public class JobEntity
     public int TimeoutSeconds { get; set; } = 120;
     public int RetryCount { get; set; }
     public int MaxRetries { get; set; } = 3;
+    public int Priority { get; set; }
 }
