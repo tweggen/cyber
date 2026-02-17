@@ -32,6 +32,7 @@ public class NotebookApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
         "008_original_content_type.sql",
         "009_embeddings.sql",
         "010_job_priority.sql",
+        "011_add_source_column.sql",
     ];
 
     private readonly string _testDb = $"thinktank_test_{Guid.NewGuid():N}";

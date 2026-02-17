@@ -26,6 +26,7 @@ public static class BatchEndpoints
         IEntryRepository entryRepo,
         IJobRepository jobRepo,
         IContentNormalizer normalizer,
+        IContentFilterPipeline filterPipeline,
         IMarkdownFragmenter fragmenter,
         HttpContext httpContext,
         CancellationToken ct)
@@ -56,9 +57,14 @@ public static class BatchEndpoints
             var contentType = batchEntry.ContentType ?? "text/plain";
             var normalized = normalizer.Normalize(batchEntry.Content, contentType);
 
-            // 2. CHECK SIZE: fragment if content exceeds token budget (~4000 tokens ≈ 16000 chars)
+            // 2. FILTER: strip platform-specific boilerplate (Wikipedia, Confluence, etc.)
+            var filtered = filterPipeline.Apply(normalized.Content, batchEntry.Source);
+            var filteredContent = filtered.Content;
+            var detectedSource = filtered.DetectedSource ?? batchEntry.Source;
+
+            // 3. CHECK SIZE: fragment if content exceeds token budget (~4000 tokens ≈ 16000 chars)
             var fragments = normalized.ContentType == "text/markdown" || normalized.ContentType == "text/plain"
-                ? fragmenter.Fragment(normalized.Content)
+                ? fragmenter.Fragment(filteredContent)
                 : [];
 
             if (fragments.Count > 0)
@@ -66,11 +72,12 @@ public static class BatchEndpoints
                 // Insert artifact entry (full content)
                 var artifactEntry = await entryRepo.InsertEntryAsync(notebookId, authorId, new NewEntry
                 {
-                    Content = normalized.Content,
+                    Content = filteredContent,
                     ContentType = normalized.ContentType,
                     Topic = batchEntry.Topic,
                     References = batchEntry.References ?? [],
                     OriginalContentType = normalized.OriginalContentType,
+                    Source = detectedSource,
                 }, ct);
 
                 // Insert fragment entries
@@ -85,6 +92,7 @@ public static class BatchEndpoints
                         FragmentOf = artifactEntry.Id,
                         FragmentIndex = fragment.Index,
                         OriginalContentType = normalized.OriginalContentType,
+                        Source = detectedSource,
                     }, ct);
                 }
 
@@ -114,23 +122,24 @@ public static class BatchEndpoints
             }
             else
             {
-                // 3. Normal entry (no fragmentation needed)
+                // Normal entry (no fragmentation needed)
                 var entry = await entryRepo.InsertEntryAsync(notebookId, authorId, new NewEntry
                 {
-                    Content = normalized.Content,
+                    Content = filteredContent,
                     ContentType = normalized.ContentType,
                     Topic = batchEntry.Topic,
                     References = batchEntry.References ?? [],
                     FragmentOf = batchEntry.FragmentOf,
                     FragmentIndex = batchEntry.FragmentIndex,
                     OriginalContentType = normalized.OriginalContentType,
+                    Source = detectedSource,
                 }, ct);
 
                 // Create DISTILL_CLAIMS job for this entry
                 var payload = JsonSerializer.SerializeToDocument(new
                 {
                     entry_id = entry.Id.ToString(),
-                    content = normalized.Content,
+                    content = filteredContent,
                     context_claims = (object?)null,
                     max_claims = 12,
                 });

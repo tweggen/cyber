@@ -13,4 +13,5 @@ public sealed record NewEntry
     public Guid? FragmentOf { get; init; }
     public int? FragmentIndex { get; init; }
     public string? OriginalContentType { get; init; }
+    public string? Source { get; init; }
 }

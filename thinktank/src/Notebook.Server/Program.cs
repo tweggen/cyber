@@ -23,6 +23,8 @@ builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
 
 // Content processing
 builder.Services.AddSingleton<IContentNormalizer, ContentNormalizer>();
+builder.Services.AddSingleton<IContentFilter, WikipediaContentFilter>();
+builder.Services.AddSingleton<IContentFilterPipeline, ContentFilterPipeline>();
 builder.Services.AddSingleton<IMarkdownFragmenter, MarkdownFragmenter>();
 
 // Authentication — EdDSA (Ed25519) JWT signed by admin app

@@ -22,6 +22,9 @@ public sealed record BatchEntryRequest
 
     [JsonPropertyName("fragment_index")]
     public int? FragmentIndex { get; init; }
+
+    [JsonPropertyName("source")]
+    public string? Source { get; init; }
 }
 
 public sealed record BatchWriteRequest

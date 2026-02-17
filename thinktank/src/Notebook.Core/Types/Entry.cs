@@ -84,4 +84,8 @@ public class Entry
     /// <summary>Embedding vector for semantic nearest-neighbor comparison.</summary>
     [JsonPropertyName("embedding")]
     public double[]? Embedding { get; set; }
+
+    /// <summary>Content source platform (e.g. "wikipedia", "confluence") for filtering/auditability.</summary>
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
 }

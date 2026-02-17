@@ -42,6 +42,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
             FragmentOf = newEntry.FragmentOf,
             FragmentIndex = newEntry.FragmentIndex,
             OriginalContentType = newEntry.OriginalContentType,
+            Source = newEntry.Source,
             Sequence = sequence,
             Created = DateTimeOffset.UtcNow,
             IntegrationCost = new IntegrationCost
