@@ -39,6 +39,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
             References = newEntry.References,
             FragmentOf = newEntry.FragmentOf,
             FragmentIndex = newEntry.FragmentIndex,
+            OriginalContentType = newEntry.OriginalContentType,
             Sequence = sequence,
             Created = DateTimeOffset.UtcNow,
             IntegrationCost = new IntegrationCost
@@ -213,6 +214,40 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
         }
 
         return results;
+    }
+
+    public async Task<Entry?> GetEntryAsync(Guid entryId, Guid notebookId, CancellationToken ct)
+    {
+        return await db.Entries
+            .FirstOrDefaultAsync(e => e.Id == entryId && e.NotebookId == notebookId, ct);
+    }
+
+    public async Task<Entry?> GetFragmentAsync(Guid notebookId, Guid fragmentOf, int fragmentIndex, CancellationToken ct)
+    {
+        return await db.Entries
+            .FirstOrDefaultAsync(e => e.NotebookId == notebookId
+                && e.FragmentOf == fragmentOf
+                && e.FragmentIndex == fragmentIndex, ct);
+    }
+
+    public async Task<List<Claim>> GetFragmentClaimsUpToAsync(Guid notebookId, Guid fragmentOf, int upToIndex, CancellationToken ct)
+    {
+        var fragments = await db.Entries
+            .Where(e => e.NotebookId == notebookId
+                && e.FragmentOf == fragmentOf
+                && e.FragmentIndex != null
+                && e.FragmentIndex <= upToIndex)
+            .OrderBy(e => e.FragmentIndex)
+            .Select(e => e.Claims)
+            .ToListAsync(ct);
+
+        return fragments.SelectMany(c => c).ToList();
+    }
+
+    public async Task<int> GetFragmentCountAsync(Guid notebookId, Guid fragmentOf, CancellationToken ct)
+    {
+        return await db.Entries
+            .CountAsync(e => e.NotebookId == notebookId && e.FragmentOf == fragmentOf, ct);
     }
 
     public async Task<List<SearchResult>> SearchEntriesAsync(

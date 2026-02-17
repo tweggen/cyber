@@ -12,4 +12,5 @@ public sealed record NewEntry
     public List<Guid> References { get; init; } = [];
     public Guid? FragmentOf { get; init; }
     public int? FragmentIndex { get; init; }
+    public string? OriginalContentType { get; init; }
 }

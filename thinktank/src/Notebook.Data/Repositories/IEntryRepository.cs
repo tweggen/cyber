@@ -15,4 +15,10 @@ public interface IEntryRepository
     Task UpdateEntryTopicAsync(Guid entryId, string topic, CancellationToken ct);
     Task<List<BrowseEntry>> BrowseFilteredAsync(Guid notebookId, BrowseFilter filters, CancellationToken ct);
     Task<List<SearchResult>> SearchEntriesAsync(Guid notebookId, string query, string searchIn, string? topicPrefix, int maxResults, CancellationToken ct);
+
+    // Fragment queries
+    Task<Entry?> GetEntryAsync(Guid entryId, Guid notebookId, CancellationToken ct);
+    Task<Entry?> GetFragmentAsync(Guid notebookId, Guid fragmentOf, int fragmentIndex, CancellationToken ct);
+    Task<List<Claim>> GetFragmentClaimsUpToAsync(Guid notebookId, Guid fragmentOf, int upToIndex, CancellationToken ct);
+    Task<int> GetFragmentCountAsync(Guid notebookId, Guid fragmentOf, CancellationToken ct);
 }

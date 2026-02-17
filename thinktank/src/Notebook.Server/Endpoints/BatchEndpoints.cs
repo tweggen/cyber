@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Notebook.Core.Types;
 using Notebook.Data.Repositories;
 using Notebook.Server.Models;
+using Notebook.Server.Services;
 
 namespace Notebook.Server.Endpoints;
 
@@ -16,13 +17,16 @@ public static class BatchEndpoints
 
     /// <summary>
     /// Write up to 100 entries in a single transactional call.
-    /// Each entry is automatically queued for claim distillation.
+    /// Each entry is normalized (HTML→markdown) and optionally fragmented if large.
+    /// Each entry (or first fragment) is queued for claim distillation.
     /// </summary>
     private static async Task<IResult> BatchWrite(
         Guid notebookId,
         [FromBody] BatchWriteRequest request,
         IEntryRepository entryRepo,
         IJobRepository jobRepo,
+        IContentNormalizer normalizer,
+        IMarkdownFragmenter fragmenter,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -48,35 +52,100 @@ public static class BatchEndpoints
 
         foreach (var batchEntry in request.Entries)
         {
-            var entry = await entryRepo.InsertEntryAsync(notebookId, authorId, new NewEntry
-            {
-                Content = batchEntry.Content,
-                ContentType = batchEntry.ContentType ?? "text/plain",
-                Topic = batchEntry.Topic,
-                References = batchEntry.References ?? [],
-                FragmentOf = batchEntry.FragmentOf,
-                FragmentIndex = batchEntry.FragmentIndex,
-            }, ct);
+            // 1. NORMALIZE: if content_type is text/html, convert to markdown
+            var contentType = batchEntry.ContentType ?? "text/plain";
+            var normalized = normalizer.Normalize(batchEntry.Content, contentType);
 
-            // Create DISTILL_CLAIMS job for this entry
-            var payload = JsonSerializer.SerializeToDocument(new
-            {
-                entry_id = entry.Id.ToString(),
-                content = batchEntry.Content,
-                context_claims = (object?)null,
-                max_claims = 12,
-            });
+            // 2. CHECK SIZE: fragment if content exceeds token budget (~4000 tokens ≈ 16000 chars)
+            var fragments = normalized.ContentType == "text/markdown" || normalized.ContentType == "text/plain"
+                ? fragmenter.Fragment(normalized.Content)
+                : [];
 
-            await jobRepo.InsertJobAsync(notebookId, "DISTILL_CLAIMS", payload, ct);
-            jobsCreated++;
-
-            results.Add(new BatchEntryResult
+            if (fragments.Count > 0)
             {
-                EntryId = entry.Id,
-                CausalPosition = entry.Sequence,
-                IntegrationCost = entry.IntegrationCost?.CatalogShift ?? 0.0,
-                ClaimsStatus = ClaimsStatus.Pending,
-            });
+                // Insert artifact entry (full content)
+                var artifactEntry = await entryRepo.InsertEntryAsync(notebookId, authorId, new NewEntry
+                {
+                    Content = normalized.Content,
+                    ContentType = normalized.ContentType,
+                    Topic = batchEntry.Topic,
+                    References = batchEntry.References ?? [],
+                    OriginalContentType = normalized.OriginalContentType,
+                }, ct);
+
+                // Insert fragment entries
+                foreach (var fragment in fragments)
+                {
+                    await entryRepo.InsertEntryAsync(notebookId, authorId, new NewEntry
+                    {
+                        Content = fragment.Content,
+                        ContentType = normalized.ContentType,
+                        Topic = batchEntry.Topic,
+                        References = [],
+                        FragmentOf = artifactEntry.Id,
+                        FragmentIndex = fragment.Index,
+                        OriginalContentType = normalized.OriginalContentType,
+                    }, ct);
+                }
+
+                // Queue DISTILL_CLAIMS for fragment 0 only (chaining handles the rest)
+                var fragment0 = await entryRepo.GetFragmentAsync(notebookId, artifactEntry.Id, 0, ct);
+                if (fragment0 is not null)
+                {
+                    var payload = JsonSerializer.SerializeToDocument(new
+                    {
+                        entry_id = fragment0.Id.ToString(),
+                        content = fragments[0].Content,
+                        context_claims = (object?)null,
+                        max_claims = 12,
+                    });
+                    await jobRepo.InsertJobAsync(notebookId, "DISTILL_CLAIMS", payload, ct);
+                    jobsCreated++;
+                }
+
+                // Response returns the artifact entry ID
+                results.Add(new BatchEntryResult
+                {
+                    EntryId = artifactEntry.Id,
+                    CausalPosition = artifactEntry.Sequence,
+                    IntegrationCost = artifactEntry.IntegrationCost?.CatalogShift ?? 0.0,
+                    ClaimsStatus = ClaimsStatus.Pending,
+                });
+            }
+            else
+            {
+                // 3. Normal entry (no fragmentation needed)
+                var entry = await entryRepo.InsertEntryAsync(notebookId, authorId, new NewEntry
+                {
+                    Content = normalized.Content,
+                    ContentType = normalized.ContentType,
+                    Topic = batchEntry.Topic,
+                    References = batchEntry.References ?? [],
+                    FragmentOf = batchEntry.FragmentOf,
+                    FragmentIndex = batchEntry.FragmentIndex,
+                    OriginalContentType = normalized.OriginalContentType,
+                }, ct);
+
+                // Create DISTILL_CLAIMS job for this entry
+                var payload = JsonSerializer.SerializeToDocument(new
+                {
+                    entry_id = entry.Id.ToString(),
+                    content = normalized.Content,
+                    context_claims = (object?)null,
+                    max_claims = 12,
+                });
+
+                await jobRepo.InsertJobAsync(notebookId, "DISTILL_CLAIMS", payload, ct);
+                jobsCreated++;
+
+                results.Add(new BatchEntryResult
+                {
+                    EntryId = entry.Id,
+                    CausalPosition = entry.Sequence,
+                    IntegrationCost = entry.IntegrationCost?.CatalogShift ?? 0.0,
+                    ClaimsStatus = ClaimsStatus.Pending,
+                });
+            }
         }
 
         await transaction.CommitAsync(ct);

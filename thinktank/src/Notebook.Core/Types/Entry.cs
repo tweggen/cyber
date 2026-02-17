@@ -76,4 +76,8 @@ public class Entry
     /// <summary>True if max_friction exceeds the notebook's review threshold.</summary>
     [JsonPropertyName("needs_review")]
     public bool NeedsReview { get; set; }
+
+    /// <summary>Original content type before normalization (e.g. "text/html" if converted to markdown).</summary>
+    [JsonPropertyName("original_content_type")]
+    public string? OriginalContentType { get; set; }
 }

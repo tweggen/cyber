@@ -21,6 +21,10 @@ builder.Services.AddScoped<IJobRepository, JobRepository>();
 builder.Services.AddScoped<IJobResultProcessor, JobResultProcessor>();
 builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
 
+// Content processing
+builder.Services.AddSingleton<IContentNormalizer, ContentNormalizer>();
+builder.Services.AddSingleton<IMarkdownFragmenter, MarkdownFragmenter>();
+
 // Authentication — EdDSA (Ed25519) JWT signed by admin app
 builder.Services.AddAuthentication(EdDsaAuthenticationHandler.SchemeName)
     .AddScheme<EdDsaAuthenticationOptions, EdDsaAuthenticationHandler>(

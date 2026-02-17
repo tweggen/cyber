@@ -70,5 +70,8 @@ public class EntryConfiguration : IEntityTypeConfiguration<Entry>
         builder.Property(e => e.NeedsReview)
             .HasColumnName("needs_review")
             .HasDefaultValue(false);
+
+        builder.Property(e => e.OriginalContentType)
+            .HasColumnName("original_content_type");
     }
 }
