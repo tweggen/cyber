@@ -157,7 +157,6 @@ else if (browseResult != null)
                     <th>Topic</th>
                     <th style="width: 90px;">Cost</th>
                     <th style="width: 160px;">Created</th>
-                    <th style="width: 60px;"></th>
                 </tr>
             </thead>
             <tbody>
@@ -168,13 +167,11 @@ else if (browseResult != null)
                         <td>
                             <span class="badge @(entry.Operation == "write" ? "bg-success" : "bg-info")">@entry.Operation</span>
                         </td>
-                        <td>@(entry.Topic ?? "-")</td>
+                        <td>
+                            <a href="/notebooks/@NotebookId/entries/@entry.EntryId">@(entry.Topic ?? "-")</a>
+                        </td>
                         <td>@entry.IntegrationCost.CatalogShift.ToString("F3")</td>
                         <td class="text-muted small">@entry.Created.ToString("yyyy-MM-dd HH:mm")</td>
-                        <td>
-                            <a href="/notebooks/@NotebookId/entries/@entry.EntryId"
-                               class="btn btn-sm btn-outline-secondary">View</a>
-                        </td>
                     </tr>
                 }
             </tbody>
