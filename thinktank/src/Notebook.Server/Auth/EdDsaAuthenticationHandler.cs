@@ -32,10 +32,19 @@ public class EdDsaAuthenticationHandler : AuthenticationHandler<EdDsaAuthenticat
         if (authHeader is not null && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
             var token = authHeader["Bearer ".Length..].Trim();
-            return Task.FromResult(ValidateJwt(token));
+            if (!string.IsNullOrEmpty(token))
+            {
+                var result = ValidateJwt(token);
+                if (result.Succeeded)
+                    return Task.FromResult(result);
+
+                // JWT failed — fall through to dev identity if allowed
+                if (!Options.AllowDevIdentity)
+                    return Task.FromResult(result);
+            }
         }
 
-        // Fall back to X-Author-Id header (dev mode only)
+        // Fall back to dev identity (X-Author-Id header or zero author)
         if (Options.AllowDevIdentity)
         {
             return Task.FromResult(HandleDevIdentity());
