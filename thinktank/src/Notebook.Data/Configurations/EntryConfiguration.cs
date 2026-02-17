@@ -73,5 +73,9 @@ public class EntryConfiguration : IEntityTypeConfiguration<Entry>
 
         builder.Property(e => e.OriginalContentType)
             .HasColumnName("original_content_type");
+
+        // double precision[] — Npgsql maps double[] natively
+        builder.Property(e => e.Embedding)
+            .HasColumnName("embedding");
     }
 }

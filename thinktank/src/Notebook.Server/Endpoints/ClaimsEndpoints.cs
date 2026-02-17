@@ -39,29 +39,25 @@ public static class ClaimsEndpoints
         if (!updated)
             return Results.Conflict(new { error = "claims already set or entry not found" });
 
-        // Create COMPARE_CLAIMS jobs against relevant topic indices
-        var topicIndices = await entryRepo.FindTopicIndicesAsync(notebookId, ct);
-        var comparisonJobsCreated = 0;
-
-        foreach (var (indexId, indexClaims) in topicIndices)
+        // Create EMBED_CLAIMS job for semantic nearest-neighbor comparison
+        var embedJobsCreated = 0;
+        if (request.Claims.Count > 0)
         {
             var payload = JsonSerializer.SerializeToDocument(new
             {
                 entry_id = entryId.ToString(),
-                compare_against_id = indexId.ToString(),
-                claims_a = indexClaims,
-                claims_b = request.Claims,
+                claim_texts = request.Claims.Select(c => c.Text).ToList(),
             });
 
-            await jobRepo.InsertJobAsync(notebookId, "COMPARE_CLAIMS", payload, ct);
-            comparisonJobsCreated++;
+            await jobRepo.InsertJobAsync(notebookId, "EMBED_CLAIMS", payload, ct);
+            embedJobsCreated = 1;
         }
 
         return Results.Ok(new UpdateClaimsResponse
         {
             EntryId = entryId,
             ClaimsStatus = ClaimsStatus.Distilled,
-            ComparisonJobsCreated = comparisonJobsCreated,
+            ComparisonJobsCreated = embedJobsCreated,
         });
     }
 }

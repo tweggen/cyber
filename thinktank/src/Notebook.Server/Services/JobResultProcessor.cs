@@ -35,8 +35,38 @@ public class JobResultProcessor(
                     else
                     {
                         // Non-fragment entry (or artifact after all fragments distilled):
-                        // create comparison jobs against topic indices
-                        followUpJobs += await CreateComparisonJobs(job.NotebookId, entryId, claimsList, ct);
+                        // embed claims for semantic nearest-neighbor comparison
+                        if (claimsList.Count > 0)
+                            followUpJobs += await CreateEmbedClaimsJob(job.NotebookId, entryId, claimsList, ct);
+                    }
+                    break;
+                }
+
+            case "EMBED_CLAIMS":
+                {
+                    var entryId = Guid.Parse(job.Payload.RootElement.GetProperty("entry_id").GetString()!);
+                    var embedding = JsonSerializer.Deserialize<double[]>(result.GetProperty("embedding"))!;
+
+                    await entryRepo.UpdateEntryEmbeddingAsync(entryId, job.NotebookId, embedding, ct);
+
+                    var neighbors = await entryRepo.FindNearestByEmbeddingAsync(
+                        job.NotebookId, entryId, embedding, 5, ct);
+
+                    // Get the entry's claims to pass into comparison jobs
+                    var entry = await entryRepo.GetEntryAsync(entryId, job.NotebookId, ct);
+                    var entryClaims = entry?.Claims ?? [];
+
+                    foreach (var (neighborId, neighborClaims, _) in neighbors)
+                    {
+                        var comparePayload = JsonSerializer.SerializeToDocument(new
+                        {
+                            entry_id = entryId.ToString(),
+                            compare_against_id = neighborId.ToString(),
+                            claims_a = neighborClaims,
+                            claims_b = entryClaims,
+                        });
+                        await jobRepo.InsertJobAsync(job.NotebookId, "COMPARE_CLAIMS", comparePayload, ct);
+                        followUpJobs++;
                     }
                     break;
                 }
@@ -113,23 +143,15 @@ public class JobResultProcessor(
         return 0;
     }
 
-    private async Task<int> CreateComparisonJobs(
-        Guid notebookId, Guid entryId, List<Claim> claimsList, CancellationToken ct)
+    private async Task<int> CreateEmbedClaimsJob(
+        Guid notebookId, Guid entryId, List<Claim> claims, CancellationToken ct)
     {
-        var followUpJobs = 0;
-        var indices = await entryRepo.FindTopicIndicesAsync(notebookId, ct);
-        foreach (var (indexId, indexClaims) in indices)
+        var payload = JsonSerializer.SerializeToDocument(new
         {
-            var comparePayload = JsonSerializer.SerializeToDocument(new
-            {
-                entry_id = entryId.ToString(),
-                compare_against_id = indexId.ToString(),
-                claims_a = indexClaims,
-                claims_b = claimsList,
-            });
-            await jobRepo.InsertJobAsync(notebookId, "COMPARE_CLAIMS", comparePayload, ct);
-            followUpJobs++;
-        }
-        return followUpJobs;
+            entry_id = entryId.ToString(),
+            claim_texts = claims.Select(c => c.Text).ToList(),
+        });
+        await jobRepo.InsertJobAsync(notebookId, "EMBED_CLAIMS", payload, ct);
+        return 1;
     }
 }

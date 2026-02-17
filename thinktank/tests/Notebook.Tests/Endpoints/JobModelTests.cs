@@ -41,11 +41,13 @@ public class JobModelTests
             DistillClaims = new JobTypeStats { Pending = 5, InProgress = 2, Completed = 10, Failed = 1 },
             CompareClaims = new JobTypeStats(),
             ClassifyTopic = new JobTypeStats(),
+            EmbedClaims = new JobTypeStats(),
         };
         var json = JsonSerializer.Serialize(stats);
         Assert.Contains("DISTILL_CLAIMS", json);
         Assert.Contains("COMPARE_CLAIMS", json);
         Assert.Contains("CLASSIFY_TOPIC", json);
+        Assert.Contains("EMBED_CLAIMS", json);
     }
 
     [Fact]
@@ -78,6 +80,7 @@ public class JobModelTests
             DistillClaims = new JobTypeStats { Pending = 5, InProgress = 2, Completed = 10, Failed = 1 },
             CompareClaims = new JobTypeStats { Pending = 0, InProgress = 0, Completed = 3, Failed = 0 },
             ClassifyTopic = new JobTypeStats(),
+            EmbedClaims = new JobTypeStats { Pending = 1 },
         };
         var json = JsonSerializer.Serialize(stats);
         var parsed = JsonSerializer.Deserialize<JobStatsResponse>(json)!;
@@ -85,5 +88,6 @@ public class JobModelTests
         Assert.Equal(2, parsed.DistillClaims.InProgress);
         Assert.Equal(3, parsed.CompareClaims.Completed);
         Assert.Equal(0, parsed.ClassifyTopic.Pending);
+        Assert.Equal(1, parsed.EmbedClaims.Pending);
     }
 }

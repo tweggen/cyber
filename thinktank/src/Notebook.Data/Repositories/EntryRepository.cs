@@ -76,19 +76,68 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
         return rowsAffected > 0;
     }
 
-    public async Task<List<(Guid Id, List<Claim> Claims)>> FindTopicIndicesAsync(
-        Guid notebookId, CancellationToken ct)
+    public async Task UpdateEntryEmbeddingAsync(
+        Guid entryId, Guid notebookId, double[] embedding, CancellationToken ct)
     {
-        var rows = await db.Entries
-            .Where(e => e.NotebookId == notebookId
-                && e.Topic != null
-                && e.Topic.StartsWith("index/topic/")
-                && (e.ClaimsStatus == ClaimsStatus.Distilled || e.ClaimsStatus == ClaimsStatus.Verified)
-                && e.Claims.Count > 0)
-            .Select(e => new { e.Id, e.Claims })
-            .ToListAsync(ct);
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
 
-        return rows.Select(r => (r.Id, r.Claims)).ToList();
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText = "UPDATE entries SET embedding = @embedding WHERE id = @entryId AND notebook_id = @notebookId";
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("embedding", embedding));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("entryId", entryId));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("notebookId", notebookId));
+        await cmd.ExecuteNonQueryAsync(ct);
+    }
+
+    public async Task<List<(Guid Id, List<Claim> Claims, double Similarity)>> FindNearestByEmbeddingAsync(
+        Guid notebookId, Guid excludeEntryId, double[] query, int topK, CancellationToken ct)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText =
+            """
+            SELECT e.id, e.claims,
+              (SELECT SUM(q.val * d.val)
+               FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
+               JOIN unnest(e.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
+              /
+              NULLIF(
+                SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
+                * SQRT((SELECT SUM(v.val * v.val) FROM unnest(e.embedding) AS v(val))),
+                0)
+              AS similarity
+            FROM entries e
+            WHERE e.notebook_id = @notebookId
+              AND e.id != @entryId
+              AND e.embedding IS NOT NULL
+              AND e.claims_status IN ('distilled', 'verified')
+              AND e.fragment_of IS NULL
+            ORDER BY similarity DESC NULLS LAST
+            LIMIT @topK
+            """;
+
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("query", query));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("notebookId", notebookId));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("entryId", excludeEntryId));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("topK", topK));
+
+        var results = new List<(Guid Id, List<Claim> Claims, double Similarity)>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var id = reader.GetGuid(0);
+            var claimsJson = reader.IsDBNull(1) ? "[]" : reader.GetString(1);
+            var claims = JsonSerializer.Deserialize<List<Claim>>(claimsJson) ?? [];
+            var similarity = reader.IsDBNull(2) ? 0.0 : reader.GetDouble(2);
+            results.Add((id, claims, similarity));
+        }
+
+        return results;
     }
 
     public async Task AppendComparisonAsync(Guid entryId, JsonElement comparison, CancellationToken ct)

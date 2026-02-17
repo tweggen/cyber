@@ -80,4 +80,8 @@ public class Entry
     /// <summary>Original content type before normalization (e.g. "text/html" if converted to markdown).</summary>
     [JsonPropertyName("original_content_type")]
     public string? OriginalContentType { get; set; }
+
+    /// <summary>Embedding vector for semantic nearest-neighbor comparison.</summary>
+    [JsonPropertyName("embedding")]
+    public double[]? Embedding { get; set; }
 }

@@ -80,6 +80,39 @@ public sealed class OllamaClient : IOllamaClient
         return new OllamaChatResponse(content, tokensPerSecond);
     }
 
+    public async Task<OllamaEmbedResponse> EmbedAsync(string model, List<string> input, CancellationToken ct)
+    {
+        var request = new OllamaEmbedRequest
+        {
+            Model = model,
+            Input = input,
+        };
+
+        var resp = await _http.PostAsJsonAsync("api/embed", request, ct);
+        resp.EnsureSuccessStatusCode();
+
+        var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+        var root = doc.RootElement;
+
+        var embeddingsArray = root.GetProperty("embeddings");
+        var embeddings = new double[embeddingsArray.GetArrayLength()][];
+        for (var i = 0; i < embeddings.Length; i++)
+        {
+            var vec = embeddingsArray[i];
+            embeddings[i] = new double[vec.GetArrayLength()];
+            for (var j = 0; j < embeddings[i].Length; j++)
+                embeddings[i][j] = vec[j].GetDouble();
+        }
+
+        return new OllamaEmbedResponse(embeddings);
+    }
+
+    private sealed class OllamaEmbedRequest
+    {
+        [JsonPropertyName("model")] public string Model { get; set; } = "";
+        [JsonPropertyName("input")] public List<string> Input { get; set; } = [];
+    }
+
     private sealed class OllamaChatRequest
     {
         [JsonPropertyName("model")] public string Model { get; set; } = "";

@@ -10,6 +10,7 @@ public sealed class ThinkerOptions
     public int WorkerCount { get; set; } = 1;
     public string OllamaUrl { get; set; } = "http://localhost:11434";
     public string Model { get; set; } = "llama3.2";
+    public string EmbeddingModel { get; set; } = "nomic-embed-text";
     public double PollIntervalSeconds { get; set; } = 5.0;
     public List<string>? JobTypes { get; set; }
 }

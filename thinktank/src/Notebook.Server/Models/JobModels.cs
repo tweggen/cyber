@@ -70,4 +70,7 @@ public sealed record JobStatsResponse
 
     [JsonPropertyName("CLASSIFY_TOPIC")]
     public required JobTypeStats ClassifyTopic { get; init; }
+
+    [JsonPropertyName("EMBED_CLAIMS")]
+    public required JobTypeStats EmbedClaims { get; init; }
 }

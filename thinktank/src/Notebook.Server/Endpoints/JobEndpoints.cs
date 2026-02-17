@@ -126,6 +126,7 @@ public static class JobEndpoints
             DistillClaims = BuildStats("DISTILL_CLAIMS"),
             CompareClaims = BuildStats("COMPARE_CLAIMS"),
             ClassifyTopic = BuildStats("CLASSIFY_TOPIC"),
+            EmbedClaims = BuildStats("EMBED_CLAIMS"),
         });
     }
 }

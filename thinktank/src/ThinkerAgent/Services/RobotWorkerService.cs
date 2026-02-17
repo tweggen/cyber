@@ -97,9 +97,6 @@ public sealed class RobotWorkerService : BackgroundService
 
                 try
                 {
-                    // Build prompt
-                    var prompt = PromptBuilder.BuildPrompt(jobTypeStr, payload);
-
                     // Check ollama
                     var ollamaOk = await ollamaClient.IsRunningAsync(ct);
                     _state.OllamaConnected = ollamaOk;
@@ -112,6 +109,53 @@ public sealed class RobotWorkerService : BackgroundService
                         continue;
                     }
 
+                    // EMBED_CLAIMS: call embedding API instead of chat
+                    if (jobTypeStr == "EMBED_CLAIMS")
+                    {
+                        var claimTexts = payload.GetProperty("claim_texts")
+                            .EnumerateArray()
+                            .Select(e => e.GetString()!)
+                            .ToList();
+
+                        var embedResponse = await ollamaClient.EmbedAsync(
+                            _options.EmbeddingModel, claimTexts, ct);
+
+                        // Average per-claim embeddings into single vector
+                        var dim = embedResponse.Embeddings[0].Length;
+                        var avg = new double[dim];
+                        foreach (var vec in embedResponse.Embeddings)
+                            for (var d = 0; d < dim; d++)
+                                avg[d] += vec[d];
+                        for (var d = 0; d < dim; d++)
+                            avg[d] /= embedResponse.Embeddings.Length;
+
+                        // Normalize to unit length
+                        var norm = Math.Sqrt(avg.Sum(v => v * v));
+                        if (norm > 0)
+                            for (var d = 0; d < dim; d++)
+                                avg[d] /= norm;
+
+                        var resultElement = JsonSerializer.SerializeToElement(new { embedding = avg });
+                        if (await apiClient.CompleteJobAsync(jobId, workerId, resultElement, ct))
+                        {
+                            worker.JobsCompleted++;
+                            _logger.LogInformation(
+                                "Worker {WorkerId}: embed job {JobId} completed (dim={Dim})",
+                                workerId, jobId, dim);
+                        }
+                        else
+                        {
+                            worker.JobsFailed++;
+                            _logger.LogError("Worker {WorkerId}: failed to submit embed result for job {JobId}", workerId, jobId);
+                        }
+
+                        _state.NotifyChanged();
+                        continue;
+                    }
+
+                    // Build prompt
+                    var prompt = PromptBuilder.BuildPrompt(jobTypeStr, payload);
+
                     // Call LLM
                     var llmResponse = await ollamaClient.ChatAsync(_options.Model, prompt, 2048, ct);
                     worker.TokensPerSecond = llmResponse.TokensPerSecond;
@@ -120,8 +164,8 @@ public sealed class RobotWorkerService : BackgroundService
                     var result = ResultParser.ParseResult(jobTypeStr, llmResponse.Content, payload);
 
                     // Complete job
-                    var resultElement = JsonSerializer.SerializeToElement(result);
-                    if (await apiClient.CompleteJobAsync(jobId, workerId, resultElement, ct))
+                    var resultElement2 = JsonSerializer.SerializeToElement(result);
+                    if (await apiClient.CompleteJobAsync(jobId, workerId, resultElement2, ct))
                     {
                         worker.JobsCompleted++;
                         _logger.LogInformation(
