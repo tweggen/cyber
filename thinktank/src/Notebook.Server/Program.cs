@@ -55,6 +55,7 @@ app.MapBatchEndpoints();
 app.MapClaimsEndpoints();
 app.MapJobEndpoints();
 app.MapBrowseEndpoints();
+app.MapObserveEndpoints();
 app.MapSearchEndpoints();
 
 app.Run();

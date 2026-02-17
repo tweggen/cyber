@@ -42,17 +42,17 @@ public static class AuthorEndpoints
         await using var cmd = connection.CreateCommand();
         cmd.CommandText = """
             INSERT INTO authors (id, public_key)
-            VALUES ($1, $2)
+            VALUES (@id, @key)
             ON CONFLICT (id) DO NOTHING
             """;
 
         var pId = cmd.CreateParameter();
-        pId.ParameterName = "$1";
+        pId.ParameterName = "id";
         pId.Value = authorId;
         cmd.Parameters.Add(pId);
 
         var pKey = cmd.CreateParameter();
-        pKey.ParameterName = "$2";
+        pKey.ParameterName = "key";
         pKey.Value = publicKey;
         cmd.Parameters.Add(pKey);
 
@@ -88,10 +88,10 @@ public static class AuthorEndpoints
             await connection.OpenAsync(ct);
 
         await using var cmd = connection.CreateCommand();
-        cmd.CommandText = "SELECT public_key, created FROM authors WHERE id = $1";
+        cmd.CommandText = "SELECT public_key, created FROM authors WHERE id = @id";
 
         var pId = cmd.CreateParameter();
-        pId.ParameterName = "$1";
+        pId.ParameterName = "id";
         pId.Value = authorId;
         cmd.Parameters.Add(pId);
 

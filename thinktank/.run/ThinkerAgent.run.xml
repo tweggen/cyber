@@ -2,6 +2,9 @@
   <configuration default="false" name="ThinkerAgent" type="DotNetProject" factoryName=".NET Project">
     <option name="PROJECT_PATH" value="$PROJECT_DIR$/src/ThinkerAgent/ThinkerAgent.csproj" />
     <option name="PROJECT_TFM" value="net10.0" />
+    <envs>
+      <env name="DOTNET_ENVIRONMENT" value="Development" />
+    </envs>
     <method v="2">
       <option name="Build" />
     </method>

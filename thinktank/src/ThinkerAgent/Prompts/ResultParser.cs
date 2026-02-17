@@ -146,13 +146,36 @@ public static class ResultParser
     public static JsonElement ExtractJson(string text)
     {
         text = text.Trim();
-        if (text.StartsWith("```"))
+
+        // Extract content between ```json ... ``` fences if present
+        var fenceMatch = Regex.Match(text, @"```(?:json)?\s*\n([\s\S]*?)```", RegexOptions.IgnoreCase);
+        if (fenceMatch.Success)
         {
-            var lines = text.Split('\n')
-                .Where(l => !l.TrimStart().StartsWith("```"))
-                .ToArray();
-            text = string.Join('\n', lines);
+            text = fenceMatch.Groups[1].Value.Trim();
         }
+
+        // Find the outermost JSON object or array by brace matching
+        var startIdx = text.IndexOfAny(['{', '[']);
+        if (startIdx >= 0)
+        {
+            var open = text[startIdx];
+            var close = open == '{' ? '}' : ']';
+            var depth = 0;
+            var inString = false;
+            var escape = false;
+
+            for (var i = startIdx; i < text.Length; i++)
+            {
+                var c = text[i];
+                if (escape) { escape = false; continue; }
+                if (c == '\\' && inString) { escape = true; continue; }
+                if (c == '"') { inString = !inString; continue; }
+                if (inString) continue;
+                if (c == open) depth++;
+                else if (c == close) { depth--; if (depth == 0) { text = text[startIdx..(i + 1)]; break; } }
+            }
+        }
+
         return JsonDocument.Parse(text).RootElement.Clone();
     }
 
