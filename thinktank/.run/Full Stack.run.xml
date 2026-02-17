@@ -1,0 +1,8 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Full Stack" type="CompoundRunConfigurationType">
+    <toRun name="Notebook.Server" type="DotNetProject" />
+    <toRun name="NotebookAdmin" type="DotNetProject" />
+    <toRun name="ThinkerAgent" type="DotNetProject" />
+    <toRun name="YourCyber" type="DotNetProject" />
+  </configuration>
+</component>

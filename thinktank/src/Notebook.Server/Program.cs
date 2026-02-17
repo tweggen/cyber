@@ -49,6 +49,7 @@ var app = builder.Build();
 app.UseAuthentication();
 app.UseAuthorization();
 
+app.MapAuthorEndpoints();
 app.MapNotebookEndpoints();
 app.MapBatchEndpoints();
 app.MapClaimsEndpoints();

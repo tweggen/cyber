@@ -1,0 +1,10 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Notebook.Server" type="DotNetProject" factoryName=".NET Project">
+    <option name="PROJECT_PATH" value="$PROJECT_DIR$/src/Notebook.Server/Notebook.Server.csproj" />
+    <option name="PROJECT_TFM" value="net10.0" />
+    <option name="USE_LAUNCH_PROFILE" value="http" />
+    <method v="2">
+      <option name="Build" />
+    </method>
+  </configuration>
+</component>
