@@ -112,7 +112,7 @@ public class JobResultProcessor(
             {
                 entry_id = nextFragment.Id.ToString(),
                 content,
-                context_claims = contextClaims.Select(c => new { c.Text, c.Confidence }).ToList(),
+                context_claims = contextClaims.Select(c => new { text = c.Text, confidence = c.Confidence }).ToList(),
                 max_claims = 12,
             });
 
@@ -132,7 +132,7 @@ public class JobResultProcessor(
             {
                 entry_id = artifactId.ToString(),
                 content = artifactContent,
-                context_claims = allClaims.Select(c => new { c.Text, c.Confidence }).ToList(),
+                context_claims = allClaims.Select(c => new { text = c.Text, confidence = c.Confidence }).ToList(),
                 max_claims = 12,
             });
 
