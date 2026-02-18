@@ -4,7 +4,7 @@ using ThinkerAgent.Configuration;
 
 namespace ThinkerAgent.Services;
 
-public sealed class OllamaClient : IOllamaClient
+public sealed class OllamaClient : ILlmClient
 {
     private readonly HttpClient _http;
 
@@ -26,19 +26,19 @@ public sealed class OllamaClient : IOllamaClient
         }
     }
 
-    public async Task<List<OllamaModel>> ListModelsAsync(CancellationToken ct)
+    public async Task<List<LlmModel>> ListModelsAsync(CancellationToken ct)
     {
         var resp = await _http.GetAsync("api/tags", ct);
         resp.EnsureSuccessStatusCode();
 
         var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
-        var models = new List<OllamaModel>();
+        var models = new List<LlmModel>();
 
         if (doc.RootElement.TryGetProperty("models", out var arr))
         {
             foreach (var m in arr.EnumerateArray())
             {
-                models.Add(new OllamaModel(
+                models.Add(new LlmModel(
                     m.GetProperty("name").GetString() ?? "",
                     m.GetProperty("modified_at").GetString() ?? "",
                     m.TryGetProperty("size", out var s) ? s.GetInt64() : 0
@@ -49,7 +49,7 @@ public sealed class OllamaClient : IOllamaClient
         return models;
     }
 
-    public async Task<OllamaChatResponse> ChatAsync(string model, string prompt, int maxTokens,
+    public async Task<LlmChatResponse> ChatAsync(string model, string prompt, int maxTokens,
         IProgress<int>? tokenProgress = null, CancellationToken ct = default)
     {
         var request = new OllamaChatRequest
@@ -109,10 +109,10 @@ public sealed class OllamaClient : IOllamaClient
             }
         }
 
-        return new OllamaChatResponse(contentBuilder.ToString(), tokensPerSecond);
+        return new LlmChatResponse(contentBuilder.ToString(), tokensPerSecond);
     }
 
-    public async Task<OllamaEmbedResponse> EmbedAsync(string model, List<string> input, CancellationToken ct)
+    public async Task<LlmEmbedResponse> EmbedAsync(string model, List<string> input, CancellationToken ct)
     {
         var request = new OllamaEmbedRequest
         {
@@ -136,7 +136,7 @@ public sealed class OllamaClient : IOllamaClient
                 embeddings[i][j] = vec[j].GetDouble();
         }
 
-        return new OllamaEmbedResponse(embeddings);
+        return new LlmEmbedResponse(embeddings);
     }
 
     private sealed class OllamaEmbedRequest

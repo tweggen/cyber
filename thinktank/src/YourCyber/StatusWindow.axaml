@@ -45,8 +45,8 @@
                     </Grid.ColumnDefinitions>
 
                     <StackPanel Grid.Column="0" Orientation="Horizontal">
-                        <TextBlock Text="Ollama: " Opacity="0.7"/>
-                        <TextBlock Text="{Binding OllamaStatusText}"
+                        <TextBlock Text="LLM: " Opacity="0.7"/>
+                        <TextBlock Text="{Binding LlmStatusText}"
                                    FontWeight="SemiBold"/>
                     </StackPanel>
 

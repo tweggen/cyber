@@ -9,7 +9,7 @@ public partial class AgentStatusViewModel : ObservableObject
     private bool _isRunning;
 
     [ObservableProperty]
-    private bool _ollamaConnected;
+    private bool _llmConnected;
 
     [ObservableProperty]
     private string _model = "";
@@ -49,15 +49,15 @@ public partial class AgentStatusViewModel : ObservableObject
         }
     }
 
-    public string OllamaStatusText => OllamaConnected ? "Connected" : "Disconnected";
+    public string LlmStatusText => LlmConnected ? "Connected" : "Disconnected";
 
     public bool IsEmpty => !IsRunning && Workers.Count == 0;
 
     partial void OnUptimeSecondsChanged(double value) =>
         OnPropertyChanged(nameof(UptimeFormatted));
 
-    partial void OnOllamaConnectedChanged(bool value) =>
-        OnPropertyChanged(nameof(OllamaStatusText));
+    partial void OnLlmConnectedChanged(bool value) =>
+        OnPropertyChanged(nameof(LlmStatusText));
 
     partial void OnIsRunningChanged(bool value)
     {
@@ -71,7 +71,7 @@ public partial class AgentStatusViewModel : ObservableObject
     public void UpdateFromSnapshot(WorkerStateSnapshot snapshot)
     {
         IsRunning = snapshot.IsRunning;
-        OllamaConnected = snapshot.OllamaConnected;
+        LlmConnected = snapshot.LlmConnected;
         TotalCompleted = snapshot.TotalCompleted;
         TotalFailed = snapshot.TotalFailed;
         UptimeSeconds = snapshot.UptimeSeconds;
@@ -110,7 +110,7 @@ public partial class AgentStatusViewModel : ObservableObject
 public sealed class WorkerStateSnapshot
 {
     public bool IsRunning { get; set; }
-    public bool OllamaConnected { get; set; }
+    public bool LlmConnected { get; set; }
     public List<WorkerInfoSnapshot> Workers { get; set; } = [];
     public int TotalCompleted { get; set; }
     public int TotalFailed { get; set; }

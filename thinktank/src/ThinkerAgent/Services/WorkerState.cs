@@ -27,7 +27,7 @@ public sealed class WorkerState
 
     public event Action? OnStateChanged;
 
-    public bool OllamaConnected { get; set; }
+    public bool LlmConnected { get; set; }
     public bool IsRunning { get; set; }
     public long QueueDepth { get; set; }
 
@@ -71,7 +71,7 @@ public sealed class WorkerState
             return new WorkerStateSnapshot
             {
                 IsRunning = IsRunning,
-                OllamaConnected = OllamaConnected,
+                LlmConnected = LlmConnected,
                 QueueDepth = QueueDepth,
                 Workers = workers,
                 TotalCompleted = workers.Sum(w => w.JobsCompleted),
@@ -98,7 +98,7 @@ public sealed class WorkerState
 public sealed class WorkerStateSnapshot
 {
     public bool IsRunning { get; init; }
-    public bool OllamaConnected { get; init; }
+    public bool LlmConnected { get; init; }
     public long QueueDepth { get; init; }
     public List<WorkerInfoSnapshot> Workers { get; init; } = [];
     public int TotalCompleted { get; init; }

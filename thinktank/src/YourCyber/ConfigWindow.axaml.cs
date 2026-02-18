@@ -31,7 +31,9 @@ public partial class ConfigWindow : Window
             ServerUrlTextBox.Text = options?.ServerUrl ?? "";
             NotebookIdTextBox.Text = options?.NotebookId.ToString() ?? "";
             TokenTextBox.Text = options?.Token ?? "";
-            OllamaUrlTextBox.Text = options?.OllamaUrl ?? "";
+            SelectApiType(options?.ApiType ?? "Ollama");
+            LlmUrlTextBox.Text = options?.LlmUrl ?? "";
+            ApiKeyTextBox.Text = options?.ApiKey ?? "";
             ModelTextBox.Text = options?.Model ?? "";
             WorkerCountUpDown.Value = options?.WorkerCount ?? 1;
             PollIntervalUpDown.Value = (decimal)(options?.PollIntervalSeconds ?? 5.0);
@@ -40,11 +42,34 @@ public partial class ConfigWindow : Window
         {
             System.Diagnostics.Debug.WriteLine($"Error loading config: {ex.Message}");
             ServerUrlTextBox.Text = "http://localhost:5000";
-            OllamaUrlTextBox.Text = "http://localhost:11434";
+            SelectApiType("Ollama");
+            LlmUrlTextBox.Text = "http://localhost:11434";
+            ApiKeyTextBox.Text = "";
             ModelTextBox.Text = "llama3.2";
             WorkerCountUpDown.Value = 1;
             PollIntervalUpDown.Value = 5;
         }
+    }
+
+    private void SelectApiType(string apiType)
+    {
+        for (var i = 0; i < ApiTypeComboBox.Items.Count; i++)
+        {
+            if (ApiTypeComboBox.Items[i] is ComboBoxItem item &&
+                item.Tag?.ToString() == apiType)
+            {
+                ApiTypeComboBox.SelectedIndex = i;
+                return;
+            }
+        }
+        ApiTypeComboBox.SelectedIndex = 0;
+    }
+
+    private string GetSelectedApiType()
+    {
+        if (ApiTypeComboBox.SelectedItem is ComboBoxItem item)
+            return item.Tag?.ToString() ?? "Ollama";
+        return "Ollama";
     }
 
     private void ClearAllErrors()
@@ -55,8 +80,8 @@ public partial class ConfigWindow : Window
         NotebookIdErrorText.IsVisible = false;
         TokenErrorText.Text = "";
         TokenErrorText.IsVisible = false;
-        OllamaUrlErrorText.Text = "";
-        OllamaUrlErrorText.IsVisible = false;
+        LlmUrlErrorText.Text = "";
+        LlmUrlErrorText.IsVisible = false;
         StatusText.IsVisible = false;
     }
 
@@ -110,15 +135,15 @@ public partial class ConfigWindow : Window
             isValid = false;
         }
 
-        var ollamaUrl = OllamaUrlTextBox.Text?.Trim() ?? "";
-        if (string.IsNullOrWhiteSpace(ollamaUrl))
+        var llmUrl = LlmUrlTextBox.Text?.Trim() ?? "";
+        if (string.IsNullOrWhiteSpace(llmUrl))
         {
-            SetError(OllamaUrlErrorText, "Ollama URL is required.");
+            SetError(LlmUrlErrorText, "LLM URL is required.");
             isValid = false;
         }
-        else if (!Uri.TryCreate(ollamaUrl, UriKind.Absolute, out _))
+        else if (!Uri.TryCreate(llmUrl, UriKind.Absolute, out _))
         {
-            SetError(OllamaUrlErrorText, "Please enter a valid URL.");
+            SetError(LlmUrlErrorText, "Please enter a valid URL.");
             isValid = false;
         }
 
@@ -132,7 +157,9 @@ public partial class ConfigWindow : Window
             ServerUrl = ServerUrlTextBox.Text?.Trim() ?? "",
             NotebookId = Guid.TryParse(NotebookIdTextBox.Text?.Trim(), out var id) ? id : Guid.Empty,
             Token = TokenTextBox.Text ?? "",
-            OllamaUrl = OllamaUrlTextBox.Text?.Trim() ?? "",
+            ApiType = GetSelectedApiType(),
+            LlmUrl = LlmUrlTextBox.Text?.Trim() ?? "",
+            ApiKey = ApiKeyTextBox.Text ?? "",
             Model = ModelTextBox.Text?.Trim() ?? "",
             WorkerCount = (int)(WorkerCountUpDown.Value ?? 1),
             PollIntervalSeconds = (double)(PollIntervalUpDown.Value ?? 5),
@@ -244,7 +271,9 @@ internal sealed class ThinkerOptionsDto
     public Guid NotebookId { get; set; }
     public string Token { get; set; } = "";
     public int WorkerCount { get; set; } = 1;
-    public string OllamaUrl { get; set; } = "";
+    public string ApiType { get; set; } = "Ollama";
+    public string LlmUrl { get; set; } = "";
+    public string ApiKey { get; set; } = "";
     public string Model { get; set; } = "";
     public double PollIntervalSeconds { get; set; } = 5.0;
     public List<string>? JobTypes { get; set; }

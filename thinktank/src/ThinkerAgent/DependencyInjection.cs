@@ -23,11 +23,29 @@ public static class DependencyInjection
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
-        services.AddHttpClient<IOllamaClient, OllamaClient>(client =>
+        switch (options.ApiType)
         {
-            client.BaseAddress = new Uri(options.OllamaUrl.TrimEnd('/') + "/");
-            client.Timeout = TimeSpan.FromMinutes(5);
-        });
+            case ApiType.OpenAi:
+                services.AddHttpClient<ILlmClient, OpenAiLlmClient>(client =>
+                {
+                    client.BaseAddress = new Uri(options.LlmUrl.TrimEnd('/') + "/");
+                    client.Timeout = TimeSpan.FromMinutes(5);
+                    if (!string.IsNullOrWhiteSpace(options.ApiKey))
+                    {
+                        client.DefaultRequestHeaders.Authorization =
+                            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
+                    }
+                });
+                break;
+
+            default:
+                services.AddHttpClient<ILlmClient, OllamaClient>(client =>
+                {
+                    client.BaseAddress = new Uri(options.LlmUrl.TrimEnd('/') + "/");
+                    client.Timeout = TimeSpan.FromMinutes(5);
+                });
+                break;
+        }
 
         services.AddHostedService<RobotWorkerService>();
 

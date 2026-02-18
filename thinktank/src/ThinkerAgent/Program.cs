@@ -69,10 +69,6 @@ try
     app.MapPut("/config", async (ThinkerOptions newConfig,
         ConfigHelper<ThinkerOptions> helper) =>
     {
-        // Protect infrastructure-only fields: OllamaUrl is determined by the
-        // local environment, not the desktop UI.
-        newConfig.OllamaUrl = null!;
-
         await helper.Save(newConfig);
         return Results.Ok(new { status = "saved", restart_required = true });
     });
@@ -96,11 +92,11 @@ try
         return Results.Ok(new { status = "shutting down" });
     });
 
-    app.MapGet("/models", async (IOllamaClient ollama, CancellationToken ct) =>
+    app.MapGet("/models", async (ILlmClient llmClient, CancellationToken ct) =>
     {
         try
         {
-            var models = await ollama.ListModelsAsync(ct);
+            var models = await llmClient.ListModelsAsync(ct);
             return Results.Ok(new { models });
         }
         catch

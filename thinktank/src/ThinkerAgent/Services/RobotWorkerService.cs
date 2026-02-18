@@ -63,17 +63,17 @@ public sealed class RobotWorkerService : BackgroundService
             {
                 using var scope = _services.CreateScope();
                 var apiClient = scope.ServiceProvider.GetRequiredService<NotebookApiClient>();
-                var ollamaClient = scope.ServiceProvider.GetRequiredService<IOllamaClient>();
+                var llmClient = scope.ServiceProvider.GetRequiredService<ILlmClient>();
 
-                // Check Ollama BEFORE claiming a job — don't burn retry budgets while Ollama is down
-                var ollamaOk = await ollamaClient.IsRunningAsync(ct);
-                _state.OllamaConnected = ollamaOk;
-                if (!ollamaOk)
+                // Check LLM BEFORE claiming a job — don't burn retry budgets while LLM is down
+                var llmOk = await llmClient.IsRunningAsync(ct);
+                _state.LlmConnected = llmOk;
+                if (!llmOk)
                 {
                     worker.Status = WorkerStatus.Idle;
                     worker.CurrentJobType = null;
                     if (consecutiveEmpty % 12 == 0)
-                        _logger.LogWarning("Worker {WorkerId}: Ollama not reachable, waiting...", workerId);
+                        _logger.LogWarning("Worker {WorkerId}: LLM not reachable, waiting...", workerId);
                     consecutiveEmpty++;
                     _state.NotifyChanged();
                     await Task.Delay(pollInterval, ct);
@@ -124,7 +124,7 @@ public sealed class RobotWorkerService : BackgroundService
                             .Select(e => e.GetString()!)
                             .ToList();
 
-                        var embedResponse = await ollamaClient.EmbedAsync(
+                        var embedResponse = await llmClient.EmbedAsync(
                             _options.EmbeddingModel, claimTexts, ct);
 
                         // Average per-claim embeddings into single vector
@@ -170,7 +170,7 @@ public sealed class RobotWorkerService : BackgroundService
                         worker.TokensGenerated = count;
                         _state.NotifyThrottled();
                     });
-                    var llmResponse = await ollamaClient.ChatAsync(_options.Model, prompt, 2048, progress, ct);
+                    var llmResponse = await llmClient.ChatAsync(_options.Model, prompt, 2048, progress, ct);
                     worker.TokensGenerated = 0;
                     worker.TokensPerSecond = llmResponse.TokensPerSecond;
 

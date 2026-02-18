@@ -2,15 +2,17 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="500"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="580"
         x:Class="YourCyber.ConfigWindow"
         Title="ThinkerAgent Configuration"
-        Height="500" Width="450"
+        Height="580" Width="450"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -80,44 +82,66 @@
                    TextWrapping="Wrap"
                    IsVisible="False"/>
 
-        <!-- Ollama URL -->
+        <!-- API Type -->
         <TextBlock Grid.Row="6" Grid.Column="0"
-                   Text="Ollama URL:"
+                   Text="API Type:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="6" Grid.Column="1"
-                 Name="OllamaUrlTextBox"
+        <ComboBox Grid.Row="6" Grid.Column="1"
+                  Name="ApiTypeComboBox"
+                  Margin="5,5,5,5"
+                  HorizontalAlignment="Stretch">
+            <ComboBoxItem Content="Ollama" Tag="Ollama"/>
+            <ComboBoxItem Content="OpenAI" Tag="OpenAi"/>
+        </ComboBox>
+
+        <!-- LLM URL -->
+        <TextBlock Grid.Row="7" Grid.Column="0"
+                   Text="LLM URL:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="7" Grid.Column="1"
+                 Name="LlmUrlTextBox"
                  Margin="5,5,5,0"/>
-        <TextBlock Grid.Row="7" Grid.Column="1"
-                   Name="OllamaUrlErrorText"
+        <TextBlock Grid.Row="8" Grid.Column="1"
+                   Name="LlmUrlErrorText"
                    Foreground="Red"
                    FontSize="11"
                    Margin="5,0,5,5"
                    TextWrapping="Wrap"
                    IsVisible="False"/>
 
+        <!-- API Key -->
+        <TextBlock Grid.Row="9" Grid.Column="0"
+                   Text="API Key:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="9" Grid.Column="1"
+                 Name="ApiKeyTextBox"
+                 PasswordChar="&#x2022;"
+                 Watermark="Optional for local endpoints"
+                 Margin="5,5,5,5"/>
+
         <!-- Model -->
-        <TextBlock Grid.Row="8" Grid.Column="0"
+        <TextBlock Grid.Row="10" Grid.Column="0"
                    Text="Model:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="8" Grid.Column="1"
+        <TextBox Grid.Row="10" Grid.Column="1"
                  Name="ModelTextBox"
                  Margin="5,5,5,5"/>
 
         <!-- Worker Count -->
-        <TextBlock Grid.Row="9" Grid.Column="0"
+        <TextBlock Grid.Row="11" Grid.Column="0"
                    Text="Worker Count:"
                    VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="9" Grid.Column="1"
+        <NumericUpDown Grid.Row="11" Grid.Column="1"
                        Name="WorkerCountUpDown"
                        Minimum="1" Maximum="16"
                        Value="1"
                        Margin="5,5,5,5"/>
 
         <!-- Poll Interval -->
-        <TextBlock Grid.Row="10" Grid.Column="0"
+        <TextBlock Grid.Row="12" Grid.Column="0"
                    Text="Poll Interval (s):"
                    VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="10" Grid.Column="1"
+        <NumericUpDown Grid.Row="12" Grid.Column="1"
                        Name="PollIntervalUpDown"
                        Minimum="1" Maximum="300"
                        Value="5"
@@ -125,7 +149,7 @@
                        Margin="5,5,5,5"/>
 
         <!-- Status message -->
-        <TextBlock Grid.Row="11" Grid.ColumnSpan="2"
+        <TextBlock Grid.Row="13" Grid.ColumnSpan="2"
                    Name="StatusText"
                    Foreground="Green"
                    FontSize="11"
@@ -135,7 +159,7 @@
                    IsVisible="False"/>
 
         <!-- Buttons -->
-        <StackPanel Grid.Row="16" Grid.ColumnSpan="2"
+        <StackPanel Grid.Row="18" Grid.ColumnSpan="2"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="5">
