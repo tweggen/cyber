@@ -116,23 +116,29 @@ else if (entryData != null)
                         </div>
                         @if (comp.Contradictions.Count > 0)
                         {
-                            <details class="mt-1">
-                                <summary class="text-danger" style="cursor: pointer;">
-                                    <small>@comp.Contradictions.Count contradiction(s)</small>
-                                </summary>
-                                <ul class="list-unstyled ms-3 mt-1 mb-0">
-                                    @foreach (var c in comp.Contradictions)
-                                    {
-                                        <li class="mb-1">
-                                            <small>
-                                                <span class="text-muted">Severity: @c.Severity.ToString("F2")</span><br/>
-                                                <strong>A:</strong> @c.ClaimA<br/>
-                                                <strong>B:</strong> @c.ClaimB
-                                            </small>
-                                        </li>
-                                    }
-                                </ul>
-                            </details>
+                            var compId = comp.ComparedAgainst;
+                            <div class="mt-1">
+                                <a href="#" class="text-danger text-decoration-none" style="cursor: pointer;"
+                                   @onclick="() => ToggleContradictions(compId)"
+                                   @onclick:preventDefault>
+                                    <small>@(expandedComparisons.Contains(compId) ? "\u25BC" : "\u25B6") @comp.Contradictions.Count contradiction(s)</small>
+                                </a>
+                                @if (expandedComparisons.Contains(compId))
+                                {
+                                    <ul class="list-unstyled ms-3 mt-1 mb-0">
+                                        @foreach (var c in comp.Contradictions)
+                                        {
+                                            <li class="mb-1">
+                                                <small>
+                                                    <span class="text-muted">Severity: @c.Severity.ToString("F2")</span><br/>
+                                                    <strong>A:</strong> @c.ClaimA<br/>
+                                                    <strong>B:</strong> @c.ClaimB
+                                                </small>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
                         }
                     </div>
                 }
@@ -330,6 +336,7 @@ else if (entryData != null)
     private ReviseFormModel reviseModel = new();
     private ReviseEntryResponse? revisionResult;
     private bool isRevising;
+    private HashSet<Guid> expandedComparisons = new();
 
     public class ReviseFormModel
     {
@@ -377,6 +384,12 @@ else if (entryData != null)
             var href = $"/notebooks/{NotebookId}/entries/{id}";
             return $"<a href=\"{href}\">{id}</a>";
         });
+    }
+
+    private void ToggleContradictions(Guid comparisonId)
+    {
+        if (!expandedComparisons.Remove(comparisonId))
+            expandedComparisons.Add(comparisonId);
     }
 
     private static string GetClaimsStatusBadgeClass(string? status) => status switch
