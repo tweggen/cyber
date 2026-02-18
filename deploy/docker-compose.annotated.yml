@@ -330,6 +330,10 @@ services:
     container_name: thinktank-server
 
     environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      # Explicit — .NET defaults to Production when unset, but being clear
+      # prevents confusion. Development mode (with AllowDevIdentity) is only
+      # for local Rider/dotnet-run via launchSettings.json.
       ConnectionStrings__Notebook: "Host=notebook-postgres;Database=thinktank;Username=notebook;Password=notebook_dev"
       # .NET connection string targeting the "thinktank" database (created by
       # 00-thinktank-db.sql). Same postgres instance, separate database.
@@ -349,9 +353,11 @@ services:
     # -------------------------------------------------------------------------
     # TRAEFIK LABELS — Path-based routing with StripPrefix
     # -------------------------------------------------------------------------
+    # The domain is controlled by THINKTANK_DOMAIN (default: thinktank.nassau-records.de).
+    # Override via .env file or shell environment to deploy under a different domain.
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.thinktank-api.rule=Host(`thinktank.nassau-records.de`) && PathPrefix(`/api/thinktank/v1`)"
+      - "traefik.http.routers.thinktank-api.rule=Host(`${THINKTANK_DOMAIN:-thinktank.nassau-records.de}`) && PathPrefix(`/api/thinktank/v1`)"
       # Matches only API requests. The PathPrefix condition gives this router
       # higher priority than the catch-all thinktank-admin router below.
       - "traefik.http.routers.thinktank-api.entrypoints=websecure"
@@ -402,8 +408,8 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.thinktank-admin.rule=Host(`thinktank.nassau-records.de`)"
-      # Catch-all router for thinktank.nassau-records.de — serves the Blazor
+      - "traefik.http.routers.thinktank-admin.rule=Host(`${THINKTANK_DOMAIN:-thinktank.nassau-records.de}`)"
+      # Catch-all router for the thinktank domain — serves the Blazor
       # UI for all paths not matched by the thinktank-api router above.
       - "traefik.http.routers.thinktank-admin.entrypoints=websecure"
       - "traefik.http.routers.thinktank-admin.tls.certresolver=letsencrypt"

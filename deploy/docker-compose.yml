@@ -101,6 +101,7 @@ services:
     image: ghcr.io/tweggen/thinktank-server:latest
     container_name: thinktank-server
     environment:
+      ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Notebook: "Host=notebook-db;Database=thinktank;Username=notebook;Password=notebook_dev"
       Jwt__PublicKey: |
         -----BEGIN PUBLIC KEY-----
@@ -113,7 +114,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=coolify"
-      - "traefik.http.routers.thinktank-api.rule=Host(`thinktank.nassau-records.de`) && PathPrefix(`/api/thinktank/v1`)"
+      - "traefik.http.routers.thinktank-api.rule=Host(`${THINKTANK_DOMAIN:-thinktank.nassau-records.de}`) && PathPrefix(`/api/thinktank/v1`)"
       - "traefik.http.routers.thinktank-api.entrypoints=https"
       - "traefik.http.routers.thinktank-api.tls=true"
       - "traefik.http.routers.thinktank-api.tls.certresolver=letsencrypt"
@@ -150,7 +151,7 @@ services:
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=coolify"
-      - "traefik.http.routers.thinktank-admin.rule=Host(`thinktank.nassau-records.de`)"
+      - "traefik.http.routers.thinktank-admin.rule=Host(`${THINKTANK_DOMAIN:-thinktank.nassau-records.de}`)"
       - "traefik.http.routers.thinktank-admin.entrypoints=https"
       - "traefik.http.routers.thinktank-admin.tls=true"
       - "traefik.http.routers.thinktank-admin.tls.certresolver=letsencrypt"
