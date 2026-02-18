@@ -153,8 +153,8 @@ else if (entryData != null)
                 </span>
             }
         </div>
-        <div class="card-body">
-            <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word;">@((MarkupString)LinkifyEntryIds(GetContentText(entryData.Entry.Content)))</pre>
+        <div class="card-body" style="min-width: 0; overflow: hidden;">
+            <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word; overflow-wrap: break-word;">@((MarkupString)LinkifyEntryIds(GetContentText(entryData.Entry.Content)))</pre>
         </div>
         <div class="card-footer text-muted">
             <small>
