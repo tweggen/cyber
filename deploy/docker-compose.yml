@@ -103,10 +103,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Notebook: "Host=notebook-db;Database=thinktank;Username=notebook;Password=notebook_dev"
-      Jwt__PublicKey: |
-        -----BEGIN PUBLIC KEY-----
-        MCowBQYDK2VwAyEAFeQQ0luuDcgS6GHN2wT1niHpkR1p50csIVcifMjMEBU=
-        -----END PUBLIC KEY-----
+      Jwt__PublicKey: "MCowBQYDK2VwAyEAFeQQ0luuDcgS6GHN2wT1niHpkR1p50csIVcifMjMEBU="
     depends_on:
       notebook-db:
         condition: service_healthy

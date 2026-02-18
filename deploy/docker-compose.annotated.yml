@@ -337,12 +337,9 @@ services:
       ConnectionStrings__Notebook: "Host=notebook-postgres;Database=thinktank;Username=notebook;Password=notebook_dev"
       # .NET connection string targeting the "thinktank" database (created by
       # 00-thinktank-db.sql). Same postgres instance, separate database.
-      Jwt__PublicKey: |
-        -----BEGIN PUBLIC KEY-----
-        MCowBQYDK2VwAyEAFeQQ0luuDcgS6GHN2wT1niHpkR1p50csIVcifMjMEBU=
-        -----END PUBLIC KEY-----
-      # Same Ed25519 public key as the Rust notebook-server — both backends
-      # accept tokens signed by the admin's private key.
+      Jwt__PublicKey: "MCowBQYDK2VwAyEAFeQQ0luuDcgS6GHN2wT1niHpkR1p50csIVcifMjMEBU="
+      # Raw base64 SPKI — NOT PEM format. The .NET auth handler calls
+      # Convert.FromBase64String() directly, so PEM headers would crash it.
 
     depends_on:
       postgres:
