@@ -15,12 +15,15 @@
 #     │
 #     ▼
 #   Traefik (managed by Coolify, listens on :80 and :443)
-#     │  ┌── Host: notebook.nassau-records.de ──▶ notebook-server:3000
-#     │  └── Host: cyber.nassau-records.de    ──▶ admin:5000
+#     │  ┌── Host: notebook.nassau-records.de                          ──▶ notebook-server:3000
+#     │  ├── Host: cyber.nassau-records.de                             ──▶ admin:5000
+#     │  ├── Host: thinktank.nassau-records.de + /api/thinktank/v1/*   ──▶ thinktank-server:8080 (StripPrefix)
+#     │  └── Host: thinktank.nassau-records.de (catch-all)             ──▶ thinktank-admin:5000
 #     ▼
 #   Docker "coolify" network (shared between Traefik and our services)
 #
-#   Internally, postgres ◀──▶ notebook-server ◀──▶ admin
+#   Internally, postgres ◀──▶ notebook-server  ◀──▶ admin
+#                         ◀──▶ thinktank-server ◀──▶ thinktank-admin
 #   all talk over the private "notebook-net" bridge.
 #
 # =============================================================================
@@ -79,6 +82,17 @@ services:
       #   02: Creates the notebook tables (entries, notebooks, authors, etc.).
       - ../postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
       #   03: Sets up the Apache AGE graph for causal-reference traversal.
+
+      # --- Thinktank database bootstrap ---
+      - ../postgres/migrations/000_create_thinktank_db.sql:/docker-entrypoint-initdb.d/00-thinktank-db.sql:ro
+      #   00: Creates the separate "thinktank" database used by the .NET backend.
+      - ../postgres/init-thinktank.sh:/docker-entrypoint-initdb.d/04-thinktank.sh:ro
+      #   04: Shell script that applies schema migrations (002–012) to the
+      #       thinktank database. Runs after all .sql files have executed against
+      #       the default notebook DB.
+      - ../postgres/migrations:/thinktank-migrations:ro
+      #   Mounts the full migrations directory so init-thinktank.sh can
+      #   reference migration files that aren't individually mounted in initdb.d.
 
     healthcheck:
       # Docker periodically runs this command inside the container.
@@ -304,6 +318,104 @@ services:
       # Same dual-network setup: internal (notebook-net) + Traefik (coolify).
 
 
+  # ===========================================================================
+  # THINKTANK-SERVER — .NET Notebook.Server API
+  # ===========================================================================
+  thinktank-server:
+    # .NET 10 backend that implements the notebook API for the thinktank.
+    # The Docker image is built from thinktank/Dockerfile (multi-stage).
+    build:
+      context: ../thinktank
+      dockerfile: Dockerfile
+    container_name: thinktank-server
+
+    environment:
+      ConnectionStrings__Notebook: "Host=notebook-postgres;Database=thinktank;Username=notebook;Password=notebook_dev"
+      # .NET connection string targeting the "thinktank" database (created by
+      # 00-thinktank-db.sql). Same postgres instance, separate database.
+      Jwt__PublicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MCowBQYDK2VwAyEAFeQQ0luuDcgS6GHN2wT1niHpkR1p50csIVcifMjMEBU=
+        -----END PUBLIC KEY-----
+      # Same Ed25519 public key as the Rust notebook-server — both backends
+      # accept tokens signed by the admin's private key.
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    # -------------------------------------------------------------------------
+    # TRAEFIK LABELS — Path-based routing with StripPrefix
+    # -------------------------------------------------------------------------
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.thinktank-api.rule=Host(`thinktank.nassau-records.de`) && PathPrefix(`/api/thinktank/v1`)"
+      # Matches only API requests. The PathPrefix condition gives this router
+      # higher priority than the catch-all thinktank-admin router below.
+      - "traefik.http.routers.thinktank-api.entrypoints=websecure"
+      - "traefik.http.routers.thinktank-api.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.thinktank-strip.stripprefix.prefixes=/api/thinktank/v1"
+      # StripPrefix middleware removes the path prefix before forwarding.
+      # e.g., /api/thinktank/v1/notebooks → /notebooks
+      # This means the .NET code doesn't need to know about the prefix.
+      - "traefik.http.routers.thinktank-api.middlewares=thinktank-strip"
+      - "traefik.http.services.thinktank-api.loadbalancer.server.port=8080"
+      # .NET 10 container default port (ASPNETCORE_HTTP_PORTS=8080).
+
+    networks:
+      - notebook-net
+      - coolify
+
+
+  # ===========================================================================
+  # THINKTANK-ADMIN — Blazor admin for thinktank backend
+  # ===========================================================================
+  thinktank-admin:
+    # Same NotebookAdmin image as the "admin" service, but pointed at the
+    # .NET thinktank backend instead of the Rust notebook-server.
+    build:
+      context: ../frontend/admin
+      dockerfile: Dockerfile
+    container_name: thinktank-admin
+
+    environment:
+      ASPNETCORE_URLS: "http://+:5000"
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=notebook-postgres;Database=notebook_admin;Username=notebook;Password=notebook_dev"
+      # Uses the same notebook_admin database as the other admin instance.
+      NotebookApi__BaseUrl: "http://thinktank-server:8080"
+      # Points at the .NET backend instead of the Rust server.
+      Jwt__Issuer: notebook-admin
+      Jwt__ExpiryMinutes: "60"
+      Jwt__PrivateKey: "MC4CAQAwBQYDK2VwBCIEIOGNGtqlxyJMP96I4UXCqdHFhYFSLjbtMmLmzjP+t6a0"
+
+    volumes:
+      - thinktank_dataprotection:/root/.aspnet/DataProtection-Keys
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+    restart: unless-stopped
+
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.thinktank-admin.rule=Host(`thinktank.nassau-records.de`)"
+      # Catch-all router for thinktank.nassau-records.de — serves the Blazor
+      # UI for all paths not matched by the thinktank-api router above.
+      - "traefik.http.routers.thinktank-admin.entrypoints=websecure"
+      - "traefik.http.routers.thinktank-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.thinktank-admin.priority=1"
+      # Low priority ensures the PathPrefix-based API router wins for /api/...
+      - "traefik.http.services.thinktank-admin.loadbalancer.server.port=5000"
+
+    networks:
+      - notebook-net
+      - coolify
+
+
 # =============================================================================
 # VOLUMES
 # =============================================================================
@@ -318,6 +430,10 @@ volumes:
     # To back up: docker run --rm -v cyber_postgres_data:/data -v $(pwd):/backup
     #             alpine tar czf /backup/pg-backup.tar.gz /data
     # To destroy: docker volume rm cyber_postgres_data (DELETES ALL DATA)
+
+  thinktank_dataprotection:
+    # ASP.NET Data Protection keys for the thinktank-admin instance.
+    # Separate from the main admin's volume to avoid key conflicts.
 
 
 # =============================================================================

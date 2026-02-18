@@ -16,6 +16,9 @@ services:
       - ../postgres/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       - ../postgres/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
       - ../postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
+      - ../postgres/migrations/000_create_thinktank_db.sql:/docker-entrypoint-initdb.d/00-thinktank-db.sql:ro
+      - ../postgres/init-thinktank.sh:/docker-entrypoint-initdb.d/04-thinktank.sh:ro
+      - ../postgres/migrations:/thinktank-migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U notebook -d notebook"]
       interval: 10s
@@ -94,10 +97,74 @@ services:
       - internal
       - coolify
 
+  thinktank-server:
+    image: ghcr.io/tweggen/thinktank-server:latest
+    container_name: thinktank-server
+    environment:
+      ConnectionStrings__Notebook: "Host=notebook-db;Database=thinktank;Username=notebook;Password=notebook_dev"
+      Jwt__PublicKey: |
+        -----BEGIN PUBLIC KEY-----
+        MCowBQYDK2VwAyEAFeQQ0luuDcgS6GHN2wT1niHpkR1p50csIVcifMjMEBU=
+        -----END PUBLIC KEY-----
+    depends_on:
+      notebook-db:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.thinktank-api.rule=Host(`thinktank.nassau-records.de`) && PathPrefix(`/api/thinktank/v1`)"
+      - "traefik.http.routers.thinktank-api.entrypoints=https"
+      - "traefik.http.routers.thinktank-api.tls=true"
+      - "traefik.http.routers.thinktank-api.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.thinktank-strip.stripprefix.prefixes=/api/thinktank/v1"
+      - "traefik.http.routers.thinktank-api.middlewares=thinktank-strip"
+      - "traefik.http.services.thinktank-api.loadbalancer.server.port=8080"
+    networks:
+      - internal
+      - coolify
+
+  thinktank-admin:
+    image: ghcr.io/tweggen/notebook-admin:latest
+    container_name: thinktank-admin
+    environment:
+      ASPNETCORE_URLS: "http://+:5000"
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__DefaultConnection: "Host=notebook-db;Database=notebook_admin;Username=notebook;Password=notebook_dev;Timeout=5;Command Timeout=10"
+      NotebookApi__BaseUrl: "http://thinktank-server:8080"
+      Jwt__Issuer: notebook-admin
+      Jwt__ExpiryMinutes: "131400"
+      Jwt__PrivateKey: "MC4CAQAwBQYDK2VwBCIEIOGNGtqlxyJMP96I4UXCqdHFhYFSLjbtMmLmzjP+t6a0"
+    volumes:
+      - thinktank_dataprotection:/root/.aspnet/DataProtection-Keys
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      notebook-db:
+        condition: service_healthy
+    restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=coolify"
+      - "traefik.http.routers.thinktank-admin.rule=Host(`thinktank.nassau-records.de`)"
+      - "traefik.http.routers.thinktank-admin.entrypoints=https"
+      - "traefik.http.routers.thinktank-admin.tls=true"
+      - "traefik.http.routers.thinktank-admin.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.thinktank-admin.priority=1"
+      - "traefik.http.services.thinktank-admin.loadbalancer.server.port=5000"
+    networks:
+      - internal
+      - coolify
+
 volumes:
   postgres_data:
     driver: local
   dataprotection:
+  thinktank_dataprotection:
 
 networks:
   internal:

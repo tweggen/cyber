@@ -23,6 +23,9 @@ jobs:
           - image: notebook-admin
             context: ./frontend/admin
             dockerfile: ./frontend/admin/Dockerfile
+          - image: thinktank-server
+            context: ./thinktank
+            dockerfile: ./thinktank/Dockerfile
 
     steps:
       - name: Checkout
