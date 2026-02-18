@@ -15,7 +15,10 @@ param(
     [string]$Author = "",
 
     [ValidateSet("claude", "cursor")]
-    [string]$Target = "claude"
+    [string]$Target = "claude",
+
+    [ValidateSet("notebook", "wild")]
+    [string]$Mcp = "notebook"
 )
 
 $ErrorActionPreference = "Stop"
@@ -29,31 +32,45 @@ if ([string]::IsNullOrEmpty($Author)) {
     }
 }
 
+# Set MCP-specific variables
+switch ($Mcp) {
+    "wild" {
+        $McpScriptName = "wild_mcp.py"
+        $McpRegName = "wild-mcp"
+        $UrlEnvName = "THINKTANK_URL"
+    }
+    "notebook" {
+        $McpScriptName = "notebook_mcp.py"
+        $McpRegName = "notebook-mcp"
+        $UrlEnvName = "NOTEBOOK_URL"
+    }
+}
+
 # Create ~/.cyber/ and download the MCP script
 $CyberDir = Join-Path $HOME ".cyber"
 if (-not (Test-Path $CyberDir)) {
     New-Item -ItemType Directory -Path $CyberDir | Out-Null
 }
 
-$Dest = Join-Path $CyberDir "notebook_mcp.py"
-Write-Host "Downloading notebook_mcp.py..."
-Invoke-WebRequest -Uri "$ScriptsUrl/scripts/notebook_mcp.py" -OutFile $Dest
+$Dest = Join-Path $CyberDir $McpScriptName
+Write-Host "Downloading $McpScriptName..."
+Invoke-WebRequest -Uri "$ScriptsUrl/scripts/$McpScriptName" -OutFile $Dest
 Write-Host "Saved to $Dest"
 
 # Use forward slashes in the JSON config (Python handles both on Windows)
-$McpScript = "$CyberDir/notebook_mcp.py" -replace '\\', '/'
+$McpScript = "$CyberDir/$McpScriptName" -replace '\\', '/'
 
 # Build the JSON config
 $Json = @"
-{"type":"stdio","command":"python","args":["$McpScript"],"env":{"NOTEBOOK_URL":"$Url","NOTEBOOK_ID":"$NotebookId","NOTEBOOK_TOKEN":"$Token","AUTHOR":"$Author"}}
+{"type":"stdio","command":"python","args":["$McpScript"],"env":{"$UrlEnvName":"$Url","NOTEBOOK_ID":"$NotebookId","NOTEBOOK_TOKEN":"$Token","AUTHOR":"$Author"}}
 "@
 
 function Register-Claude {
-    try { claude mcp remove notebook-mcp 2>$null } catch {}
-    claude mcp add-json notebook-mcp $Json
+    try { claude mcp remove $McpRegName 2>$null } catch {}
+    claude mcp add-json $McpRegName $Json
 
     Write-Host ""
-    Write-Host "Done! MCP server 'notebook-mcp' registered with Claude Code."
+    Write-Host "Done! MCP server '$McpRegName' registered with Claude Code."
 }
 
 function Register-Cursor {
@@ -71,12 +88,12 @@ function Register-Cursor {
     if (-not $config.ContainsKey("mcpServers")) {
         $config["mcpServers"] = @{}
     }
-    $config["mcpServers"]["notebook-mcp"] = $Json | ConvertFrom-Json -AsHashtable
+    $config["mcpServers"][$McpRegName] = $Json | ConvertFrom-Json -AsHashtable
 
     $config | ConvertTo-Json -Depth 10 | Set-Content $ConfigFile -Encoding UTF8
 
     Write-Host ""
-    Write-Host "Done! MCP server 'notebook-mcp' registered with Cursor."
+    Write-Host "Done! MCP server '$McpRegName' registered with Cursor."
     Write-Host "  Config: $ConfigFile"
 }
 
@@ -89,3 +106,4 @@ Write-Host "  Notebook: $NotebookId"
 Write-Host "  URL:      $Url"
 Write-Host "  Author:   $Author"
 Write-Host "  Script:   $McpScript"
+Write-Host "  MCP type: $Mcp"

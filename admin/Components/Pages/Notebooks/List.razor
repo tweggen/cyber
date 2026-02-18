@@ -220,6 +220,8 @@ else if (notebooks != null)
         ["cursor"] = "Cursor",
     };
 
+    private string McpType => Configuration["NotebookApi:McpType"] ?? "notebook";
+
 
     protected override async Task OnInitializedAsync()
     {
@@ -400,12 +402,15 @@ else if (notebooks != null)
         var baseUrl = Navigation.BaseUri.TrimEnd('/');
         var apiUrl = Configuration["NotebookApi:PublicUrl"] ?? baseUrl;
         var id = connectNotebookId.Value;
+        var mcp = McpType;
         var targetSuffix = connectTarget != "claude" ? $" --target {connectTarget}" : "";
+        var mcpSuffix = mcp != "notebook" ? $" --mcp {mcp}" : "";
         var psTargetSuffix = connectTarget != "claude" ? $" -Target '{connectTarget}'" : "";
+        var psMcpSuffix = mcp != "notebook" ? $" -Mcp '{mcp}'" : "";
 
-        bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {id} {connectToken} --url {apiUrl}{targetSuffix}";
-        gitBashCommand = $"curl -fsSL {baseUrl}/scripts/install-gitbash.sh | bash -s -- {id} {connectToken} --url {apiUrl}{targetSuffix}";
-        psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{id}' -Token '{connectToken}' -Url '{apiUrl}'{psTargetSuffix}";
+        bashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {id} {connectToken} --url {apiUrl} --scripts-url {baseUrl}{targetSuffix}{mcpSuffix}";
+        gitBashCommand = $"curl -fsSL {baseUrl}/scripts/install-gitbash.sh | bash -s -- {id} {connectToken} --url {apiUrl} --scripts-url {baseUrl}{targetSuffix}{mcpSuffix}";
+        psCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{id}' -Token '{connectToken}' -Url '{apiUrl}' -ScriptsUrl '{baseUrl}'{psTargetSuffix}{psMcpSuffix}";
     }
 
     private void CloseConnect()

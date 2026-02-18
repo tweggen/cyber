@@ -8,18 +8,21 @@ DEFAULT_URL="https://notebook.nassau-records.de"
 DEFAULT_SCRIPTS_URL="https://cyber.nassau-records.de"
 DEFAULT_AUTHOR=""
 DEFAULT_TARGET="claude"
+DEFAULT_MCP="notebook"
 
 usage() {
-    echo "Usage: curl -fsSL <url>/scripts/install.sh | bash -s -- <notebook-id> <token> [--url <url>] [--author <author>] [--target <target>]"
+    echo "Usage: curl -fsSL <url>/scripts/install.sh | bash -s -- <notebook-id> <token> [--url <url>] [--author <author>] [--target <target>] [--mcp <type>]"
     echo ""
     echo "Arguments:"
     echo "  notebook-id   UUID of the notebook"
     echo "  token         JWT Bearer token for authentication"
     echo ""
     echo "Options:"
-    echo "  --url <url>       Server URL (default: $DEFAULT_URL)"
-    echo "  --author <author> Author name (default: claude-code or cursor, per target)"
-    echo "  --target <target> Registration target: claude or cursor (default: claude)"
+    echo "  --url <url>             Server URL (default: $DEFAULT_URL)"
+    echo "  --scripts-url <url>    URL to download MCP scripts from (default: $DEFAULT_SCRIPTS_URL)"
+    echo "  --author <author>      Author name (default: claude-code or cursor, per target)"
+    echo "  --target <target>      Registration target: claude or cursor (default: claude)"
+    echo "  --mcp <type>           MCP type: notebook (Rust server) or wild (Thinktank .NET) (default: notebook)"
     exit 1
 }
 
@@ -32,13 +35,19 @@ TOKEN="$2"
 shift 2
 
 URL="$DEFAULT_URL"
+SCRIPTS_URL="$DEFAULT_SCRIPTS_URL"
 AUTHOR="$DEFAULT_AUTHOR"
 TARGET="$DEFAULT_TARGET"
+MCP_TYPE="$DEFAULT_MCP"
 
 while [ $# -gt 0 ]; do
     case "$1" in
         --url)
             URL="$2"
+            shift 2
+            ;;
+        --scripts-url)
+            SCRIPTS_URL="$2"
             shift 2
             ;;
         --author)
@@ -47,6 +56,10 @@ while [ $# -gt 0 ]; do
             ;;
         --target)
             TARGET="$2"
+            shift 2
+            ;;
+        --mcp)
+            MCP_TYPE="$2"
             shift 2
             ;;
         *)
@@ -75,25 +88,43 @@ else
     exit 1
 fi
 
+# Set MCP-specific variables based on type
+case "$MCP_TYPE" in
+    wild)
+        MCP_SCRIPT_NAME="wild_mcp.py"
+        MCP_REG_NAME="wild-mcp"
+        URL_ENV_NAME="THINKTANK_URL"
+        ;;
+    notebook)
+        MCP_SCRIPT_NAME="notebook_mcp.py"
+        MCP_REG_NAME="notebook-mcp"
+        URL_ENV_NAME="NOTEBOOK_URL"
+        ;;
+    *)
+        echo "Error: unknown MCP type '$MCP_TYPE'. Supported: notebook, wild"
+        exit 1
+        ;;
+esac
+
 # Create ~/.cyber/ and download the MCP script
 CYBER_DIR="$HOME/.cyber"
 mkdir -p "$CYBER_DIR"
-echo "Downloading notebook_mcp.py..."
-curl -fsSL "$DEFAULT_SCRIPTS_URL/scripts/notebook_mcp.py" -o "$CYBER_DIR/notebook_mcp.py"
-echo "Saved to $CYBER_DIR/notebook_mcp.py"
+echo "Downloading $MCP_SCRIPT_NAME..."
+curl -fsSL "$SCRIPTS_URL/scripts/$MCP_SCRIPT_NAME" -o "$CYBER_DIR/$MCP_SCRIPT_NAME"
+echo "Saved to $CYBER_DIR/$MCP_SCRIPT_NAME"
 
 # Build the JSON config
-MCP_SCRIPT="$CYBER_DIR/notebook_mcp.py"
+MCP_SCRIPT="$CYBER_DIR/$MCP_SCRIPT_NAME"
 JSON=$(cat <<EOF
-{"type":"stdio","command":"$PYTHON","args":["$MCP_SCRIPT"],"env":{"NOTEBOOK_URL":"$URL","NOTEBOOK_ID":"$NOTEBOOK_ID","NOTEBOOK_TOKEN":"$TOKEN","AUTHOR":"$AUTHOR"}}
+{"type":"stdio","command":"$PYTHON","args":["$MCP_SCRIPT"],"env":{"$URL_ENV_NAME":"$URL","NOTEBOOK_ID":"$NOTEBOOK_ID","NOTEBOOK_TOKEN":"$TOKEN","AUTHOR":"$AUTHOR"}}
 EOF
 )
 
 register_claude() {
-    claude mcp remove notebook-mcp 2>/dev/null || true
-    claude mcp add-json notebook-mcp "$JSON"
+    claude mcp remove "$MCP_REG_NAME" 2>/dev/null || true
+    claude mcp add-json "$MCP_REG_NAME" "$JSON"
     echo ""
-    echo "Done! MCP server 'notebook-mcp' registered with Claude Code."
+    echo "Done! MCP server '$MCP_REG_NAME' registered with Claude Code."
 }
 
 register_cursor() {
@@ -105,19 +136,20 @@ register_cursor() {
 import json, sys, os
 config_file = sys.argv[1]
 server_json = json.loads(sys.argv[2])
+mcp_name = sys.argv[3]
 config = {}
 if os.path.exists(config_file):
     with open(config_file) as f:
         config = json.load(f)
 if 'mcpServers' not in config:
     config['mcpServers'] = {}
-config['mcpServers']['notebook-mcp'] = server_json
+config['mcpServers'][mcp_name] = server_json
 with open(config_file, 'w') as f:
     json.dump(config, f, indent=2)
-" "$CONFIG_FILE" "$JSON"
+" "$CONFIG_FILE" "$JSON" "$MCP_REG_NAME"
 
     echo ""
-    echo "Done! MCP server 'notebook-mcp' registered with Cursor."
+    echo "Done! MCP server '$MCP_REG_NAME' registered with Cursor."
     echo "  Config: $CONFIG_FILE"
 }
 
@@ -139,3 +171,4 @@ echo "  URL:      $URL"
 echo "  Author:   $AUTHOR"
 echo "  Python:   $PYTHON"
 echo "  Script:   $MCP_SCRIPT"
+echo "  MCP type: $MCP_TYPE"
