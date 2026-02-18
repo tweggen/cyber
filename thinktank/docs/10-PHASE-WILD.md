@@ -10,6 +10,7 @@ The current `notebook-mcp` (in `mcp/notebook_mcp.py`) targets the Rust notebook 
 - **Claims**: every entry is distilled into 1-20 short declarative statements with confidence scores
 - **Embeddings**: claims are embedded into dense vectors (via Ollama's nomic-embed-text)
 - **Comparisons**: entries are linked by entropy (novelty) and friction (contradiction) scores
+- **Integration Status**: entries progress through `probation` → `integrated`/`contested` based on comparison results
 - **Topics**: hierarchical slash-separated paths with prefix filtering
 
 The "wild" MCP should make this infrastructure the primary retrieval mechanism. When a user asks "what does the notebook say about authentication?", instead of substring-matching "auth" against 10,000 entries, we should:
@@ -75,13 +76,14 @@ The embedding nearest-neighbor search (`FindNearestByEmbeddingAsync`) is current
                 { "text": "JWT scopes exist but are not enforced", "confidence": 0.90 }
             ],
             "claims_status": "distilled",
-            "max_friction": 0.1
+            "max_friction": 0.1,
+            "integration_status": "integrated"
         }
     ]
 }
 ```
 
-The server embeds the query string using the same Ollama embedding model as the claim pipeline, then runs the existing `FindNearestByEmbeddingAsync` query. This is the only new server-side code required.
+The server embeds the query string using the same Ollama embedding model as the claim pipeline, then runs the existing `FindNearestByEmbeddingAsync` query (extended to return `integration_status`). This is the only new server-side code required.
 
 **Decision: embed on server or in MCP?** On the server. The MCP shouldn't need Ollama access — it's a thin API client. The server already has the embedding model configured and the query is a simple Ollama `/api/embed` call.
 
@@ -92,8 +94,8 @@ The server embeds the query string using the same Ollama embedding model as the 
 **`wild_search`** — The primary tool. Combines semantic + lexical retrieval.
 
 ```
-Input:  query (string), mode ("semantic"|"lexical"|"hybrid"), top_k (int), topic_prefix (string?)
-Output: ranked list of {entry_id, topic, similarity, claims[], max_friction}
+Input:  query (string), mode ("semantic"|"lexical"|"hybrid"), top_k (int), topic_prefix (string?), integration_status (string?)
+Output: ranked list of {entry_id, topic, similarity, claims[], max_friction, integration_status}
 ```
 
 - `semantic`: embed query → cosine similarity (requires new endpoint)
@@ -104,7 +106,7 @@ Output: ranked list of {entry_id, topic, similarity, claims[], max_friction}
 
 ```
 Input:  entry_id (string), direction ("similar"|"contradicts"|"all"), max_results (int)
-Output: list of {entry_id, topic, entropy, friction, contradictions[], claims[]}
+Output: list of {entry_id, topic, entropy, friction, contradictions[], claims[], integration_status}
 ```
 
 Reads the entry's comparisons, fetches related entries' claims. Lets the LLM explore the knowledge graph by following edges.
@@ -113,7 +115,7 @@ Reads the entry's comparisons, fetches related entries' claims. Lets the LLM exp
 
 ```
 Input:  entry_ids (string[])
-Output: list of {entry_id, topic, claims[], claims_status, confidence_avg}
+Output: list of {entry_id, topic, claims[], claims_status, confidence_avg, integration_status}
 ```
 
 Batch fetch — avoids N+1 reads when exploring search results.
@@ -140,10 +142,10 @@ Uses existing `/browse?topic_prefix=...` with aggregation.
 
 ```
 Input:  min_friction (float), topic_prefix (string?), limit (int)
-Output: list of {entry_id, topic, max_friction, contradiction_count, top_contradiction}
+Output: list of {entry_id, topic, max_friction, integration_status, contradiction_count, top_contradiction}
 ```
 
-Uses existing `/browse?has_friction_above=...&needs_review=true`.
+Uses existing `/browse?has_friction_above=...&needs_review=true`. Can also filter directly via `integration_status=contested` to find entries that failed the friction threshold during the integration lifecycle.
 
 **`wild_recent`** — What changed since last check.
 
@@ -163,7 +165,7 @@ Same as notebook-mcp but with `source` field support for content filters.
 
 ### Meta Tools
 
-**`wild_status`** — Notebook health: total entries, % with claims distilled, job queue depth, top friction areas.
+**`wild_status`** — Notebook health: total entries, % with claims distilled, job queue depth, top friction areas, integration status breakdown (probation/integrated/contested counts).
 
 ## MCP Prompts
 

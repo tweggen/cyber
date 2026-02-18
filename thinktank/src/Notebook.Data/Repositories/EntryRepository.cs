@@ -304,6 +304,90 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
         return results;
     }
 
+    public async Task<List<SemanticSearchResult>> SemanticSearchAsync(
+        Guid notebookId, double[] queryEmbedding, int topK, double minSimilarity, CancellationToken ct)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText =
+            """
+            SELECT e.id, e.topic, e.claims, e.claims_status, e.max_friction, e.integration_status,
+              (SELECT SUM(q.val * d.val)
+               FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
+               JOIN unnest(e.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
+              /
+              NULLIF(
+                SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
+                * SQRT((SELECT SUM(v.val * v.val) FROM unnest(e.embedding) AS v(val))),
+                0)
+              AS similarity
+            FROM entries e
+            WHERE e.notebook_id = @notebookId
+              AND e.embedding IS NOT NULL
+              AND e.fragment_of IS NULL
+            HAVING (SELECT SUM(q.val * d.val)
+               FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
+               JOIN unnest(e.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
+              /
+              NULLIF(
+                SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
+                * SQRT((SELECT SUM(v.val * v.val) FROM unnest(e.embedding) AS v(val))),
+                0) >= @minSimilarity
+            ORDER BY similarity DESC NULLS LAST
+            LIMIT @topK
+            """;
+
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("query", queryEmbedding));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("notebookId", notebookId));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("minSimilarity", minSimilarity));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("topK", topK));
+
+        var results = new List<SemanticSearchResult>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var claimsJson = reader.IsDBNull(2) ? "[]" : reader.GetString(2);
+            var claims = JsonSerializer.Deserialize<List<Claim>>(claimsJson) ?? [];
+
+            results.Add(new SemanticSearchResult
+            {
+                EntryId = reader.GetGuid(0),
+                Topic = reader.IsDBNull(1) ? null : reader.GetString(1),
+                Claims = claims,
+                ClaimsStatus = reader.IsDBNull(3) ? "pending" : reader.GetString(3),
+                MaxFriction = reader.IsDBNull(4) ? null : reader.GetDouble(4),
+                IntegrationStatus = reader.IsDBNull(5) ? "probation" : reader.GetString(5),
+                Similarity = reader.IsDBNull(6) ? 0.0 : reader.GetDouble(6),
+            });
+        }
+
+        return results;
+    }
+
+    public async Task<List<ClaimsBatchEntry>> GetClaimsBatchAsync(
+        Guid notebookId, List<Guid> entryIds, CancellationToken ct)
+    {
+        if (entryIds.Count == 0)
+            return [];
+
+        var entries = await db.Entries
+            .Where(e => e.NotebookId == notebookId && entryIds.Contains(e.Id))
+            .Select(e => new { e.Id, e.Topic, e.Claims, e.ClaimsStatus, e.IntegrationStatus })
+            .ToListAsync(ct);
+
+        return entries.Select(e => new ClaimsBatchEntry
+        {
+            Id = e.Id,
+            Topic = e.Topic,
+            Claims = e.Claims,
+            ClaimsStatus = e.ClaimsStatus.ToString().ToLowerInvariant(),
+            IntegrationStatus = e.IntegrationStatus.ToString().ToLowerInvariant(),
+        }).ToList();
+    }
+
     public async Task<Entry?> GetEntryAsync(Guid entryId, Guid notebookId, CancellationToken ct)
     {
         return await db.Entries

@@ -20,6 +20,12 @@ public interface IEntryRepository
     Task<List<BrowseEntry>> BrowseFilteredAsync(Guid notebookId, BrowseFilter filters, CancellationToken ct);
     Task<List<SearchResult>> SearchEntriesAsync(Guid notebookId, string query, string searchIn, string? topicPrefix, int maxResults, CancellationToken ct);
 
+    // Semantic search
+    Task<List<SemanticSearchResult>> SemanticSearchAsync(
+        Guid notebookId, double[] queryEmbedding, int topK, double minSimilarity, CancellationToken ct);
+    Task<List<ClaimsBatchEntry>> GetClaimsBatchAsync(
+        Guid notebookId, List<Guid> entryIds, CancellationToken ct);
+
     // Fragment queries
     Task<Entry?> GetEntryAsync(Guid entryId, Guid notebookId, CancellationToken ct);
     Task<Entry?> GetFragmentAsync(Guid notebookId, Guid fragmentOf, int fragmentIndex, CancellationToken ct);

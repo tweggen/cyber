@@ -123,7 +123,7 @@ Before inserting entries, check quota limits (notebooks per user, entries per no
 
 ### 2.1 Database Schema
 
-**Migration:** `012_organizations_and_groups.sql`
+**Migration:** `013_organizations_and_groups.sql` *(012 is taken by integration_status)*
 
 ```sql
 CREATE TABLE organizations (
@@ -200,7 +200,7 @@ All admin operations require `notebook:admin` scope + group admin role.
 
 ### 3.1 Database Schema
 
-**Migration:** `013_security_labels.sql`
+**Migration:** `014_security_labels.sql`
 
 ```sql
 CREATE TYPE classification_level AS ENUM (
@@ -254,7 +254,7 @@ After ACL check, also verify:
 
 ### 4.1 Extend `notebook_access`
 
-**Migration:** `014_access_tiers.sql`
+**Migration:** `015_access_tiers.sql`
 
 ```sql
 ALTER TABLE notebook_access ADD COLUMN tier TEXT NOT NULL DEFAULT 'read_write';
@@ -297,7 +297,7 @@ Endpoints must return 404 (not 403) when a principal lacks existence-tier access
 
 ### 5.1 Agent Registration
 
-**Migration:** `015_agent_registry.sql`
+**Migration:** `016_agent_registry.sql`
 
 ```sql
 CREATE TABLE agents (
@@ -347,7 +347,7 @@ DELETE /agents/{id}               — deregister agent
 
 ### 6.1 Database Schema
 
-**Migration:** `016_subscriptions.sql`
+**Migration:** `017_subscriptions.sql`
 
 ```sql
 CREATE TABLE notebook_subscriptions (
@@ -408,7 +408,7 @@ On write, verify:
 
 ### 7.2 External Contribution Review Queue
 
-**Migration:** `017_review_queue.sql`
+**Migration:** `018_review_queue.sql`
 
 ```sql
 CREATE TABLE entry_reviews (
@@ -449,7 +449,7 @@ POST   /notebooks/{id}/reviews/{id}/reject  — reject entry (admin tier)
 
 ### 8.1 Database Schema
 
-**Migration:** `018_audit_log.sql`
+**Migration:** `019_audit_log.sql`
 
 ```sql
 CREATE TABLE audit_log (

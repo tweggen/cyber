@@ -27,6 +27,9 @@ builder.Services.AddSingleton<IContentFilter, WikipediaContentFilter>();
 builder.Services.AddSingleton<IContentFilterPipeline, ContentFilterPipeline>();
 builder.Services.AddSingleton<IMarkdownFragmenter, MarkdownFragmenter>();
 
+// Embedding (for semantic search)
+builder.Services.AddSingleton<IEmbeddingService, EmbeddingService>();
+
 // Authentication — EdDSA (Ed25519) JWT signed by admin app
 builder.Services.AddAuthentication(EdDsaAuthenticationHandler.SchemeName)
     .AddScheme<EdDsaAuthenticationOptions, EdDsaAuthenticationHandler>(
