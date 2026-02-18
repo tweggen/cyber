@@ -141,9 +141,17 @@ else if (entryData != null)
     }
 
     <div class="card mb-3">
-        <div class="card-header">
-            <strong>@(entryData.Entry.Topic ?? "Untitled")</strong>
-            <span class="text-muted ms-2">@entryData.Entry.ContentType</span>
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <strong>@(entryData.Entry.Topic ?? "Untitled")</strong>
+                <span class="text-muted ms-2">@entryData.Entry.ContentType</span>
+            </span>
+            @if (entryData.Entry.IntegrationStatus != null)
+            {
+                <span class="badge @GetIntegrationStatusBadgeClass(entryData.Entry.IntegrationStatus)">
+                    @entryData.Entry.IntegrationStatus
+                </span>
+            }
         </div>
         <div class="card-body">
             <pre class="mb-0" style="white-space: pre-wrap; word-wrap: break-word;">@((MarkupString)LinkifyEntryIds(GetContentText(entryData.Entry.Content)))</pre>
@@ -390,6 +398,13 @@ else if (entryData != null)
         >= 0.5 => "bg-danger",
         >= 0.2 => "bg-warning",
         _ => "bg-success",
+    };
+
+    private static string GetIntegrationStatusBadgeClass(string? status) => status switch
+    {
+        "integrated" => "bg-success",
+        "contested" => "bg-danger",
+        _ => "bg-secondary",
     };
 
     private async Task HandleRevise()

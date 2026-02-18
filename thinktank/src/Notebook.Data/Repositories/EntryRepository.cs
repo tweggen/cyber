@@ -141,20 +141,48 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
         return results;
     }
 
-    public async Task AppendComparisonAsync(Guid entryId, JsonElement comparison, CancellationToken ct)
+    public async Task<int> AppendComparisonAsync(Guid entryId, JsonElement comparison, CancellationToken ct)
     {
         var friction = comparison.TryGetProperty("friction", out var f) ? f.GetDouble() : 0.0;
         var comparisonJson = JsonSerializer.Serialize(comparison);
 
-        await db.Database.ExecuteSqlRawAsync(
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText =
             """
             UPDATE entries SET
-              comparisons = comparisons || jsonb_build_array({0}::jsonb),
-              max_friction = GREATEST(COALESCE(max_friction, 0.0), {1}),
-              needs_review = (GREATEST(COALESCE(max_friction, 0.0), {1}) > 0.2)
-            WHERE id = {2}
-            """,
-            [comparisonJson, friction, entryId],
+              comparisons = comparisons || jsonb_build_array(@comparison::jsonb),
+              max_friction = GREATEST(COALESCE(max_friction, 0.0), @friction),
+              needs_review = (GREATEST(COALESCE(max_friction, 0.0), @friction) > 0.2)
+            WHERE id = @entryId
+            RETURNING jsonb_array_length(comparisons)
+            """;
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("comparison", comparisonJson));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("friction", friction));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("entryId", entryId));
+
+        var result = await cmd.ExecuteScalarAsync(ct);
+        return result is int count ? count : Convert.ToInt32(result);
+    }
+
+    public async Task UpdateExpectedComparisonsAsync(
+        Guid entryId, Guid notebookId, int count, CancellationToken ct)
+    {
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE entries SET expected_comparisons = {0} WHERE id = {1} AND notebook_id = {2}",
+            [count, entryId, notebookId],
+            ct);
+    }
+
+    public async Task UpdateIntegrationStatusAsync(Guid entryId, IntegrationStatus status, CancellationToken ct)
+    {
+        var statusStr = status.ToString().ToLowerInvariant();
+        await db.Database.ExecuteSqlRawAsync(
+            "UPDATE entries SET integration_status = {0} WHERE id = {1}",
+            [statusStr, entryId],
             ct);
     }
 
@@ -175,7 +203,8 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
                    sequence, created, encode(author_id, 'hex') as author_id,
                    CASE WHEN claims != '[]'::jsonb
                         THEN jsonb_array_length(claims) ELSE 0
-                   END as claim_count
+                   END as claim_count,
+                   integration_status
             FROM entries WHERE notebook_id = @notebookId
             """);
 
@@ -231,6 +260,12 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
             sql.Append(" AND needs_review = true");
         }
 
+        if (filters.IntegrationStatus is not null)
+        {
+            sql.Append(" AND integration_status = @integrationStatus");
+            parameters.Add(new("integrationStatus", filters.IntegrationStatus));
+        }
+
         sql.Append(" ORDER BY sequence DESC");
 
         var limit = Math.Min(filters.Limit ?? 50, 500);
@@ -262,6 +297,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
                 Created = reader.GetFieldValue<DateTimeOffset>(6),
                 AuthorId = reader.IsDBNull(7) ? "" : reader.GetString(7),
                 ClaimCount = reader.GetInt32(8),
+                IntegrationStatus = reader.IsDBNull(9) ? "probation" : reader.GetString(9),
             });
         }
 

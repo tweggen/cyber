@@ -52,21 +52,34 @@ public class JobResultProcessor(
                     var neighbors = await entryRepo.FindNearestByEmbeddingAsync(
                         job.NotebookId, entryId, embedding, 5, ct);
 
-                    // Get the entry's claims to pass into comparison jobs
-                    var entry = await entryRepo.GetEntryAsync(entryId, job.NotebookId, ct);
-                    var entryClaims = entry?.Claims ?? [];
+                    // Set expected comparisons for integration status tracking
+                    await entryRepo.UpdateExpectedComparisonsAsync(
+                        entryId, job.NotebookId, neighbors.Count, ct);
 
-                    foreach (var (neighborId, neighborClaims, _) in neighbors)
+                    if (neighbors.Count == 0)
                     {
-                        var comparePayload = JsonSerializer.SerializeToDocument(new
+                        // Nothing to contradict — auto-integrate
+                        await entryRepo.UpdateIntegrationStatusAsync(
+                            entryId, IntegrationStatus.Integrated, ct);
+                    }
+                    else
+                    {
+                        // Get the entry's claims to pass into comparison jobs
+                        var entry = await entryRepo.GetEntryAsync(entryId, job.NotebookId, ct);
+                        var entryClaims = entry?.Claims ?? [];
+
+                        foreach (var (neighborId, neighborClaims, _) in neighbors)
                         {
-                            entry_id = entryId.ToString(),
-                            compare_against_id = neighborId.ToString(),
-                            claims_a = neighborClaims,
-                            claims_b = entryClaims,
-                        });
-                        await jobRepo.InsertJobAsync(job.NotebookId, "COMPARE_CLAIMS", comparePayload, ct);
-                        followUpJobs++;
+                            var comparePayload = JsonSerializer.SerializeToDocument(new
+                            {
+                                entry_id = entryId.ToString(),
+                                compare_against_id = neighborId.ToString(),
+                                claims_a = neighborClaims,
+                                claims_b = entryClaims,
+                            });
+                            await jobRepo.InsertJobAsync(job.NotebookId, "COMPARE_CLAIMS", comparePayload, ct);
+                            followUpJobs++;
+                        }
                     }
                     break;
                 }
@@ -74,7 +87,17 @@ public class JobResultProcessor(
             case "COMPARE_CLAIMS":
                 {
                     var entryId = Guid.Parse(job.Payload.RootElement.GetProperty("entry_id").GetString()!);
-                    await entryRepo.AppendComparisonAsync(entryId, result, ct);
+                    var comparisonCount = await entryRepo.AppendComparisonAsync(entryId, result, ct);
+
+                    // Check if all expected comparisons are complete → transition integration status
+                    var entry = await entryRepo.GetEntryAsync(entryId, job.NotebookId, ct);
+                    if (entry?.ExpectedComparisons is not null && comparisonCount >= entry.ExpectedComparisons)
+                    {
+                        var status = (entry.MaxFriction ?? 0.0) > 0.2
+                            ? IntegrationStatus.Contested
+                            : IntegrationStatus.Integrated;
+                        await entryRepo.UpdateIntegrationStatusAsync(entryId, status, ct);
+                    }
                     break;
                 }
 

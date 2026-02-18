@@ -15,6 +15,7 @@ public sealed record BrowseFilter
     public Guid? FragmentOf { get; init; }
     public double? HasFrictionAbove { get; init; }
     public bool? NeedsReview { get; init; }
+    public string? IntegrationStatus { get; init; }
     public int? Limit { get; init; }
     public int? Offset { get; init; }
 
@@ -23,5 +24,6 @@ public sealed record BrowseFilter
         TopicPrefix is not null || ClaimsStatus is not null || Author is not null ||
         SequenceMin is not null || SequenceMax is not null || FragmentOf is not null ||
         HasFrictionAbove is not null || NeedsReview is not null ||
+        IntegrationStatus is not null ||
         Limit is not null || Offset is not null;
 }

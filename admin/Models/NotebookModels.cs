@@ -198,6 +198,9 @@ public class ChangeEntry
 
     [JsonPropertyName("created")]
     public DateTime Created { get; set; }
+
+    [JsonPropertyName("integration_status")]
+    public string? IntegrationStatus { get; set; }
 }
 
 // ============================================================================
@@ -308,6 +311,9 @@ public class EntryDetail
 
     [JsonPropertyName("fragment_index")]
     public int? FragmentIndex { get; set; }
+
+    [JsonPropertyName("integration_status")]
+    public string? IntegrationStatus { get; set; }
 }
 
 /// <summary>

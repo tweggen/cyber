@@ -40,6 +40,7 @@ public static class ObserveEndpoints
                 e.Created,
                 e.IntegrationCost,
                 e.RevisionOf,
+                e.IntegrationStatus,
             })
             .ToListAsync(ct);
 
@@ -60,6 +61,7 @@ public static class ObserveEndpoints
             },
             CausalPosition = new CausalPositionResponse { Sequence = (ulong)e.Sequence },
             Created = e.Created.UtcDateTime,
+            IntegrationStatus = e.IntegrationStatus.ToString().ToLowerInvariant(),
         }).ToList();
 
         return Results.Ok(new ObserveApiResponse
@@ -126,6 +128,9 @@ internal sealed record ChangeEntryResponse
 
     [JsonPropertyName("created")]
     public required DateTime Created { get; init; }
+
+    [JsonPropertyName("integration_status")]
+    public required string IntegrationStatus { get; init; }
 }
 
 internal sealed record CausalPositionResponse

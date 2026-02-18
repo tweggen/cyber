@@ -37,6 +37,7 @@
     <Content Include="..\..\..\notebook\migrations\009_embeddings.sql" Link="Migrations\009_embeddings.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\notebook\migrations\010_job_priority.sql" Link="Migrations\010_job_priority.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\notebook\migrations\011_add_source_column.sql" Link="Migrations\011_add_source_column.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\notebook\migrations\012_integration_status.sql" Link="Migrations\012_integration_status.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

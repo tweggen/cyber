@@ -117,6 +117,7 @@ public static class ReadEndpoints
                 NeedsReview = entry.NeedsReview,
                 FragmentOf = entry.FragmentOf,
                 FragmentIndex = entry.FragmentIndex,
+                IntegrationStatus = entry.IntegrationStatus.ToString().ToLowerInvariant(),
             },
             Revisions = revisions,
             References = references,
@@ -209,6 +210,9 @@ internal sealed record ReadEntryDetail
 
     [JsonPropertyName("fragment_index")]
     public int? FragmentIndex { get; init; }
+
+    [JsonPropertyName("integration_status")]
+    public required string IntegrationStatus { get; init; }
 }
 
 internal sealed record ReadCausalPosition

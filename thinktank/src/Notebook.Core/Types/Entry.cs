@@ -88,4 +88,12 @@ public class Entry
     /// <summary>Content source platform (e.g. "wikipedia", "confluence") for filtering/auditability.</summary>
     [JsonPropertyName("source")]
     public string? Source { get; set; }
+
+    /// <summary>Integration lifecycle status (probation → integrated/contested).</summary>
+    [JsonPropertyName("integration_status")]
+    public IntegrationStatus IntegrationStatus { get; set; } = IntegrationStatus.Probation;
+
+    /// <summary>Number of comparisons expected from the EMBED_CLAIMS pipeline step.</summary>
+    [JsonPropertyName("expected_comparisons")]
+    public int? ExpectedComparisons { get; set; }
 }

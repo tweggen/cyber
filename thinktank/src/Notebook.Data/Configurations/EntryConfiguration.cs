@@ -80,5 +80,13 @@ public class EntryConfiguration : IEntityTypeConfiguration<Entry>
 
         builder.Property(e => e.Source)
             .HasColumnName("source");
+
+        builder.Property(e => e.IntegrationStatus)
+            .HasColumnName("integration_status")
+            .HasDefaultValue(IntegrationStatus.Probation)
+            .HasConversion<string>();
+
+        builder.Property(e => e.ExpectedComparisons)
+            .HasColumnName("expected_comparisons");
     }
 }

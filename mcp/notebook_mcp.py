@@ -111,6 +111,7 @@ def tool_browse(
     claims_status: str = "",
     has_friction_above: float = None,
     needs_review: bool = None,
+    integration_status: str = "",
     limit: int = None,
     offset: int = None,
 ) -> dict:
@@ -129,6 +130,8 @@ def tool_browse(
         params += f"&has_friction_above={has_friction_above}"
     if needs_review is not None:
         params += f"&needs_review={'true' if needs_review else 'false'}"
+    if integration_status:
+        params += f"&integration_status={integration_status}"
     if limit is not None:
         params += f"&limit={limit}"
     if offset is not None:
@@ -374,6 +377,11 @@ TOOLS = [
                 "needs_review": {
                     "type": "boolean",
                     "description": "Only entries flagged for review"
+                },
+                "integration_status": {
+                    "type": "string",
+                    "enum": ["probation", "integrated", "contested"],
+                    "description": "Filter by integration lifecycle status"
                 },
                 "limit": {
                     "type": "integer",
@@ -732,6 +740,7 @@ def handle_request(request: dict) -> dict:
                 claims_status=arguments.get("claims_status", ""),
                 has_friction_above=arguments.get("has_friction_above"),
                 needs_review=arguments.get("needs_review"),
+                integration_status=arguments.get("integration_status", ""),
                 limit=arguments.get("limit"),
                 offset=arguments.get("offset"),
             )

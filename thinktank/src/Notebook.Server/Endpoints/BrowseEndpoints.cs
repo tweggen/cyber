@@ -24,6 +24,7 @@ public static class BrowseEndpoints
         [FromQuery(Name = "fragment_of")] Guid? fragmentOf,
         [FromQuery(Name = "has_friction_above")] double? hasFrictionAbove,
         [FromQuery(Name = "needs_review")] bool? needsReview,
+        [FromQuery(Name = "integration_status")] string? integrationStatus,
         [FromQuery] int? limit,
         [FromQuery] int? offset,
         IEntryRepository entryRepo,
@@ -41,6 +42,7 @@ public static class BrowseEndpoints
             FragmentOf = fragmentOf,
             HasFrictionAbove = hasFrictionAbove,
             NeedsReview = needsReview,
+            IntegrationStatus = integrationStatus,
             Limit = limit,
             Offset = offset,
         };

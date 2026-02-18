@@ -33,4 +33,7 @@ public sealed record BrowseEntry
 
     [JsonPropertyName("claim_count")]
     public int ClaimCount { get; init; }
+
+    [JsonPropertyName("integration_status")]
+    public string IntegrationStatus { get; init; } = "probation";
 }

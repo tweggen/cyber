@@ -31,3 +31,17 @@ public enum ClaimsStatus
     [JsonStringEnumMemberName("verified")]
     Verified,
 }
+
+/// <summary>Integration lifecycle status of an entry.</summary>
+[JsonConverter(typeof(JsonStringEnumConverter<IntegrationStatus>))]
+public enum IntegrationStatus
+{
+    [JsonStringEnumMemberName("probation")]
+    Probation,
+
+    [JsonStringEnumMemberName("integrated")]
+    Integrated,
+
+    [JsonStringEnumMemberName("contested")]
+    Contested,
+}
