@@ -1,0 +1,528 @@
+# 09 — Phase Hush: Security Model Implementation Plan
+
+**Status:** Planned — not yet implemented.
+**Depends on:** 08-SECURITY-MODEL.md (architecture), existing auth infrastructure.
+**Goal:** Implement the "one classification per thinktank" security model with organizational groups, access tiers, ThinkerAgent trust, inter-thinktank subscriptions, and audit.
+
+## Current State Assessment
+
+Before building new security features, the current gaps must be understood:
+
+| Capability | Status |
+|---|---|
+| `notebook_access` ACL table | Schema exists, NOT enforced |
+| JWT scope strings (`notebook:read/write/share/admin`) | In token payload, NOT checked at endpoints |
+| Share/revoke endpoints | NOT implemented in Notebook.Server |
+| Entry read/browse ACL check | NOT implemented — any valid token can read any notebook |
+| Batch-write ACL check | NOT implemented — any valid token can write to any notebook |
+| ASP.NET Identity Roles | Table exists, completely unused |
+| ThinkerAgent endpoint auth | Completely open (`/config`, `/quit`, `/models`) |
+| Quota enforcement server-side | Only in Blazor UI, not in API |
+| Organization/group concepts | Do not exist anywhere |
+| Security labels/classification | Do not exist anywhere |
+| Audit trail | Does not exist |
+
+## Sub-Phase Overview
+
+| Sub-Phase | Name | Description | Depends On |
+|---|---|---|---|
+| Hush-1 | **Close the Gates** | Enforce existing ACL + scopes, implement share endpoints, lock ThinkerAgent | — |
+| Hush-2 | **Organizations & Groups** | Org/group DAG model, principal memberships | Hush-1 |
+| Hush-3 | **Security Labels** | Classification levels + compartments on notebooks, clearance on principals | Hush-2 |
+| Hush-4 | **Access Tiers** | Existence/read/write/admin layered access per thinktank | Hush-3 |
+| Hush-5 | **Agent Trust** | ThinkerAgent security labels, label-aware job routing | Hush-3 |
+| Hush-6 | **Subscriptions** | Inter-thinktank catalog/claim flow with classification boundary enforcement | Hush-4, Hush-5 |
+| Hush-7 | **Ingestion Gate** | Classification assertions, external contribution review queue | Hush-4 |
+| Hush-8 | **Audit** | Full audit trail for reads, writes, access changes, processing | Hush-1 |
+
+---
+
+## Hush-1: Close the Gates
+
+**Goal:** Enforce the security primitives that already exist in the schema but are not checked at runtime. This is prerequisite work — no new concepts, just making the existing model actually work.
+
+### 1.1 ACL Enforcement Middleware
+
+**Create:** `Notebook.Server/Middleware/NotebookAccessMiddleware.cs`
+
+For every request to `/notebooks/{notebookId}/...`, verify the authenticated `author_id` has the required permission in `notebook_access`:
+
+| HTTP Method / Endpoint Pattern | Required Permission |
+|---|---|
+| `GET /notebooks/{id}/entries`, `/browse`, `/observe`, `/search` | `read = true` |
+| `POST /notebooks/{id}/batch`, `/entries` | `write = true` |
+| `POST /notebooks/{id}/share`, `DELETE .../share/{authorId}` | owner only |
+| `DELETE /notebooks/{id}`, `PUT /notebooks/{id}` | owner only |
+| `GET /notebooks/{id}/jobs/next`, `POST .../jobs/{id}/complete` | `write = true` (worker acts on behalf of notebook) |
+
+The middleware extracts `notebookId` from the route and `author_id` from the JWT `sub` claim, then queries `notebook_access`. Cache per-request to avoid repeated DB hits.
+
+### 1.2 Scope-Based Authorization Policies
+
+**Modify:** `Notebook.Server/Program.cs`
+
+Define named policies:
+```csharp
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CanRead", p => p.RequireClaim("scope", "notebook:read"));
+    options.AddPolicy("CanWrite", p => p.RequireClaim("scope", "notebook:write"));
+    options.AddPolicy("CanShare", p => p.RequireClaim("scope", "notebook:share"));
+    options.AddPolicy("CanAdmin", p => p.RequireClaim("scope", "notebook:admin"));
+});
+```
+
+Apply to endpoints: `.RequireAuthorization("CanRead")` on browse/read, `.RequireAuthorization("CanWrite")` on batch-write, etc.
+
+### 1.3 Share/Revoke Endpoints
+
+**Create:** `Notebook.Server/Endpoints/ShareEndpoints.cs`
+
+```
+POST   /notebooks/{id}/share          — grant access (owner only)
+         Body: { "author_id": "hex", "read": true, "write": false }
+DELETE /notebooks/{id}/share/{authorId} — revoke access (owner only)
+GET    /notebooks/{id}/participants    — list access grants (already exists in ObserveEndpoints)
+```
+
+### 1.4 ThinkerAgent Endpoint Authentication
+
+**Modify:** `ThinkerAgent/Program.cs`
+
+Add authentication to ThinkerAgent's own management API. Options:
+- **Simple:** shared secret in config, checked via middleware on `/config`, `/start`, `/stop`, `/quit`
+- **Better:** require the same EdDSA JWT that the notebook server uses
+
+At minimum, `/quit` and `PUT /config` MUST be authenticated — they can shut down or reconfigure the service.
+
+### 1.5 Server-Side Quota Enforcement
+
+**Modify:** `Notebook.Server/Endpoints/BatchEndpoints.cs`
+
+Before inserting entries, check quota limits (notebooks per user, entries per notebook, entry size, total storage). Currently only checked in the Blazor UI layer.
+
+### Files
+
+| File | Change |
+|---|---|
+| `Notebook.Server/Middleware/NotebookAccessMiddleware.cs` | **New** — ACL enforcement |
+| `Notebook.Server/Endpoints/ShareEndpoints.cs` | **New** — share/revoke |
+| `Notebook.Server/Program.cs` | Add policies, register middleware |
+| `Notebook.Server/Endpoints/BatchEndpoints.cs` | Add ACL + quota checks |
+| `Notebook.Server/Endpoints/BrowseEndpoints.cs` | Add ACL checks |
+| `Notebook.Server/Endpoints/ReadEndpoints.cs` | Add ACL checks |
+| `Notebook.Server/Endpoints/ObserveEndpoints.cs` | Add ACL checks |
+| `Notebook.Server/Endpoints/JobEndpoints.cs` | Add ACL checks |
+| `ThinkerAgent/Program.cs` | Add endpoint auth |
+
+---
+
+## Hush-2: Organizations & Groups
+
+**Goal:** Introduce the organizational structure that thinktanks belong to.
+
+### 2.1 Database Schema
+
+**Migration:** `012_organizations_and_groups.sql`
+
+```sql
+CREATE TABLE organizations (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL UNIQUE,
+    created     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE groups (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    name            TEXT NOT NULL,
+    created         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (organization_id, name)
+);
+
+-- DAG edges: parent → child relationships within an org
+CREATE TABLE group_edges (
+    parent_id   UUID NOT NULL REFERENCES groups(id),
+    child_id    UUID NOT NULL REFERENCES groups(id),
+    PRIMARY KEY (parent_id, child_id),
+    CHECK (parent_id != child_id)
+);
+
+-- Principal memberships (many-to-many)
+CREATE TABLE group_memberships (
+    author_id   BYTEA(32) NOT NULL REFERENCES authors(id),
+    group_id    UUID NOT NULL REFERENCES groups(id),
+    role        TEXT NOT NULL DEFAULT 'member',  -- member, admin
+    granted     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    granted_by  BYTEA(32) REFERENCES authors(id),
+    PRIMARY KEY (author_id, group_id)
+);
+
+-- Link notebooks to owning groups
+ALTER TABLE notebooks ADD COLUMN owning_group_id UUID REFERENCES groups(id);
+```
+
+### 2.2 Core Types
+
+**Create:** `Notebook.Core/Types/Organization.cs`, `Group.cs`, `GroupMembership.cs`
+
+### 2.3 Repository Layer
+
+**Create:** `Notebook.Data/Repositories/IOrganizationRepository.cs`, `OrganizationRepository.cs`
+
+Operations: CRUD for orgs, groups, edges, memberships. DAG traversal (ancestors, descendants). Cycle detection on edge insert.
+
+### 2.4 API Endpoints
+
+**Create:** `Notebook.Server/Endpoints/OrganizationEndpoints.cs`
+
+```
+POST   /organizations                          — create org
+GET    /organizations                          — list orgs (filtered by membership)
+POST   /organizations/{id}/groups              — create group
+GET    /organizations/{id}/groups              — list groups (DAG)
+POST   /groups/{id}/members                    — add member
+DELETE /groups/{id}/members/{authorId}          — remove member
+POST   /groups/{id}/edges                      — add parent→child edge
+```
+
+All admin operations require `notebook:admin` scope + group admin role.
+
+### 2.5 Admin UI
+
+**Modify:** Admin Blazor app — add org/group management pages.
+
+---
+
+## Hush-3: Security Labels
+
+**Goal:** Add classification levels and compartments to notebooks and principals.
+
+### 3.1 Database Schema
+
+**Migration:** `013_security_labels.sql`
+
+```sql
+CREATE TYPE classification_level AS ENUM (
+    'PUBLIC', 'INTERNAL', 'CONFIDENTIAL', 'SECRET', 'TOP_SECRET'
+);
+
+ALTER TABLE notebooks ADD COLUMN classification classification_level NOT NULL DEFAULT 'INTERNAL';
+ALTER TABLE notebooks ADD COLUMN compartments TEXT[] NOT NULL DEFAULT '{}';
+
+-- Principal clearance (per org — Boeing may clear you to SECRET, Microsoft only to CONFIDENTIAL)
+CREATE TABLE principal_clearances (
+    author_id       BYTEA(32) NOT NULL REFERENCES authors(id),
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    max_level       classification_level NOT NULL DEFAULT 'INTERNAL',
+    compartments    TEXT[] NOT NULL DEFAULT '{}',
+    granted         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    granted_by      BYTEA(32) REFERENCES authors(id),
+    PRIMARY KEY (author_id, organization_id)
+);
+```
+
+### 3.2 Label Dominance Logic
+
+**Create:** `Notebook.Core/Security/SecurityLabel.cs`
+
+```csharp
+public record SecurityLabel(ClassificationLevel Level, IReadOnlySet<string> Compartments)
+{
+    public bool Dominates(SecurityLabel other) =>
+        Level >= other.Level && Compartments.IsSupersetOf(other.Compartments);
+}
+```
+
+### 3.3 Clearance Check Integration
+
+**Modify:** `NotebookAccessMiddleware` (from Hush-1)
+
+After ACL check, also verify:
+- Principal's clearance (from `principal_clearances` for the notebook's org) dominates the notebook's security label
+- If not → 404 (not 403 — don't reveal existence)
+
+### 3.4 Notebook Creation with Label
+
+**Modify:** `POST /notebooks` — accept `classification` and `compartments` fields. Validate that the creating principal's clearance dominates the requested label.
+
+---
+
+## Hush-4: Access Tiers
+
+**Goal:** Implement the four-tier access model (existence, read, write, admin) tied to security labels.
+
+### 4.1 Extend `notebook_access`
+
+**Migration:** `014_access_tiers.sql`
+
+```sql
+ALTER TABLE notebook_access ADD COLUMN tier TEXT NOT NULL DEFAULT 'read_write';
+-- Tiers: 'existence', 'read', 'read_write', 'admin'
+-- Replaces the current (read, write) booleans
+
+ALTER TABLE notebook_access DROP COLUMN read;
+ALTER TABLE notebook_access DROP COLUMN write;
+```
+
+### 4.2 Tier Semantics
+
+| Tier | Can know exists | Can browse/read | Can write entries | Can manage access |
+|---|---|---|---|---|
+| `existence` | Yes | No | No | No |
+| `read` | Yes | Yes | No | No |
+| `read_write` | Yes | Yes | Yes | No |
+| `admin` | Yes | Yes | Yes | Yes |
+
+### 4.3 Group-Based Access Propagation
+
+When a notebook is owned by a group, members of that group automatically inherit access at their membership role's tier. Members of child groups in the DAG also inherit access. Members of parent groups do NOT inherit access (information flows up, not down).
+
+**Create:** `Notebook.Server/Services/AccessResolver.cs`
+
+Resolves effective access for a principal to a notebook by combining:
+1. Direct `notebook_access` grants
+2. Group membership in the owning group + descendants
+3. Clearance dominance check
+
+### 4.4 Existence Concealment
+
+Endpoints must return 404 (not 403) when a principal lacks existence-tier access. This prevents information leakage about what notebooks exist. Error messages must not reference the notebook ID.
+
+---
+
+## Hush-5: Agent Trust
+
+**Goal:** ThinkerAgent instances carry security labels; job routing respects classification boundaries.
+
+### 5.1 Agent Registration
+
+**Migration:** `015_agent_registry.sql`
+
+```sql
+CREATE TABLE agents (
+    id              TEXT PRIMARY KEY,          -- e.g. "thinker-boeing-secure-01"
+    organization_id UUID NOT NULL REFERENCES organizations(id),
+    max_level       classification_level NOT NULL DEFAULT 'INTERNAL',
+    compartments    TEXT[] NOT NULL DEFAULT '{}',
+    infrastructure  TEXT,                       -- description: "air-gapped", "cloud", etc.
+    registered      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    last_seen       TIMESTAMPTZ
+);
+```
+
+### 5.2 Agent Authentication
+
+**Modify:** ThinkerAgent token issuance
+
+Agent tokens carry an `agent_id` claim in addition to `sub`. On job claim, the server looks up the agent's security label and verifies it dominates the notebook's label before returning a job.
+
+### 5.3 Label-Aware Job Routing
+
+**Modify:** `JobRepository.ClaimNextJobAsync`
+
+Add filter: only return jobs from notebooks whose security label the claiming agent dominates.
+
+```sql
+WHERE n.classification <= agent_max_level
+  AND n.compartments <@ agent_compartments
+```
+
+### 5.4 Agent Management Endpoints
+
+**Create:** `Notebook.Server/Endpoints/AgentEndpoints.cs`
+
+```
+POST   /agents                    — register agent (admin only)
+GET    /agents                    — list agents
+PUT    /agents/{id}               — update agent label
+DELETE /agents/{id}               — deregister agent
+```
+
+---
+
+## Hush-6: Inter-Thinktank Subscriptions
+
+**Goal:** Higher-classified thinktanks can subscribe to lower-classified ones. Information flows up, never down.
+
+### 6.1 Database Schema
+
+**Migration:** `016_subscriptions.sql`
+
+```sql
+CREATE TABLE notebook_subscriptions (
+    subscriber_id   UUID NOT NULL REFERENCES notebooks(id),  -- higher classification
+    source_id       UUID NOT NULL REFERENCES notebooks(id),  -- lower classification
+    scope           TEXT NOT NULL DEFAULT 'catalog',          -- 'catalog', 'claims', 'entries'
+    topic_filter    TEXT,                                      -- optional topic prefix filter
+    approved_by     BYTEA(32) REFERENCES authors(id),
+    created         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    PRIMARY KEY (subscriber_id, source_id)
+);
+```
+
+### 6.2 Subscription Validation
+
+On insert, enforce:
+- Subscriber's classification level >= source's classification level
+- Subscriber's compartments ⊇ source's compartments
+- Both notebooks' owning organizations have a federation agreement (or same org)
+- Approved by an admin of the subscriber notebook
+
+### 6.3 Subscription Sync
+
+**Create:** `Notebook.Server/Services/SubscriptionSyncService.cs` (BackgroundService)
+
+Periodically pulls from source notebooks:
+- **Catalog scope:** pulls catalog summaries, stores as read-only reference entries
+- **Claims scope:** mirrors distilled claims, available for COMPARE_CLAIMS
+- **Entries scope:** mirrors full entries (most permissive)
+
+Sync uses the source notebook's OBSERVE endpoint with a stored causal position watermark.
+
+### 6.4 Comparison Cascade Across Subscriptions
+
+When embedding nearest-neighbor finds a subscribed entry, the COMPARE_CLAIMS job is routed to an agent cleared for the *subscriber's* level (which dominates the source's level by construction).
+
+### 6.5 API Endpoints
+
+```
+POST   /notebooks/{id}/subscriptions              — subscribe to source
+DELETE /notebooks/{id}/subscriptions/{sourceId}    — unsubscribe
+GET    /notebooks/{id}/subscriptions               — list subscriptions
+```
+
+---
+
+## Hush-7: Content Ingestion Gate
+
+**Goal:** Enforce classification assertions on entry submission and review external contributions.
+
+### 7.1 Classification Assertion
+
+**Modify:** `BatchEntryRequest` — add optional `classification_assertion` field.
+
+On write, verify:
+- Submitter's clearance dominates the thinktank's label (already enforced by Hush-3)
+- If `classification_assertion` is provided, it must not exceed the thinktank's label
+
+### 7.2 External Contribution Review Queue
+
+**Migration:** `017_review_queue.sql`
+
+```sql
+CREATE TABLE entry_reviews (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    notebook_id UUID NOT NULL REFERENCES notebooks(id),
+    entry_id    UUID NOT NULL REFERENCES entries(id),
+    submitter   BYTEA(32) NOT NULL REFERENCES authors(id),
+    status      TEXT NOT NULL DEFAULT 'pending',   -- pending, approved, rejected
+    reviewer    BYTEA(32) REFERENCES authors(id),
+    reviewed_at TIMESTAMPTZ,
+    created     TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE entries ADD COLUMN review_status TEXT DEFAULT 'approved';
+-- 'pending' entries are excluded from entropy computation and browse
+```
+
+### 7.3 Review Workflow
+
+- Entry from non-member enters with `review_status = 'pending'`
+- Pending entries are stored but excluded from claims distillation, comparisons, and catalog
+- Admin-tier user approves → `review_status = 'approved'` → DISTILL_CLAIMS job queued
+- Rejection returns only "rejected" to submitter — no reason given (prevents information flow)
+
+### 7.4 API Endpoints
+
+```
+GET    /notebooks/{id}/reviews              — list pending reviews (admin tier)
+POST   /notebooks/{id}/reviews/{id}/approve — approve entry (admin tier)
+POST   /notebooks/{id}/reviews/{id}/reject  — reject entry (admin tier)
+```
+
+---
+
+## Hush-8: Audit
+
+**Goal:** Full audit trail for all security-relevant operations.
+
+### 8.1 Database Schema
+
+**Migration:** `018_audit_log.sql`
+
+```sql
+CREATE TABLE audit_log (
+    id          BIGSERIAL PRIMARY KEY,
+    timestamp   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    actor       BYTEA(32),                          -- who (null for system actions)
+    action      TEXT NOT NULL,                       -- 'read', 'write', 'share', 'revoke', etc.
+    resource    TEXT NOT NULL,                       -- 'notebook:{id}', 'entry:{id}', 'agent:{id}'
+    detail      JSONB,                               -- action-specific context
+    ip_address  INET,
+    user_agent  TEXT
+);
+
+CREATE INDEX idx_audit_log_timestamp ON audit_log (timestamp);
+CREATE INDEX idx_audit_log_actor ON audit_log (actor);
+CREATE INDEX idx_audit_log_resource ON audit_log (resource);
+```
+
+### 8.2 Audited Actions
+
+| Action | Trigger |
+|---|---|
+| `entry.read` | Entry read via API |
+| `entry.write` | Entry created via batch-write |
+| `entry.review.approve` | External contribution approved |
+| `entry.review.reject` | External contribution rejected |
+| `notebook.create` | Notebook created |
+| `notebook.delete` | Notebook deleted |
+| `access.grant` | Share granted |
+| `access.revoke` | Share revoked |
+| `access.denied` | Principal attempted access above clearance |
+| `agent.register` | ThinkerAgent registered |
+| `agent.job.claim` | Agent claimed a job |
+| `agent.job.complete` | Agent completed a job |
+| `subscription.create` | Cross-thinktank subscription created |
+| `clearance.grant` | Principal clearance issued |
+| `clearance.revoke` | Principal clearance revoked |
+
+### 8.3 Implementation
+
+**Create:** `Notebook.Server/Services/IAuditService.cs`, `AuditService.cs`
+
+Injected into all endpoints and middleware. Writes async (fire-and-forget with bounded queue) to avoid latency impact on API responses.
+
+### 8.4 Audit API
+
+```
+GET /audit?actor={authorId}&resource={prefix}&from={ts}&to={ts}&limit=100
+```
+
+Requires `notebook:admin` scope. Returns paginated audit log entries.
+
+---
+
+## Implementation Order and Effort Estimates
+
+| Sub-Phase | Risk | Notes |
+|---|---|---|
+| **Hush-1: Close the Gates** | Low | Mostly wiring existing schema to existing endpoints. Should be done first regardless of whether the full security model is built. |
+| **Hush-8: Audit** | Low | Can start in parallel with Hush-1. Audit infra is useful from day one. |
+| **Hush-2: Organizations & Groups** | Medium | New schema, new endpoints, DAG traversal logic. No existing code to build on. |
+| **Hush-3: Security Labels** | Medium | Core security primitive. Must be correct — drives all downstream access decisions. |
+| **Hush-4: Access Tiers** | Medium | Replaces current boolean ACL with richer model. Must be backward-compatible during migration. |
+| **Hush-5: Agent Trust** | Medium | Changes job routing. Must handle gracefully when agents lack clearance for available jobs. |
+| **Hush-7: Ingestion Gate** | Medium | New review workflow. Changes entry lifecycle (pending → approved). |
+| **Hush-6: Subscriptions** | High | Highest complexity. Cross-thinktank data flow, sync consistency, classification boundary enforcement. Should be last. |
+
+## Migration Path
+
+The existing system has notebooks with no org/group/classification. The migration path:
+
+1. **Hush-1** is purely additive — enforcing checks that currently don't happen. No schema changes needed beyond what exists.
+2. **Hush-2** adds org/group tables with nullable `owning_group_id` on notebooks. Existing notebooks have `owning_group_id = NULL` (legacy mode — owner-based ACL still works).
+3. **Hush-3** adds classification with default `INTERNAL`. Existing notebooks are `INTERNAL` with empty compartments. All existing principals get `INTERNAL` clearance by default.
+4. **Hush-4** migrates `(read, write)` booleans to tier enum. `(read=true, write=true)` → `read_write`. `(read=true, write=false)` → `read`.
+5. Subsequent phases are purely additive.
