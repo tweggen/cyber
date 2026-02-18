@@ -8,7 +8,7 @@ public static class ResultParser
     public static object ParseResult(string jobType, string response, JsonElement payload) => jobType switch
     {
         "DISTILL_CLAIMS" => ParseDistillResult(response),
-        "COMPARE_CLAIMS" => ParseCompareResult(response, payload),
+        "COMPARE_CLAIMS" => (object)ParseCompareResult(response, payload),
         "CLASSIFY_TOPIC" => (object)ParseClassifyResult(response),
         _ => throw new ArgumentException($"Unknown job type: {jobType}"),
     };
@@ -46,7 +46,7 @@ public static class ResultParser
         return new Dictionary<string, object> { ["claims"] = claims };
     }
 
-    public static Dictionary<string, object> ParseCompareResult(string response, JsonElement payload)
+    public static Dictionary<string, object?> ParseCompareResult(string response, JsonElement payload)
     {
         JsonElement data;
         try
@@ -101,8 +101,13 @@ public static class ResultParser
         var entropy = n > 0 ? Math.Round((double)novelCount / n, 4) : 0.0;
         var friction = n > 0 ? Math.Round((double)contradictCount / n, 4) : 0.0;
 
-        return new Dictionary<string, object>
+        var compareAgainstId = payload.TryGetProperty("compare_against_id", out var caid)
+            ? caid.GetString()
+            : null;
+
+        return new Dictionary<string, object?>
         {
+            ["compared_against"] = compareAgainstId,
             ["entropy"] = entropy,
             ["friction"] = friction,
             ["contradictions"] = contradictions,

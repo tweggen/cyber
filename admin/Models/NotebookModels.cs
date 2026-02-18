@@ -248,6 +248,9 @@ public class ReadEntryResponse
 
     [JsonPropertyName("referenced_by")]
     public List<EntrySummaryDto> ReferencedBy { get; set; } = [];
+
+    [JsonPropertyName("fragments")]
+    public List<FragmentSummaryDto> Fragments { get; set; } = [];
 }
 
 /// <summary>
@@ -299,6 +302,12 @@ public class EntryDetail
 
     [JsonPropertyName("needs_review")]
     public bool NeedsReview { get; set; }
+
+    [JsonPropertyName("fragment_of")]
+    public Guid? FragmentOf { get; set; }
+
+    [JsonPropertyName("fragment_index")]
+    public int? FragmentIndex { get; set; }
 }
 
 /// <summary>
@@ -381,6 +390,27 @@ public class ComparisonDto
 
     [JsonPropertyName("computed_at")]
     public DateTime ComputedAt { get; set; }
+}
+
+/// <summary>
+/// Summary of a fragment entry with its claims.
+/// </summary>
+public class FragmentSummaryDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("fragment_index")]
+    public int FragmentIndex { get; set; }
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; set; }
+
+    [JsonPropertyName("claims")]
+    public List<ClaimDto> Claims { get; set; } = [];
+
+    [JsonPropertyName("claims_status")]
+    public string? ClaimsStatus { get; set; }
 }
 
 /// <summary>

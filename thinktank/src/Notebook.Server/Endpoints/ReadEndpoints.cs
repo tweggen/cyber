@@ -47,6 +47,22 @@ public static class ReadEndpoints
                 .ToList();
         }
 
+        // Fragments: entries that are fragments of this entry
+        var fragments = (await db.Entries
+            .Where(e => e.FragmentOf == entryId && e.NotebookId == notebookId)
+            .OrderBy(e => e.FragmentIndex)
+            .Select(e => new { e.Id, e.Topic, e.FragmentIndex, e.Claims, e.ClaimsStatus, e.Comparisons })
+            .ToListAsync(ct))
+            .Select(f => new ReadFragmentSummary
+            {
+                Id = f.Id,
+                FragmentIndex = f.FragmentIndex ?? 0,
+                Topic = f.Topic,
+                Claims = f.Claims.Select(c => new ReadClaim { Text = c.Text, Confidence = c.Confidence }).ToList(),
+                ClaimsStatus = f.ClaimsStatus.ToString().ToLowerInvariant(),
+            })
+            .ToList();
+
         // Referenced by: entries whose references array contains this entry's ID
         var referencedBy = (await db.Entries
             .FromSqlInterpolated(
@@ -99,10 +115,13 @@ public static class ReadEndpoints
                 }).ToList(),
                 MaxFriction = entry.MaxFriction,
                 NeedsReview = entry.NeedsReview,
+                FragmentOf = entry.FragmentOf,
+                FragmentIndex = entry.FragmentIndex,
             },
             Revisions = revisions,
             References = references,
             ReferencedBy = referencedBy,
+            Fragments = fragments,
         };
 
         return Results.Ok(response);
@@ -133,6 +152,9 @@ internal sealed record ReadEntryApiResponse
 
     [JsonPropertyName("referenced_by")]
     public required List<ReadEntrySummary> ReferencedBy { get; init; }
+
+    [JsonPropertyName("fragments")]
+    public required List<ReadFragmentSummary> Fragments { get; init; }
 }
 
 internal sealed record ReadEntryDetail
@@ -181,6 +203,12 @@ internal sealed record ReadEntryDetail
 
     [JsonPropertyName("needs_review")]
     public required bool NeedsReview { get; init; }
+
+    [JsonPropertyName("fragment_of")]
+    public Guid? FragmentOf { get; init; }
+
+    [JsonPropertyName("fragment_index")]
+    public int? FragmentIndex { get; init; }
 }
 
 internal sealed record ReadCausalPosition
@@ -241,4 +269,22 @@ internal sealed record ReadEntrySummary
 
     [JsonPropertyName("created")]
     public required DateTimeOffset Created { get; init; }
+}
+
+internal sealed record ReadFragmentSummary
+{
+    [JsonPropertyName("id")]
+    public required Guid Id { get; init; }
+
+    [JsonPropertyName("fragment_index")]
+    public required int FragmentIndex { get; init; }
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; init; }
+
+    [JsonPropertyName("claims")]
+    public required List<ReadClaim> Claims { get; init; }
+
+    [JsonPropertyName("claims_status")]
+    public required string ClaimsStatus { get; init; }
 }

@@ -72,6 +72,74 @@ else if (entryData != null)
         </div>
     }
 
+    @if (entryData.Entry.Comparisons.Count > 0)
+    {
+        <div class="card mb-3">
+            <div class="card-header">
+                <strong>Comparisons</strong>
+                <span class="text-muted ms-2">(@entryData.Entry.Comparisons.Count entries compared)</span>
+            </div>
+            <div class="card-body">
+                @foreach (var comp in entryData.Entry.Comparisons)
+                {
+                    <div class="border rounded p-2 mb-2">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            @if (comp.ComparedAgainst != Guid.Empty)
+                            {
+                                <a href="/notebooks/@NotebookId/entries/@comp.ComparedAgainst">
+                                    <code>@comp.ComparedAgainst.ToString()[..8]...</code>
+                                </a>
+                            }
+                            else
+                            {
+                                <span class="text-muted"><code>unknown</code></span>
+                            }
+                            <small class="text-muted">@comp.ComputedAt.ToString("u")</small>
+                        </div>
+                        <div class="row g-2 mb-1">
+                            <div class="col-6">
+                                <small class="text-muted">Entropy (novelty)</small>
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar bg-info" style="width: @((comp.Entropy * 100).ToString("F0"))%">
+                                        @comp.Entropy.ToString("F3")
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-muted">Friction (contradiction)</small>
+                                <div class="progress" style="height: 18px;">
+                                    <div class="progress-bar @GetFrictionBarClass(comp.Friction)" style="width: @(Math.Max(comp.Friction * 100, 2).ToString("F0"))%">
+                                        @comp.Friction.ToString("F3")
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        @if (comp.Contradictions.Count > 0)
+                        {
+                            <details class="mt-1">
+                                <summary class="text-danger" style="cursor: pointer;">
+                                    <small>@comp.Contradictions.Count contradiction(s)</small>
+                                </summary>
+                                <ul class="list-unstyled ms-3 mt-1 mb-0">
+                                    @foreach (var c in comp.Contradictions)
+                                    {
+                                        <li class="mb-1">
+                                            <small>
+                                                <span class="text-muted">Severity: @c.Severity.ToString("F2")</span><br/>
+                                                <strong>A:</strong> @c.ClaimA<br/>
+                                                <strong>B:</strong> @c.ClaimB
+                                            </small>
+                                        </li>
+                                    }
+                                </ul>
+                            </details>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
     <div class="card mb-3">
         <div class="card-header">
             <strong>@(entryData.Entry.Topic ?? "Untitled")</strong>
@@ -90,6 +158,69 @@ else if (entryData != null)
             </small>
         </div>
     </div>
+
+    @if (entryData.Entry.FragmentOf != null)
+    {
+        <p>Fragment of: <a href="/notebooks/@NotebookId/entries/@entryData.Entry.FragmentOf">@entryData.Entry.FragmentOf</a>
+            (index @(entryData.Entry.FragmentIndex ?? 0))</p>
+    }
+
+    @if (entryData.Fragments.Count > 0)
+    {
+        <details class="mb-3">
+            <summary class="h5" style="cursor: pointer;">Fragments (@entryData.Fragments.Count)</summary>
+            <div class="mt-2">
+                @foreach (var frag in entryData.Fragments)
+                {
+                    <div class="card mb-2">
+                        <div class="card-header d-flex justify-content-between align-items-center py-1">
+                            <span>
+                                <a href="/notebooks/@NotebookId/entries/@frag.Id">
+                                    Fragment @frag.FragmentIndex
+                                </a>
+                                @if (frag.Topic != null)
+                                {
+                                    <span class="text-muted ms-2">@frag.Topic</span>
+                                }
+                            </span>
+                            @if (frag.ClaimsStatus != null)
+                            {
+                                <span class="badge @GetClaimsStatusBadgeClass(frag.ClaimsStatus)">
+                                    @frag.ClaimsStatus
+                                </span>
+                            }
+                        </div>
+                        @if (frag.Claims.Count > 0)
+                        {
+                            <div class="card-body p-0">
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Claim</th>
+                                            <th style="width: 120px;">Confidence</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var claim in frag.Claims)
+                                        {
+                                            <tr>
+                                                <td><small>@claim.Text</small></td>
+                                                <td>
+                                                    <span class="badge @GetConfidenceBadgeClass(claim.Confidence)">
+                                                        @claim.Confidence.ToString("P0")
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                </table>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </details>
+    }
 
     @if (entryData.Entry.RevisionOf != null)
     {
@@ -148,67 +279,6 @@ else if (entryData != null)
         <div class="alert alert-warning d-flex align-items-center mb-3">
             <strong class="me-2">Friction Alert</strong>
             This entry has high friction (max: @((entryData.Entry.MaxFriction ?? 0).ToString("F3"))) and needs review.
-        </div>
-    }
-
-    @if (entryData.Entry.Comparisons.Count > 0)
-    {
-        <div class="card mb-3">
-            <div class="card-header">
-                <strong>Comparisons</strong>
-                <span class="text-muted ms-2">(@entryData.Entry.Comparisons.Count entries compared)</span>
-            </div>
-            <div class="card-body">
-                @foreach (var comp in entryData.Entry.Comparisons)
-                {
-                    <div class="border rounded p-2 mb-2">
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <a href="/notebooks/@NotebookId/entries/@comp.ComparedAgainst">
-                                <code>@comp.ComparedAgainst.ToString()[..8]...</code>
-                            </a>
-                            <small class="text-muted">@comp.ComputedAt.ToString("u")</small>
-                        </div>
-                        <div class="row g-2 mb-1">
-                            <div class="col-6">
-                                <small class="text-muted">Entropy (novelty)</small>
-                                <div class="progress" style="height: 18px;">
-                                    <div class="progress-bar bg-info" style="width: @((comp.Entropy * 100).ToString("F0"))%">
-                                        @comp.Entropy.ToString("F3")
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="col-6">
-                                <small class="text-muted">Friction (contradiction)</small>
-                                <div class="progress" style="height: 18px;">
-                                    <div class="progress-bar @GetFrictionBarClass(comp.Friction)" style="width: @(Math.Max(comp.Friction * 100, 2).ToString("F0"))%">
-                                        @comp.Friction.ToString("F3")
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        @if (comp.Contradictions.Count > 0)
-                        {
-                            <details class="mt-1">
-                                <summary class="text-danger" style="cursor: pointer;">
-                                    <small>@comp.Contradictions.Count contradiction(s)</small>
-                                </summary>
-                                <ul class="list-unstyled ms-3 mt-1 mb-0">
-                                    @foreach (var c in comp.Contradictions)
-                                    {
-                                        <li class="mb-1">
-                                            <small>
-                                                <span class="text-muted">Severity: @c.Severity.ToString("F2")</span><br/>
-                                                <strong>A:</strong> @c.ClaimA<br/>
-                                                <strong>B:</strong> @c.ClaimB
-                                            </small>
-                                        </li>
-                                    }
-                                </ul>
-                            </details>
-                        }
-                    </div>
-                }
-            </div>
         </div>
     }
 

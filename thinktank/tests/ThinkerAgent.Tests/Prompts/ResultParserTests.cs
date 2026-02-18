@@ -38,6 +38,7 @@ public class ResultParserTests
         var response = """{"classifications": [{"new_claim": 1, "type": "NOVEL"}]}""";
         var payload = JsonSerializer.SerializeToElement(new
         {
+            compare_against_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
             claims_a = new[] { new { text = "A", confidence = 0.9 } },
             claims_b = new[] { new { text = "B", confidence = 0.9 } },
         });
@@ -46,6 +47,7 @@ public class ResultParserTests
 
         Assert.Equal(1.0, result["entropy"]);
         Assert.Equal(0.0, result["friction"]);
+        Assert.Equal("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee", result["compared_against"]);
     }
 
     [Fact]
@@ -60,6 +62,7 @@ public class ResultParserTests
         });
         var payload = JsonSerializer.SerializeToElement(new
         {
+            compare_against_id = "11111111-2222-3333-4444-555555555555",
             claims_a = new[] { new { text = "Earth is round", confidence = 0.9 } },
             claims_b = new[] { new { text = "Earth is flat", confidence = 0.8 } },
         });
@@ -68,7 +71,8 @@ public class ResultParserTests
 
         Assert.Equal(0.0, result["entropy"]);
         Assert.Equal(1.0, result["friction"]);
-        var contradictions = (List<Dictionary<string, object>>)result["contradictions"];
+        Assert.Equal("11111111-2222-3333-4444-555555555555", result["compared_against"]);
+        var contradictions = (List<Dictionary<string, object>>)result["contradictions"]!;
         Assert.Single(contradictions);
         Assert.Equal("Earth is round", contradictions[0]["claim_a"]);
         Assert.Equal("Earth is flat", contradictions[0]["claim_b"]);
@@ -89,6 +93,7 @@ public class ResultParserTests
         });
         var payload = JsonSerializer.SerializeToElement(new
         {
+            compare_against_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee",
             claims_a = new[] { new { text = "A1", confidence = 0.9 } },
             claims_b = new[]
             {
@@ -102,7 +107,7 @@ public class ResultParserTests
 
         Assert.Equal(Math.Round(1.0 / 3, 4), result["entropy"]);
         Assert.Equal(Math.Round(1.0 / 3, 4), result["friction"]);
-        var contradictions = (List<Dictionary<string, object>>)result["contradictions"];
+        var contradictions = (List<Dictionary<string, object>>)result["contradictions"]!;
         Assert.Single(contradictions);
     }
 
