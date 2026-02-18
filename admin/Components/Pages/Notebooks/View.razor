@@ -168,7 +168,9 @@ else if (browseResult != null)
                             <span class="badge @(entry.Operation == "write" ? "bg-success" : "bg-info")">@entry.Operation</span>
                         </td>
                         <td>
-                            <a href="/notebooks/@NotebookId/entries/@entry.EntryId">@(entry.Topic ?? "-")</a>
+                            <a href="/notebooks/@NotebookId/entries/@entry.EntryId"
+                               @onclick="() => NavigateToEntry(entry.EntryId)"
+                               @onclick:preventDefault>@(entry.Topic ?? "-")</a>
                         </td>
                         <td>@entry.IntegrationCost.CatalogShift.ToString("F3")</td>
                         <td class="text-muted small">@entry.Created.ToString("yyyy-MM-dd HH:mm")</td>
@@ -227,7 +229,9 @@ else if (browseResult != null)
                             {
                                 <a href="/notebooks/@NotebookId/entries/@eid"
                                    class="btn btn-sm btn-outline-secondary me-1"
-                                   title="@eid">@eid.ToString()[..8]</a>
+                                   title="@eid"
+                                   @onclick="() => NavigateToEntry(eid)"
+                                   @onclick:preventDefault>@eid.ToString()[..8]</a>
                             }
                         </div>
                     }
@@ -498,6 +502,11 @@ else if (browseResult != null)
     {
         if (page >= 1 && page <= TotalPages)
             currentPage = page;
+    }
+
+    private void NavigateToEntry(Guid entryId)
+    {
+        Navigation.NavigateTo($"/notebooks/{NotebookId}/entries/{entryId}");
     }
 
     private void ConfirmDelete() => showDeleteConfirm = true;
