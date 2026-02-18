@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Options;
 using ThinkerAgent.Configuration;
 using ThinkerAgent.Services;
 
@@ -9,43 +10,43 @@ public static class DependencyInjection
     {
         services.Configure<ThinkerOptions>(configuration.GetSection(ThinkerOptions.SectionName));
 
-        var options = new ThinkerOptions();
-        configuration.GetSection(ThinkerOptions.SectionName).Bind(options);
-
         services.AddSingleton<WorkerState>();
 
-        services.AddHttpClient<NotebookApiClient>(client =>
+        services.AddHttpClient<NotebookApiClient>((sp, client) =>
         {
-            client.BaseAddress = new Uri(options.ServerUrl.TrimEnd('/') + "/");
+            var opts = sp.GetRequiredService<IOptionsMonitor<ThinkerOptions>>().CurrentValue;
+            client.BaseAddress = new Uri(opts.ServerUrl.TrimEnd('/') + "/");
             client.DefaultRequestHeaders.Authorization =
-                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.Token);
+                new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", opts.Token);
             client.DefaultRequestHeaders.Add("Accept", "application/json");
             client.Timeout = TimeSpan.FromSeconds(30);
         });
 
-        switch (options.ApiType)
-        {
-            case ApiType.OpenAi:
-                services.AddHttpClient<ILlmClient, OpenAiLlmClient>(client =>
-                {
-                    client.BaseAddress = new Uri(options.LlmUrl.TrimEnd('/') + "/");
-                    client.Timeout = TimeSpan.FromMinutes(5);
-                    if (!string.IsNullOrWhiteSpace(options.ApiKey))
-                    {
-                        client.DefaultRequestHeaders.Authorization =
-                            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", options.ApiKey);
-                    }
-                });
-                break;
+        // Named HttpClient for LLM — handler pooling without baked-in BaseAddress.
+        services.AddHttpClient("LlmClient");
 
-            default:
-                services.AddHttpClient<ILlmClient, OllamaClient>(client =>
+        // Transient factory: reads current options on every resolution so URL/ApiType/ApiKey
+        // changes take effect immediately (workers create a new scope each iteration).
+        services.AddTransient<ILlmClient>(sp =>
+        {
+            var opts = sp.GetRequiredService<IOptionsMonitor<ThinkerOptions>>().CurrentValue;
+            var factory = sp.GetRequiredService<IHttpClientFactory>();
+            var client = factory.CreateClient("LlmClient");
+            client.BaseAddress = new Uri(opts.LlmUrl.TrimEnd('/') + "/");
+            client.Timeout = TimeSpan.FromMinutes(5);
+
+            if (opts.ApiType == ApiType.OpenAi)
+            {
+                if (!string.IsNullOrWhiteSpace(opts.ApiKey))
                 {
-                    client.BaseAddress = new Uri(options.LlmUrl.TrimEnd('/') + "/");
-                    client.Timeout = TimeSpan.FromMinutes(5);
-                });
-                break;
-        }
+                    client.DefaultRequestHeaders.Authorization =
+                        new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", opts.ApiKey);
+                }
+                return new OpenAiLlmClient(client);
+            }
+
+            return new OllamaClient(client);
+        });
 
         services.AddHostedService<RobotWorkerService>();
 

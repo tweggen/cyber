@@ -8,17 +8,19 @@ namespace ThinkerAgent.Services;
 public sealed class NotebookApiClient
 {
     private readonly HttpClient _http;
-    private readonly ThinkerOptions _options;
+    private readonly IOptionsMonitor<ThinkerOptions> _optionsMonitor;
 
-    public NotebookApiClient(HttpClient http, IOptions<ThinkerOptions> options)
+    public NotebookApiClient(HttpClient http, IOptionsMonitor<ThinkerOptions> optionsMonitor)
     {
         _http = http;
-        _options = options.Value;
+        _optionsMonitor = optionsMonitor;
     }
+
+    private Guid NotebookId => _optionsMonitor.CurrentValue.NotebookId;
 
     public async Task<PollResult> PullJobAsync(string workerId, string? jobType = null, CancellationToken ct = default)
     {
-        var url = $"notebooks/{_options.NotebookId}/jobs/next?worker_id={Uri.EscapeDataString(workerId)}";
+        var url = $"notebooks/{NotebookId}/jobs/next?worker_id={Uri.EscapeDataString(workerId)}";
         if (jobType is not null)
             url += $"&type={Uri.EscapeDataString(jobType)}";
 
@@ -53,7 +55,7 @@ public sealed class NotebookApiClient
         });
 
         var resp = await _http.PostAsJsonAsync(
-            $"notebooks/{_options.NotebookId}/jobs/{jobId}/complete",
+            $"notebooks/{NotebookId}/jobs/{jobId}/complete",
             body,
             ct);
 
@@ -69,7 +71,7 @@ public sealed class NotebookApiClient
         });
 
         var resp = await _http.PostAsJsonAsync(
-            $"notebooks/{_options.NotebookId}/jobs/{jobId}/fail",
+            $"notebooks/{NotebookId}/jobs/{jobId}/fail",
             body,
             ct);
 
@@ -78,7 +80,7 @@ public sealed class NotebookApiClient
 
     public async Task<JsonElement?> GetStatsAsync(CancellationToken ct = default)
     {
-        var resp = await _http.GetAsync($"notebooks/{_options.NotebookId}/jobs/stats", ct);
+        var resp = await _http.GetAsync($"notebooks/{NotebookId}/jobs/stats", ct);
         if (!resp.IsSuccessStatusCode)
             return null;
 

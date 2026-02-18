@@ -8,40 +8,61 @@ namespace ThinkerAgent.Services;
 public sealed class RobotWorkerService : BackgroundService
 {
     private readonly IServiceProvider _services;
-    private readonly ThinkerOptions _options;
+    private readonly IOptionsMonitor<ThinkerOptions> _optionsMonitor;
     private readonly WorkerState _state;
     private readonly ILogger<RobotWorkerService> _logger;
 
     public RobotWorkerService(
         IServiceProvider services,
-        IOptions<ThinkerOptions> options,
+        IOptionsMonitor<ThinkerOptions> optionsMonitor,
         WorkerState state,
         ILogger<RobotWorkerService> logger)
     {
         _services = services;
-        _options = options.Value;
+        _optionsMonitor = optionsMonitor;
         _state = state;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _state.IsRunning = true;
-        _state.ResetUptime();
-        _state.NotifyChanged();
-
-        _logger.LogInformation(
-            "Starting {Count} worker(s), model={Model}, server={Server}",
-            _options.WorkerCount, _options.Model, _options.ServerUrl);
-
-        var tasks = new List<Task>();
-        for (var i = 0; i < _options.WorkerCount; i++)
+        while (!stoppingToken.IsCancellationRequested)
         {
-            var workerId = $"thinker-{Environment.MachineName}-{i}";
-            tasks.Add(RunWorkerLoop(workerId, stoppingToken));
-        }
+            var options = _optionsMonitor.CurrentValue;
+            using var restartCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
 
-        await Task.WhenAll(tasks);
+            using var changeRegistration = _optionsMonitor.OnChange(_ =>
+            {
+                _logger.LogInformation("Configuration changed, restarting workers...");
+                try { restartCts.Cancel(); } catch (ObjectDisposedException) { }
+            });
+
+            _state.IsRunning = true;
+            _state.ResetUptime();
+            _state.NotifyChanged();
+
+            _logger.LogInformation(
+                "Starting {Count} worker(s), model={Model}, server={Server}",
+                options.WorkerCount, options.Model, options.ServerUrl);
+
+            var tasks = new List<Task>();
+            for (var i = 0; i < options.WorkerCount; i++)
+            {
+                var workerId = $"thinker-{Environment.MachineName}-{i}";
+                tasks.Add(RunWorkerLoop(workerId, options, restartCts.Token));
+            }
+
+            await Task.WhenAll(tasks);
+
+            if (stoppingToken.IsCancellationRequested)
+                break;
+
+            _logger.LogInformation("Workers restarting with new configuration...");
+
+            // Brief delay to debounce rapid file-system events.
+            try { await Task.Delay(500, stoppingToken); }
+            catch (OperationCanceledException) { break; }
+        }
 
         _state.IsRunning = false;
         _state.NotifyChanged();
@@ -49,10 +70,10 @@ public sealed class RobotWorkerService : BackgroundService
 
     private int _jobTypeIndex;
 
-    private async Task RunWorkerLoop(string workerId, CancellationToken ct)
+    private async Task RunWorkerLoop(string workerId, ThinkerOptions options, CancellationToken ct)
     {
         var worker = _state.GetOrCreateWorker(workerId);
-        var pollInterval = TimeSpan.FromSeconds(_options.PollIntervalSeconds);
+        var pollInterval = TimeSpan.FromSeconds(options.PollIntervalSeconds);
         var consecutiveEmpty = 0;
 
         _logger.LogInformation("Worker {WorkerId} started", workerId);
@@ -82,8 +103,8 @@ public sealed class RobotWorkerService : BackgroundService
 
                 // Pick a job type if filtered; server-side priority handles ordering
                 string? jobType = null;
-                if (_options.JobTypes is { Count: > 0 })
-                    jobType = _options.JobTypes[_jobTypeIndex++ % _options.JobTypes.Count];
+                if (options.JobTypes is { Count: > 0 })
+                    jobType = options.JobTypes[_jobTypeIndex++ % options.JobTypes.Count];
 
                 var pollResult = await apiClient.PullJobAsync(workerId, jobType, ct);
                 _state.QueueDepth = pollResult.QueueDepth;
@@ -125,7 +146,7 @@ public sealed class RobotWorkerService : BackgroundService
                             .ToList();
 
                         var embedResponse = await llmClient.EmbedAsync(
-                            _options.EmbeddingModel, claimTexts, ct);
+                            options.EmbeddingModel, claimTexts, ct);
 
                         // Average per-claim embeddings into single vector
                         var dim = embedResponse.Embeddings[0].Length;
@@ -170,7 +191,7 @@ public sealed class RobotWorkerService : BackgroundService
                         worker.TokensGenerated = count;
                         _state.NotifyThrottled();
                     });
-                    var llmResponse = await llmClient.ChatAsync(_options.Model, prompt, 2048, progress, ct);
+                    var llmResponse = await llmClient.ChatAsync(options.Model, prompt, 2048, progress, ct);
                     worker.TokensGenerated = 0;
                     worker.TokensPerSecond = llmResponse.TokensPerSecond;
 

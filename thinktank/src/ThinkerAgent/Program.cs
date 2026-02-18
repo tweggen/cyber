@@ -70,7 +70,7 @@ try
         ConfigHelper<ThinkerOptions> helper) =>
     {
         await helper.Save(newConfig);
-        return Results.Ok(new { status = "saved", restart_required = true });
+        return Results.Ok(new { status = "saved", restart_required = false });
     });
 
     app.MapPost("/start", (WorkerState ws) =>
