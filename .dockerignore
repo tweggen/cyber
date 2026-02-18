@@ -1,0 +1,6 @@
+thinktank/
+frontend/
+.git/
+.github/
+deploy/
+*.md

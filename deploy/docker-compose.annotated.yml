@@ -69,15 +69,15 @@ services:
       # data directory is empty). They are NOT re-run on subsequent starts.
       #
       # We prefix with 00-, 01-, 02-, 03- to enforce execution order:
-      - ./notebook/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
+      - ../postgres/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
       #   00: Creates the separate "notebook_admin" database used by the
       #       admin service (ASP.NET). ":ro" = read-only mount.
-      - ./notebook/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../postgres/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       #   01: Core initialization — enables extensions (uuid-ossp, age, etc.),
       #       sets up the search path.
-      - ./notebook/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      - ../postgres/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
       #   02: Creates the notebook tables (entries, notebooks, authors, etc.).
-      - ./notebook/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
+      - ../postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
       #   03: Sets up the Apache AGE graph for causal-reference traversal.
 
     healthcheck:
@@ -108,8 +108,8 @@ services:
   # ===========================================================================
   notebook-server:
     build:
-      context: ./notebook        # Build context is the notebook/ subdirectory
-      dockerfile: Dockerfile     # Multi-stage Rust build (see notebook/Dockerfile)
+      context: ..                # Build context is the repo root
+      dockerfile: notebook/Dockerfile  # Multi-stage Rust build (see notebook/Dockerfile)
     container_name: notebook-server
 
     environment:
@@ -239,7 +239,7 @@ services:
   # ===========================================================================
   admin:
     build:
-      context: ./admin
+      context: ../frontend/admin
       dockerfile: Dockerfile     # Multi-stage .NET 10 build
     container_name: notebook-admin
 

@@ -25,7 +25,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cyber.Client", "src\Cyber.C
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Cyber.Client.Tests", "tests\Cyber.Client.Tests\Cyber.Client.Tests.csproj", "{5991882B-E932-4F56-BC0E-1BA52B4F4DE9}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotebookAdmin", "..\admin\NotebookAdmin.csproj", "{A8FB5178-F10D-4333-BE43-F124F2A2DCFF}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NotebookAdmin", "..\frontend\admin\NotebookAdmin.csproj", "{A8FB5178-F10D-4333-BE43-F124F2A2DCFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

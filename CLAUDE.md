@@ -36,7 +36,7 @@ black notebook_client                # Format
 ### Infrastructure
 
 ```bash
-docker-compose -f notebook/docker-compose.yml up -d   # Start PostgreSQL + Apache AGE
+docker compose -f deploy/docker-compose.yml up -d      # Start PostgreSQL + Apache AGE
 python3 notebook/bootstrap/bootstrap_notebook.py --port 8723 --data ./notebook-data  # Bootstrap server
 ```
 
@@ -48,7 +48,7 @@ Five crates in a workspace, edition 2024:
 
 - **notebook-core** — Domain types, Ed25519 crypto, identity. Every entry carries: content blob (representation-agnostic), content-type, cryptographic authorship, causal context (cyclic references allowed), and system-computed integration cost.
 - **notebook-entropy** — Integration cost engine. TF-IDF similarity, agglomerative clustering, coherence snapshots, catalog generation with token budgets, Tantivy full-text search, retroactive cost propagation.
-- **notebook-store** — PostgreSQL persistence via sqlx. Apache AGE for graph traversal of cyclic knowledge references. Migrations in `notebook/migrations/`.
+- **notebook-store** — PostgreSQL persistence via sqlx. Apache AGE for graph traversal of cyclic knowledge references. Migrations in `postgres/migrations/`.
 - **notebook-server** — Axum HTTP API implementing six operations: WRITE, REVISE, READ, BROWSE, SHARE, OBSERVE. Stateless REST; entropy engine maintains in-memory coherence snapshots rebuilt from DB.
 - **cli** — Clap-based CLI with subcommands matching the six operations plus delete, list, create.
 
@@ -56,7 +56,7 @@ Five crates in a workspace, edition 2024:
 
 Pure Python (3.9+) HTTP client wrapping all six operations. Types in dataclasses, custom error hierarchy.
 
-### MCP Integration (`mcp/notebook_mcp.py`)
+### MCP Integration (`notebook/mcp/notebook_mcp.py`)
 
 Model Context Protocol server exposing the six operations as tools for Claude Desktop. Authenticates via JWT Bearer token (`NOTEBOOK_TOKEN` env var).
 

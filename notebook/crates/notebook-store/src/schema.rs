@@ -8,18 +8,20 @@ use sqlx::PgPool;
 use crate::error::{StoreError, StoreResult};
 
 /// Embedded migration SQL for the core schema (002_schema.sql).
-pub const SCHEMA_MIGRATION: &str = include_str!("../../../migrations/002_schema.sql");
+pub const SCHEMA_MIGRATION: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/migrations/002_schema.sql"));
 
 /// Embedded migration SQL for the graph schema (003_graph.sql).
-pub const GRAPH_MIGRATION: &str = include_str!("../../../migrations/003_graph.sql");
+pub const GRAPH_MIGRATION: &str =
+    include_str!(concat!(env!("OUT_DIR"), "/migrations/003_graph.sql"));
 
 /// Embedded migration SQL for the coherence links table (004_coherence_links.sql).
 pub const COHERENCE_LINKS_MIGRATION: &str =
-    include_str!("../../../migrations/004_coherence_links.sql");
+    include_str!(concat!(env!("OUT_DIR"), "/migrations/004_coherence_links.sql"));
 
 /// Embedded migration SQL for notebook sequence counter (006_notebook_sequence.sql).
 pub const NOTEBOOK_SEQUENCE_MIGRATION: &str =
-    include_str!("../../../migrations/006_notebook_sequence.sql");
+    include_str!(concat!(env!("OUT_DIR"), "/migrations/006_notebook_sequence.sql"));
 
 /// Run all pending migrations against the database.
 ///

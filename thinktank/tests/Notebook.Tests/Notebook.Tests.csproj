@@ -29,15 +29,15 @@
 
   <!-- Link real SQL migration files so the test DB matches production schema -->
   <ItemGroup>
-    <Content Include="..\..\..\notebook\migrations\002_schema.sql" Link="Migrations\002_schema.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\004_coherence_links.sql" Link="Migrations\004_coherence_links.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\006_notebook_sequence.sql" Link="Migrations\006_notebook_sequence.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\007_claims_and_jobs.sql" Link="Migrations\007_claims_and_jobs.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\008_original_content_type.sql" Link="Migrations\008_original_content_type.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\009_embeddings.sql" Link="Migrations\009_embeddings.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\010_job_priority.sql" Link="Migrations\010_job_priority.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\011_add_source_column.sql" Link="Migrations\011_add_source_column.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\notebook\migrations\012_integration_status.sql" Link="Migrations\012_integration_status.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\002_schema.sql" Link="Migrations\002_schema.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\004_coherence_links.sql" Link="Migrations\004_coherence_links.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\006_notebook_sequence.sql" Link="Migrations\006_notebook_sequence.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\007_claims_and_jobs.sql" Link="Migrations\007_claims_and_jobs.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\008_original_content_type.sql" Link="Migrations\008_original_content_type.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\009_embeddings.sql" Link="Migrations\009_embeddings.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\010_job_priority.sql" Link="Migrations\010_job_priority.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\011_add_source_column.sql" Link="Migrations\011_add_source_column.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\012_integration_status.sql" Link="Migrations\012_integration_status.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

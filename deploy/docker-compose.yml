@@ -12,10 +12,10 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./notebook/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
-      - ./notebook/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ./notebook/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
-      - ./notebook/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
+      - ../postgres/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
+      - ../postgres/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ../postgres/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      - ../postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U notebook -d notebook"]
       interval: 10s

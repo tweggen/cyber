@@ -18,11 +18,11 @@ jobs:
       matrix:
         include:
           - image: notebook-server
-            context: ./notebook
-            dockerfile: ./notebook/Dockerfile
+            context: .
+            dockerfile: notebook/Dockerfile
           - image: notebook-admin
-            context: ./admin
-            dockerfile: ./admin/Dockerfile
+            context: ./frontend/admin
+            dockerfile: ./frontend/admin/Dockerfile
 
     steps:
       - name: Checkout
@@ -43,7 +43,7 @@ jobs:
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Sync notebook MCP script into admin wwwroot
-        run: cp mcp/notebook_mcp.py admin/wwwroot/scripts/notebook_mcp.py
+        run: cp notebook/mcp/notebook_mcp.py frontend/admin/wwwroot/scripts/notebook_mcp.py
 
       - name: Build and push
         uses: docker/build-push-action@v6

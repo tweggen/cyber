@@ -1,15 +1,15 @@
 # ---- Build stage ----
 FROM rust:1.88-bookworm AS builder
 
-WORKDIR /app
+WORKDIR /build
 
 # Copy workspace manifests first for better layer caching
-COPY Cargo.toml Cargo.lock ./
-COPY crates/notebook-core/Cargo.toml crates/notebook-core/Cargo.toml
-COPY crates/notebook-server/Cargo.toml crates/notebook-server/Cargo.toml
-COPY crates/notebook-store/Cargo.toml crates/notebook-store/Cargo.toml
-COPY crates/notebook-entropy/Cargo.toml crates/notebook-entropy/Cargo.toml
-COPY cli/Cargo.toml cli/Cargo.toml
+COPY notebook/Cargo.toml notebook/Cargo.lock ./
+COPY notebook/crates/notebook-core/Cargo.toml crates/notebook-core/Cargo.toml
+COPY notebook/crates/notebook-server/Cargo.toml crates/notebook-server/Cargo.toml
+COPY notebook/crates/notebook-store/Cargo.toml crates/notebook-store/Cargo.toml
+COPY notebook/crates/notebook-entropy/Cargo.toml crates/notebook-entropy/Cargo.toml
+COPY notebook/cli/Cargo.toml cli/Cargo.toml
 
 # Create dummy source files so cargo can resolve dependencies
 RUN mkdir -p crates/notebook-core/src && echo "" > crates/notebook-core/src/lib.rs && \
@@ -21,10 +21,10 @@ RUN mkdir -p crates/notebook-core/src && echo "" > crates/notebook-core/src/lib.
 # Cache dependency build
 RUN cargo build --release --bin notebook-server 2>/dev/null || true
 
-# Copy real source code and migrations (needed at compile time for include_str!)
-COPY crates/ crates/
-COPY cli/ cli/
-COPY migrations/ migrations/
+# Copy real source code and migrations (needed at compile time by build.rs)
+COPY notebook/crates/ crates/
+COPY notebook/cli/ cli/
+COPY postgres/migrations/ migrations/
 
 # Touch source files to invalidate cached dummy builds
 RUN find crates/ cli/ -name "*.rs" -exec touch {} +
@@ -40,10 +40,10 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy the compiled binary
-COPY --from=builder /app/target/release/notebook-server /usr/local/bin/
+COPY --from=builder /build/target/release/notebook-server /usr/local/bin/
 
 # Copy migrations so the server can run them on startup
-COPY migrations/ /app/migrations/
+COPY postgres/migrations/ /app/migrations/
 
 EXPOSE 3000
 
