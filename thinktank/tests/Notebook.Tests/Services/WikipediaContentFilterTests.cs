@@ -153,6 +153,67 @@ public class WikipediaContentFilterTests
     }
 
     [Fact]
+    public void Filter_StripsNavigationChrome()
+    {
+        var input = """
+            [Jump to content](#bodyContent)        Main menu
+            - [Main page](/wiki/Main_Page)
+            - [Contents](/wiki/Wikipedia:Contents)
+            - [Current events](/wiki/Portal:Current_events)
+
+                 Contribute
+            - [Help](/wiki/Help:Contents)
+            - [Community portal](/wiki/Wikipedia:Community_portal)
+
+            # Macrofamily
+
+            A macrofamily is a proposed grouping of language families.
+            """;
+        var result = _filter.Filter(input);
+
+        Assert.StartsWith("# Macrofamily", result.Content);
+        Assert.Contains("A macrofamily is a proposed grouping", result.Content);
+        Assert.DoesNotContain("Main menu", result.Content);
+        Assert.DoesNotContain("Jump to content", result.Content);
+    }
+
+    [Fact]
+    public void Filter_StripsInterWikiLanguageLinks()
+    {
+        var input = """
+            # Macrofamily
+
+            Article content here.
+
+                19 languages
+            - [Deutsch](https://de.wikipedia.org/wiki/Makrofamilie)
+            - [Español](https://es.wikipedia.org/wiki/Macrofamilia)
+            - [Français](https://fr.wikipedia.org/wiki/Superfamille_(linguistique))
+            """;
+        var result = _filter.Filter(input);
+
+        Assert.Contains("Article content here.", result.Content);
+        Assert.DoesNotContain("Deutsch", result.Content);
+        Assert.DoesNotContain("wikipedia.org", result.Content);
+        Assert.DoesNotContain("19 languages", result.Content);
+    }
+
+    [Fact]
+    public void CanHandle_DetectsNavChrome()
+    {
+        var content = """
+            [Jump to content](#bodyContent)
+            - [Main page](/wiki/Main_Page)
+
+            # Some Article [edit]
+
+            Content here[1].
+            """;
+
+        Assert.True(_filter.CanHandle(content, null));
+    }
+
+    [Fact]
     public void Pipeline_UsesExplicitHint()
     {
         var content = "Einstein[1] was a physicist[2].";
