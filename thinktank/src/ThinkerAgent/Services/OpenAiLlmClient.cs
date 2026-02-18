@@ -17,7 +17,7 @@ public sealed class OpenAiLlmClient : ILlmClient
     {
         try
         {
-            var resp = await _http.GetAsync("v1/models", ct);
+            var resp = await _http.GetAsync("models", ct);
             return resp.IsSuccessStatusCode;
         }
         catch
@@ -28,7 +28,7 @@ public sealed class OpenAiLlmClient : ILlmClient
 
     public async Task<List<LlmModel>> ListModelsAsync(CancellationToken ct)
     {
-        var resp = await _http.GetAsync("v1/models", ct);
+        var resp = await _http.GetAsync("models", ct);
         resp.EnsureSuccessStatusCode();
 
         var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
@@ -61,7 +61,7 @@ public sealed class OpenAiLlmClient : ILlmClient
             Stream = true,
         };
 
-        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "v1/chat/completions")
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "chat/completions")
         {
             Content = JsonContent.Create(request),
         };
@@ -127,7 +127,7 @@ public sealed class OpenAiLlmClient : ILlmClient
             Input = input,
         };
 
-        var resp = await _http.PostAsJsonAsync("v1/embeddings", request, ct);
+        var resp = await _http.PostAsJsonAsync("embeddings", request, ct);
         resp.EnsureSuccessStatusCode();
 
         var doc = await JsonDocument.ParseAsync(await resp.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
