@@ -114,6 +114,9 @@ else if (notebooks != null)
                             <button class="btn btn-sm btn-outline-info ms-1"
                                     @onclick="() => ShowConnect(nb)"
                                     disabled="@(renamingNotebookId != null || deletingNotebookId != null)">Connect</button>
+                            <button class="btn btn-sm btn-outline-warning ms-1"
+                                    @onclick="() => ShowToken(nb)"
+                                    disabled="@(renamingNotebookId != null || deletingNotebookId != null)">Token</button>
                         }
                     </td>
                 </tr>
@@ -177,6 +180,28 @@ else if (notebooks != null)
         </div>
     }
 
+    @if (tokenNotebookId != null)
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Token for <strong>@tokenNotebookName</strong></span>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CloseToken">Close</button>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Copy this JWT token to authenticate with the notebook API:</p>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" value="@tokenValue" readonly />
+                    <button class="btn btn-outline-secondary"
+                            onclick="clipboardCopyFromSibling(this)"
+                            title="Copy to clipboard">Copy</button>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Token is short-lived. Click <strong>Token</strong> again to generate a fresh one.
+                </p>
+            </div>
+        </div>
+    }
+
     @if (notebooks.Count == 0)
     {
         <p class="text-muted">No notebooks found. The Rust API may be unreachable or no notebooks have been created.</p>
@@ -213,6 +238,11 @@ else if (notebooks != null)
     private string? bashCommand;
     private string? gitBashCommand;
     private string? psCommand;
+
+    // Token state
+    private Guid? tokenNotebookId;
+    private string? tokenNotebookName;
+    private string? tokenValue;
 
     private static readonly Dictionary<string, string> TargetLabels = new()
     {
@@ -382,6 +412,7 @@ else if (notebooks != null)
     {
         if (authorId == null) return;
 
+        CloseToken();
         connectNotebookId = nb.Id;
         connectNotebookName = nb.Name;
         connectToken = TokenService.GenerateToken(authorId);
@@ -422,5 +453,24 @@ else if (notebooks != null)
         bashCommand = null;
         gitBashCommand = null;
         psCommand = null;
+    }
+
+    // ===== Token =====
+
+    private void ShowToken(NotebookSummary nb)
+    {
+        if (authorId == null) return;
+
+        CloseConnect();
+        tokenNotebookId = nb.Id;
+        tokenNotebookName = nb.Name;
+        tokenValue = TokenService.GenerateToken(authorId);
+    }
+
+    private void CloseToken()
+    {
+        tokenNotebookId = null;
+        tokenNotebookName = null;
+        tokenValue = null;
     }
 }

@@ -6,12 +6,14 @@
 @inject NotebookApiClient ApiClient
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
+@inject TokenService TokenService
+@inject IConfiguration Configuration
 @attribute [Microsoft.AspNetCore.Authorization.Authorize]
 @rendermode InteractiveServer
 
-<PageTitle>Notebook</PageTitle>
+<PageTitle>@(notebookName ?? "Notebook")</PageTitle>
 
-<h3>Notebook Details</h3>
+<h3>@(notebookName ?? "Notebook Details")</h3>
 
 @if (errorMessage != null)
 {
@@ -51,21 +53,126 @@ else if (browseResult != null)
         </div>
     </div>
 
-    <div class="mb-3">
+    <div class="mb-3 d-flex flex-wrap gap-2 align-items-center">
         <a href="/notebooks/@NotebookId/entries/new" class="btn btn-primary">New Entry</a>
 
         @if (isOwner)
         {
-            <button class="btn btn-danger ms-2" @onclick="ConfirmDelete">Delete Notebook</button>
+            <button class="btn btn-outline-secondary"
+                    @onclick="StartRename"
+                    disabled="@(isRenamingInline)">Rename</button>
+            <button class="btn btn-outline-info"
+                    @onclick="ShowConnect">Connect</button>
+            <button class="btn btn-outline-warning"
+                    @onclick="ShowToken">Token</button>
+
+            @if (showDeleteConfirm)
+            {
+                <button class="btn btn-danger" @onclick="DeleteNotebook">Yes, Delete</button>
+                <button class="btn btn-outline-secondary" @onclick="() => showDeleteConfirm = false">Cancel</button>
+            }
+            else
+            {
+                <button class="btn btn-outline-danger" @onclick="ConfirmDelete">Delete</button>
+            }
         }
     </div>
 
-    @if (showDeleteConfirm)
+    @if (isRenamingInline)
     {
-        <div class="alert alert-danger">
-            <p>Are you sure you want to delete this notebook and all its entries?</p>
-            <button class="btn btn-danger btn-sm" @onclick="DeleteNotebook">Yes, Delete</button>
-            <button class="btn btn-secondary btn-sm ms-2" @onclick="() => showDeleteConfirm = false">Cancel</button>
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="d-flex gap-2">
+                    <input type="text" class="form-control" placeholder="New name"
+                           @bind="renameValue" @bind:event="oninput" @onkeydown="HandleRenameKeyDown" />
+                    <button class="btn btn-primary" @onclick="ConfirmRename"
+                            disabled="@(isRenaming || string.IsNullOrWhiteSpace(renameValue))">Save</button>
+                    <button class="btn btn-outline-secondary" @onclick="CancelRename"
+                            disabled="@isRenaming">Cancel</button>
+                </div>
+                @if (renameError != null)
+                {
+                    <div class="text-danger mt-2">@renameError</div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (viewConnectNotebookId != null)
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span>Connect <strong>@notebookName</strong> to</span>
+                    <select class="form-select form-select-sm" style="width: auto;"
+                            @onchange="OnTargetChanged" value="@viewConnectTarget">
+                        @foreach (var kv in TargetLabels)
+                        {
+                            <option value="@kv.Key">@kv.Value</option>
+                        }
+                    </select>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CloseConnect">Close</button>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Run one of these commands to register the notebook MCP server:</p>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold mb-1">Bash (Mac / Linux / WSL)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@viewBashCommand" readonly />
+                        <button class="btn btn-outline-secondary"
+                                onclick="clipboardCopyFromSibling(this)"
+                                title="Copy to clipboard">Copy</button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold mb-1">Git Bash (Windows)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@viewGitBashCommand" readonly />
+                        <button class="btn btn-outline-secondary"
+                                onclick="clipboardCopyFromSibling(this)"
+                                title="Copy to clipboard">Copy</button>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold mb-1">PowerShell (Windows)</label>
+                    <div class="input-group input-group-sm">
+                        <input type="text" class="form-control font-monospace" value="@viewPsCommand" readonly />
+                        <button class="btn btn-outline-secondary"
+                                onclick="clipboardCopyFromSibling(this)"
+                                title="Copy to clipboard">Copy</button>
+                    </div>
+                </div>
+
+                <p class="text-muted small mb-0">
+                    Token is short-lived. Click <strong>Connect</strong> again to generate a fresh command.
+                </p>
+            </div>
+        </div>
+    }
+
+    @if (viewTokenValue != null)
+    {
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Token for <strong>@notebookName</strong></span>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="CloseToken">Close</button>
+            </div>
+            <div class="card-body">
+                <p class="text-muted small">Copy this JWT token to authenticate with the notebook API:</p>
+                <div class="input-group input-group-sm">
+                    <input type="text" class="form-control font-monospace" value="@viewTokenValue" readonly />
+                    <button class="btn btn-outline-secondary"
+                            onclick="clipboardCopyFromSibling(this)"
+                            title="Copy to clipboard">Copy</button>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Token is short-lived. Click <strong>Token</strong> again to generate a fresh one.
+                </p>
+            </div>
         </div>
     }
 
@@ -315,9 +422,35 @@ else if (browseResult != null)
     private List<ParticipantDto>? participants;
     private string? errorMessage;
     private string? authorIdHex;
+    private string? notebookName;
     private bool isOwner;
     private bool showDeleteConfirm;
     private string shareAuthorId = string.Empty;
+
+    // Rename state
+    private bool isRenamingInline;
+    private string? renameValue;
+    private bool isRenaming;
+    private string? renameError;
+
+    // Connect state
+    private Guid? viewConnectNotebookId;
+    private string? viewConnectToken;
+    private string viewConnectTarget = "claude";
+    private string? viewBashCommand;
+    private string? viewGitBashCommand;
+    private string? viewPsCommand;
+
+    // Token state
+    private string? viewTokenValue;
+
+    private static readonly Dictionary<string, string> TargetLabels = new()
+    {
+        ["claude"] = "Claude Code",
+        ["cursor"] = "Cursor",
+    };
+
+    private string McpType => Configuration["NotebookApi:McpType"] ?? "notebook";
     private string shareWrite = "false";
     private string? shareError;
 
@@ -372,7 +505,9 @@ else if (browseResult != null)
             ApplyFilterAndSort();
 
             var notebooksResp = await ApiClient.ListNotebooksAsync(authorIdHex);
-            isOwner = notebooksResp?.Notebooks.Any(n => n.Id == NotebookId && n.IsOwner) ?? false;
+            var myNotebook = notebooksResp?.Notebooks.FirstOrDefault(n => n.Id == NotebookId);
+            isOwner = myNotebook?.IsOwner ?? false;
+            notebookName = myNotebook?.Name;
 
             if (isOwner)
             {
@@ -508,6 +643,119 @@ else if (browseResult != null)
     {
         Navigation.NavigateTo($"/notebooks/{NotebookId}/entries/{entryId}");
     }
+
+    // ===== Rename =====
+
+    private void StartRename()
+    {
+        isRenamingInline = true;
+        renameValue = notebookName;
+        renameError = null;
+    }
+
+    private void CancelRename()
+    {
+        isRenamingInline = false;
+        renameValue = null;
+        renameError = null;
+    }
+
+    private async Task HandleRenameKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await ConfirmRename();
+        else if (e.Key == "Escape")
+            CancelRename();
+    }
+
+    private async Task ConfirmRename()
+    {
+        if (string.IsNullOrWhiteSpace(renameValue) || authorIdHex == null)
+            return;
+
+        isRenaming = true;
+        renameError = null;
+
+        try
+        {
+            await ApiClient.RenameNotebookAsync(authorIdHex, NotebookId, renameValue.Trim());
+            notebookName = renameValue.Trim();
+            isRenamingInline = false;
+            renameValue = null;
+        }
+        catch (HttpRequestException ex)
+        {
+            renameError = $"Failed to rename: {ex.Message}";
+        }
+        finally
+        {
+            isRenaming = false;
+        }
+    }
+
+    // ===== Connect =====
+
+    private void ShowConnect()
+    {
+        if (authorIdHex == null) return;
+
+        CloseToken();
+        viewConnectNotebookId = NotebookId;
+        viewConnectToken = TokenService.GenerateToken(authorIdHex);
+        viewConnectTarget = "claude";
+        RegenerateConnectCommands();
+    }
+
+    private void OnTargetChanged(ChangeEventArgs e)
+    {
+        viewConnectTarget = e.Value?.ToString() ?? "claude";
+        RegenerateConnectCommands();
+    }
+
+    private void RegenerateConnectCommands()
+    {
+        if (viewConnectNotebookId == null || viewConnectToken == null) return;
+
+        var baseUrl = Navigation.BaseUri.TrimEnd('/');
+        var apiUrl = Configuration["NotebookApi:PublicUrl"] ?? baseUrl;
+        var id = viewConnectNotebookId.Value;
+        var mcp = McpType;
+        var targetSuffix = viewConnectTarget != "claude" ? $" --target {viewConnectTarget}" : "";
+        var mcpSuffix = mcp != "notebook" ? $" --mcp {mcp}" : "";
+        var psTargetSuffix = viewConnectTarget != "claude" ? $" -Target '{viewConnectTarget}'" : "";
+        var psMcpSuffix = mcp != "notebook" ? $" -Mcp '{mcp}'" : "";
+
+        viewBashCommand = $"curl -fsSL {baseUrl}/scripts/install.sh | bash -s -- {id} {viewConnectToken} --url {apiUrl} --scripts-url {baseUrl}{targetSuffix}{mcpSuffix}";
+        viewGitBashCommand = $"curl -fsSL {baseUrl}/scripts/install-gitbash.sh | bash -s -- {id} {viewConnectToken} --url {apiUrl} --scripts-url {baseUrl}{targetSuffix}{mcpSuffix}";
+        viewPsCommand = $"iwr {baseUrl}/scripts/install.ps1 -OutFile $env:TEMP\\cyber-install.ps1; & $env:TEMP\\cyber-install.ps1 -NotebookId '{id}' -Token '{viewConnectToken}' -Url '{apiUrl}' -ScriptsUrl '{baseUrl}'{psTargetSuffix}{psMcpSuffix}";
+    }
+
+    private void CloseConnect()
+    {
+        viewConnectNotebookId = null;
+        viewConnectToken = null;
+        viewConnectTarget = "claude";
+        viewBashCommand = null;
+        viewGitBashCommand = null;
+        viewPsCommand = null;
+    }
+
+    // ===== Token =====
+
+    private void ShowToken()
+    {
+        if (authorIdHex == null) return;
+
+        CloseConnect();
+        viewTokenValue = TokenService.GenerateToken(authorIdHex);
+    }
+
+    private void CloseToken()
+    {
+        viewTokenValue = null;
+    }
+
+    // ===== Delete =====
 
     private void ConfirmDelete() => showDeleteConfirm = true;
 
