@@ -1,4 +1,5 @@
 @page "/"
+@using Microsoft.AspNetCore.Components.Authorization
 
 <PageTitle>Notebook Admin</PageTitle>
 
@@ -6,13 +7,28 @@
 
 <p>Welcome to the Knowledge Exchange Platform administration console.</p>
 
+<AuthorizeView>
+    <NotAuthorized>
+        <div class="alert alert-info mt-4">
+            <a href="/auth/login" data-enhance-nav="false">Login</a> or <a href="/auth/register" data-enhance-nav="false">register</a> to get started.
+        </div>
+    </NotAuthorized>
+</AuthorizeView>
+
 <div class="row mt-4">
     <div class="col-md-4">
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Notebooks</h5>
                 <p class="card-text">Browse and manage notebooks in the knowledge exchange platform.</p>
-                <a href="/notebooks" class="btn btn-primary">View Notebooks</a>
+                <AuthorizeView>
+                    <Authorized>
+                        <a href="/notebooks" class="btn btn-primary">View Notebooks</a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/auth/login" class="btn btn-primary" data-enhance-nav="false">Login to View</a>
+                    </NotAuthorized>
+                </AuthorizeView>
             </div>
         </div>
     </div>
@@ -21,7 +37,14 @@
             <div class="card-body">
                 <h5 class="card-title">Users</h5>
                 <p class="card-text">Manage user accounts and their associated author identities.</p>
-                <a href="/admin/users" class="btn btn-primary">Manage Users</a>
+                <AuthorizeView>
+                    <Authorized>
+                        <a href="/admin/users" class="btn btn-primary">Manage Users</a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/auth/login" class="btn btn-primary" data-enhance-nav="false">Login to Manage</a>
+                    </NotAuthorized>
+                </AuthorizeView>
             </div>
         </div>
     </div>
@@ -30,7 +53,14 @@
             <div class="card-body">
                 <h5 class="card-title">Dashboard</h5>
                 <p class="card-text">View system statistics and notebook activity overview.</p>
-                <a href="/admin/dashboard" class="btn btn-primary">Dashboard</a>
+                <AuthorizeView>
+                    <Authorized>
+                        <a href="/admin/dashboard" class="btn btn-primary">Dashboard</a>
+                    </Authorized>
+                    <NotAuthorized>
+                        <a href="/auth/login" class="btn btn-primary" data-enhance-nav="false">Login to View</a>
+                    </NotAuthorized>
+                </AuthorizeView>
             </div>
         </div>
     </div>
