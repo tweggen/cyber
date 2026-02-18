@@ -354,7 +354,7 @@ services:
     # Override via .env file or shell environment to deploy under a different domain.
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.thinktank-api.rule=Host(`${THINKTANK_DOMAIN:-thinktank.nassau-records.de}`) && PathPrefix(`/api/thinktank/v1`)"
+      - "traefik.http.routers.thinktank-api.rule=Host(`thinktank.nassau-records.de`) && PathPrefix(`/api/thinktank/v1`)"
       # Matches only API requests. The PathPrefix condition gives this router
       # higher priority than the catch-all thinktank-admin router below.
       - "traefik.http.routers.thinktank-api.entrypoints=websecure"
@@ -405,7 +405,7 @@ services:
 
     labels:
       - "traefik.enable=true"
-      - "traefik.http.routers.thinktank-admin.rule=Host(`${THINKTANK_DOMAIN:-thinktank.nassau-records.de}`)"
+      - "traefik.http.routers.thinktank-admin.rule=Host(`thinktank.nassau-records.de`)"
       # Catch-all router for the thinktank domain — serves the Blazor
       # UI for all paths not matched by the thinktank-api router above.
       - "traefik.http.routers.thinktank-admin.entrypoints=websecure"
