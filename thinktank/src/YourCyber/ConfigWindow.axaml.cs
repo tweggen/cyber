@@ -35,6 +35,7 @@ public partial class ConfigWindow : Window
             LlmUrlTextBox.Text = options?.LlmUrl ?? "";
             ApiKeyTextBox.Text = options?.ApiKey ?? "";
             ModelTextBox.Text = options?.Model ?? "";
+            EmbeddingModelTextBox.Text = options?.EmbeddingModel ?? "";
             WorkerCountUpDown.Value = options?.WorkerCount ?? 1;
             PollIntervalUpDown.Value = (decimal)(options?.PollIntervalSeconds ?? 5.0);
         }
@@ -46,6 +47,7 @@ public partial class ConfigWindow : Window
             LlmUrlTextBox.Text = "http://localhost:11434";
             ApiKeyTextBox.Text = "";
             ModelTextBox.Text = "llama3.2";
+            EmbeddingModelTextBox.Text = "nomic-embed-text";
             WorkerCountUpDown.Value = 1;
             PollIntervalUpDown.Value = 5;
         }
@@ -161,6 +163,7 @@ public partial class ConfigWindow : Window
             LlmUrl = LlmUrlTextBox.Text?.Trim() ?? "",
             ApiKey = ApiKeyTextBox.Text ?? "",
             Model = ModelTextBox.Text?.Trim() ?? "",
+            EmbeddingModel = EmbeddingModelTextBox.Text?.Trim() ?? "",
             WorkerCount = (int)(WorkerCountUpDown.Value ?? 1),
             PollIntervalSeconds = (double)(PollIntervalUpDown.Value ?? 5),
         };
@@ -275,6 +278,7 @@ internal sealed class ThinkerOptionsDto
     public string LlmUrl { get; set; } = "";
     public string ApiKey { get; set; } = "";
     public string Model { get; set; } = "";
+    public string EmbeddingModel { get; set; } = "";
     public double PollIntervalSeconds { get; set; } = 5.0;
     public List<string>? JobTypes { get; set; }
 }

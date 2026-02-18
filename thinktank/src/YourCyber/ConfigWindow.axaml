@@ -5,7 +5,7 @@
         mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="580"
         x:Class="YourCyber.ConfigWindow"
         Title="ThinkerAgent Configuration"
-        Height="580" Width="450"
+        Height="620" Width="450"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
@@ -127,21 +127,29 @@
                  Name="ModelTextBox"
                  Margin="5,5,5,5"/>
 
-        <!-- Worker Count -->
+        <!-- Embedding Model -->
         <TextBlock Grid.Row="11" Grid.Column="0"
+                   Text="Embed Model:"
+                   VerticalAlignment="Center"/>
+        <TextBox Grid.Row="11" Grid.Column="1"
+                 Name="EmbeddingModelTextBox"
+                 Margin="5,5,5,5"/>
+
+        <!-- Worker Count -->
+        <TextBlock Grid.Row="12" Grid.Column="0"
                    Text="Worker Count:"
                    VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="11" Grid.Column="1"
+        <NumericUpDown Grid.Row="12" Grid.Column="1"
                        Name="WorkerCountUpDown"
                        Minimum="1" Maximum="16"
                        Value="1"
                        Margin="5,5,5,5"/>
 
         <!-- Poll Interval -->
-        <TextBlock Grid.Row="12" Grid.Column="0"
+        <TextBlock Grid.Row="13" Grid.Column="0"
                    Text="Poll Interval (s):"
                    VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="12" Grid.Column="1"
+        <NumericUpDown Grid.Row="13" Grid.Column="1"
                        Name="PollIntervalUpDown"
                        Minimum="1" Maximum="300"
                        Value="5"
@@ -149,7 +157,7 @@
                        Margin="5,5,5,5"/>
 
         <!-- Status message -->
-        <TextBlock Grid.Row="13" Grid.ColumnSpan="2"
+        <TextBlock Grid.Row="14" Grid.ColumnSpan="2"
                    Name="StatusText"
                    Foreground="Green"
                    FontSize="11"
