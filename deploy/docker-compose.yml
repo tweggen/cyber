@@ -66,6 +66,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Host=notebook-db;Database=notebook_admin;Username=notebook;Password=notebook_dev;Timeout=5;Command Timeout=10"
       NotebookApi__BaseUrl: "http://notebook-server:3000"
+      NotebookApi__PublicUrl: "https://notebook.nassau-records.de"
       Jwt__Issuer: notebook-admin
       Jwt__ExpiryMinutes: "131400"
       Jwt__PrivateKey: "MC4CAQAwBQYDK2VwBCIEIOGNGtqlxyJMP96I4UXCqdHFhYFSLjbtMmLmzjP+t6a0"
@@ -130,6 +131,8 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__DefaultConnection: "Host=notebook-db;Database=notebook_admin;Username=notebook;Password=notebook_dev;Timeout=5;Command Timeout=10"
       NotebookApi__BaseUrl: "http://thinktank-server:8080"
+      NotebookApi__PublicUrl: "https://thinktank.nassau-records.de/api/thinktank/v1"
+      NotebookApi__McpType: "wild"
       Jwt__Issuer: notebook-admin
       Jwt__ExpiryMinutes: "131400"
       Jwt__PrivateKey: "MC4CAQAwBQYDK2VwBCIEIOGNGtqlxyJMP96I4UXCqdHFhYFSLjbtMmLmzjP+t6a0"
