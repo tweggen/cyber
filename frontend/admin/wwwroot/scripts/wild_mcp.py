@@ -113,12 +113,26 @@ def _hybrid_search(query: str, top_k: int, topic_prefix: str = "") -> dict:
     semantic = _semantic_search(query, top_k * 2)
     lexical = _lexical_search(query, top_k * 2, topic_prefix)
 
-    # Extract result lists
+    sem_error = semantic.get("error")
+    lex_error = lexical.get("error")
     sem_results = semantic.get("results", [])
     lex_results = lexical.get("results", [])
 
-    if semantic.get("error") and lexical.get("error"):
-        return {"error": f"Both searches failed: semantic={semantic['error']}, lexical={lexical['error']}"}
+    if sem_error and lex_error:
+        return {
+            "error": "Both search modes failed",
+            "semantic_error": sem_error,
+            "lexical_error": lex_error,
+            "hint": "Use wild_topics to browse by topic, then wild_read to read specific entries.",
+        }
+
+    # Determine effective mode
+    if sem_error:
+        mode = "lexical-only"
+    elif lex_error:
+        mode = "semantic-only"
+    else:
+        mode = "hybrid"
 
     # Reciprocal Rank Fusion (k=60)
     K = 60
@@ -146,7 +160,13 @@ def _hybrid_search(query: str, top_k: int, topic_prefix: str = "") -> dict:
         entry["rrf_score"] = round(score, 6)
         merged.append(entry)
 
-    return {"results": merged, "mode": "hybrid", "semantic_count": len(sem_results), "lexical_count": len(lex_results)}
+    response: dict = {"results": merged, "mode": mode, "semantic_count": len(sem_results), "lexical_count": len(lex_results)}
+    if sem_error:
+        response["note"] = f"Semantic search unavailable ({sem_error}), showing lexical results only."
+    elif lex_error:
+        response["note"] = f"Lexical search unavailable ({lex_error}), showing semantic results only."
+
+    return response
 
 
 def tool_related(entry_id: str, direction: str = "all", max_results: int = 10) -> dict:
