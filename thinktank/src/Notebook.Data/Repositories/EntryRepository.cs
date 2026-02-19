@@ -314,28 +314,24 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
         await using var cmd = connection.CreateCommand();
         cmd.CommandText =
             """
-            SELECT e.id, e.topic, e.claims, e.claims_status, e.max_friction, e.integration_status,
-              (SELECT SUM(q.val * d.val)
-               FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
-               JOIN unnest(e.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
-              /
-              NULLIF(
-                SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
-                * SQRT((SELECT SUM(v.val * v.val) FROM unnest(e.embedding) AS v(val))),
-                0)
-              AS similarity
-            FROM entries e
-            WHERE e.notebook_id = @notebookId
-              AND e.embedding IS NOT NULL
-              AND e.fragment_of IS NULL
-            HAVING (SELECT SUM(q.val * d.val)
-               FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
-               JOIN unnest(e.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
-              /
-              NULLIF(
-                SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
-                * SQRT((SELECT SUM(v.val * v.val) FROM unnest(e.embedding) AS v(val))),
-                0) >= @minSimilarity
+            SELECT id, topic, claims, claims_status, max_friction, integration_status, similarity
+            FROM (
+              SELECT e.id, e.topic, e.claims, e.claims_status, e.max_friction, e.integration_status,
+                (SELECT SUM(q.val * d.val)
+                 FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
+                 JOIN unnest(e.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
+                /
+                NULLIF(
+                  SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
+                  * SQRT((SELECT SUM(v.val * v.val) FROM unnest(e.embedding) AS v(val))),
+                  0)
+                AS similarity
+              FROM entries e
+              WHERE e.notebook_id = @notebookId
+                AND e.embedding IS NOT NULL
+                AND e.fragment_of IS NULL
+            ) sub
+            WHERE similarity >= @minSimilarity
             ORDER BY similarity DESC NULLS LAST
             LIMIT @topK
             """;
@@ -438,12 +434,11 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
                 """
                 SELECT id, topic,
                        substring(encode(content, 'escape') from 1 for 200) as snippet,
-                       similarity(encode(content, 'escape'), @query) as score
+                       1.0 as score
                 FROM entries
                 WHERE notebook_id = @notebookId
-                  AND encode(content, 'escape') % @query
+                  AND encode(content, 'escape') ILIKE '%' || @query || '%'
                   AND (@topicPrefix::text IS NULL OR topic LIKE @topicPrefix || '%')
-                ORDER BY score DESC
                 LIMIT @maxResults
                 """;
 
@@ -473,13 +468,12 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
                 """
                 SELECT DISTINCT e.id, e.topic,
                        c.value->>'text' as snippet,
-                       similarity(c.value->>'text', @query) as score
+                       1.0 as score
                 FROM entries e,
                      jsonb_array_elements(e.claims) c
                 WHERE e.notebook_id = @notebookId
-                  AND c.value->>'text' % @query
+                  AND c.value->>'text' ILIKE '%' || @query || '%'
                   AND (@topicPrefix::text IS NULL OR e.topic LIKE @topicPrefix || '%')
-                ORDER BY score DESC
                 LIMIT @maxResults
                 """;
 
