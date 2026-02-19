@@ -31,8 +31,8 @@ Before building new security features, the current gaps must be understood:
 | Hush-3 | **Security Labels** | Classification levels + compartments on notebooks, clearance on principals | Hush-2 |
 | Hush-4 | **Access Tiers** | Existence/read/write/admin layered access per thinktank | Hush-3 |
 | Hush-5 | **Agent Trust** | ThinkerAgent security labels, label-aware job routing | Hush-3 |
-| Hush-6 | **Subscriptions** | Inter-thinktank catalog/claim flow with classification boundary enforcement | Hush-4, Hush-5 |
-| Hush-7 | **Ingestion Gate** | Classification assertions, external contribution review queue | Hush-4 |
+| Hush-6 | **Subscriptions** | Inter-thinktank catalog/claim flow with classification boundary enforcement ([arch](12-SUBSCRIPTION-ARCHITECTURE.md)) | Hush-3, Hush-4, Hush-5 |
+| Hush-7 | **Ingestion Gate** | Classification assertions, external contribution review queue | Hush-3, Hush-4 |
 | Hush-8 | **Audit** | Full audit trail for reads, writes, access changes, processing | Hush-1 |
 
 ---
@@ -426,67 +426,222 @@ DELETE /agents/{id}               — deregister agent
 
 **Goal:** Higher-classified thinktanks can subscribe to lower-classified ones. Information flows up, never down.
 
+**Full technical architecture:** [12-SUBSCRIPTION-ARCHITECTURE.md](12-SUBSCRIPTION-ARCHITECTURE.md)
+
 ### 6.1 Database Schema
 
-**Migration:** `017_subscriptions.sql`
+Three migrations, all additive:
+
+**Migration: `017_subscriptions.sql`**
 
 ```sql
 CREATE TABLE notebook_subscriptions (
-    subscriber_id   UUID NOT NULL REFERENCES notebooks(id),  -- higher classification
-    source_id       UUID NOT NULL REFERENCES notebooks(id),  -- lower classification
-    scope           TEXT NOT NULL DEFAULT 'catalog',          -- 'catalog', 'claims', 'entries'
-    topic_filter    TEXT,                                      -- optional topic prefix filter
-    approved_by     BYTEA(32) REFERENCES authors(id),
-    created         TIMESTAMPTZ NOT NULL DEFAULT now(),
-    PRIMARY KEY (subscriber_id, source_id)
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subscriber_id     UUID NOT NULL REFERENCES notebooks(id),
+    source_id         UUID NOT NULL REFERENCES notebooks(id),
+    scope             TEXT NOT NULL DEFAULT 'catalog'
+                          CHECK (scope IN ('catalog', 'claims', 'entries')),
+    topic_filter      TEXT,                          -- optional topic prefix filter
+    approved_by       BYTEA NOT NULL REFERENCES authors(id),
+
+    -- Sync state
+    sync_watermark    BIGINT NOT NULL DEFAULT 0,
+    last_sync_at      TIMESTAMPTZ,
+    sync_status       TEXT NOT NULL DEFAULT 'idle'
+                          CHECK (sync_status IN ('idle', 'syncing', 'error', 'suspended')),
+    sync_error        TEXT,
+    mirrored_count    INTEGER NOT NULL DEFAULT 0,
+
+    -- Tuning
+    discount_factor   DOUBLE PRECISION NOT NULL DEFAULT 0.3
+                          CHECK (discount_factor > 0 AND discount_factor <= 1.0),
+    poll_interval_s   INTEGER NOT NULL DEFAULT 60
+                          CHECK (poll_interval_s >= 10),
+    embedding_model   TEXT,
+
+    created           TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (subscriber_id, source_id)
+);
+
+CREATE INDEX idx_subscriptions_subscriber ON notebook_subscriptions(subscriber_id);
+CREATE INDEX idx_subscriptions_source     ON notebook_subscriptions(source_id);
+```
+
+**Migration: `018_mirrored_content.sql`**
+
+```sql
+CREATE TABLE mirrored_claims (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subscription_id   UUID NOT NULL REFERENCES notebook_subscriptions(id)
+                          ON DELETE CASCADE,
+    source_entry_id   UUID NOT NULL,
+    notebook_id       UUID NOT NULL REFERENCES notebooks(id),
+    claims            JSONB NOT NULL,
+    topic             TEXT,
+    embedding         DOUBLE PRECISION[],
+    source_sequence   BIGINT NOT NULL,
+    tombstoned        BOOLEAN NOT NULL DEFAULT false,
+    mirrored_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (subscription_id, source_entry_id)
+);
+
+CREATE INDEX idx_mirrored_claims_notebook
+    ON mirrored_claims(notebook_id)
+    WHERE embedding IS NOT NULL AND NOT tombstoned;
+
+CREATE TABLE mirrored_entries (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    subscription_id   UUID NOT NULL REFERENCES notebook_subscriptions(id)
+                          ON DELETE CASCADE,
+    source_entry_id   UUID NOT NULL,
+    notebook_id       UUID NOT NULL REFERENCES notebooks(id),
+    content           BYTEA NOT NULL,
+    content_type      TEXT NOT NULL,
+    topic             TEXT,
+    source_sequence   BIGINT NOT NULL,
+    tombstoned        BOOLEAN NOT NULL DEFAULT false,
+    mirrored_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (subscription_id, source_entry_id)
 );
 ```
 
+**Migration: `019_embed_mirrored_job_type.sql`**
+
+```sql
+ALTER TABLE jobs DROP CONSTRAINT IF EXISTS jobs_job_type_check;
+ALTER TABLE jobs ADD CONSTRAINT jobs_job_type_check
+    CHECK (job_type IN (
+        'DISTILL_CLAIMS', 'COMPARE_CLAIMS',
+        'CLASSIFY_TOPIC', 'EMBED_CLAIMS',
+        'EMBED_MIRRORED'
+    ));
+```
+
+Design rationale: mirrored content is stored in separate tables (not in `entries`) because it has a different lifecycle (no local claims_status progression, no local job chain), carries subscription provenance, and must never be confused with local content.
+
 ### 6.2 Subscription Validation
 
+**Create:** `Notebook.Server/Services/SubscriptionService.cs`
+
 On insert, enforce:
-- Subscriber's classification level >= source's classification level
-- Subscriber's compartments ⊇ source's compartments
-- Both notebooks' owning organizations have a federation agreement (or same org)
-- Approved by an admin of the subscriber notebook
+1. No self-subscription
+2. Subscriber's classification level >= source's classification level
+3. Subscriber's compartments ⊇ source's compartments
+4. Both notebooks' owning organizations have a federation agreement (or same org)
+5. No duplicate subscription (UNIQUE constraint)
+6. No cycles — BFS from `source_id` following `subscriber_id → source_id` edges; reject if `subscriber_id` is reachable (see 12-SUBSCRIPTION-ARCHITECTURE.md §8.1)
+7. Requesting principal has admin tier on subscriber notebook
 
 ### 6.3 Subscription Sync
 
 **Create:** `Notebook.Server/Services/SubscriptionSyncService.cs` (BackgroundService)
 
-Periodically pulls from source notebooks:
-- **Catalog scope:** pulls catalog summaries, stores as read-only reference entries
-- **Claims scope:** mirrors distilled claims, available for COMPARE_CLAIMS
-- **Entries scope:** mirrors full entries (most permissive)
+A timer-per-subscription model. On startup loads all non-suspended subscriptions; schedules polling at each subscription's `poll_interval_s`.
 
-Sync uses the source notebook's OBSERVE endpoint with a stored causal position watermark.
+**Sync loop per subscription:**
+1. Set `sync_status = 'syncing'`
+2. Call source's `GET /notebooks/{sourceId}/observe?since={sync_watermark}` (auth: read-scoped JWT for source notebook)
+3. For each new entry in response (batch size: 100):
+   - **Catalog scope:** store topic + integration_cost metadata only (lightweight row in `mirrored_claims` with `claims = '[]'`)
+   - **Claims scope:** fetch entry claims, UPSERT into `mirrored_claims`
+   - **Entries scope:** fetch full entry, UPSERT into `mirrored_entries` + `mirrored_claims`
+4. Queue `EMBED_MIRRORED` jobs for new/updated mirrored claims (priority 25)
+5. Update `sync_watermark`, `last_sync_at`, `mirrored_count`, `sync_status = 'idle'`
+6. On error: set `sync_status = 'error'`, `sync_error = message`
 
-### 6.4 Comparison Cascade Across Subscriptions
+Idempotency: `UNIQUE (subscription_id, source_entry_id)` + UPSERT. Deletion handling: source entries removed → `tombstoned = true` (excluded from neighbor search via partial index). Revision handling: claims overwritten, new `EMBED_MIRRORED` job queued.
 
-When embedding nearest-neighbor finds a subscribed entry, the COMPARE_CLAIMS job is routed to an agent cleared for the *subscriber's* level (which dominates the source's level by construction).
+### 6.4 Air-Gapped Sync
 
-### 6.5 API Endpoints
+For network-isolated thinktanks:
 
 ```
-POST   /notebooks/{id}/subscriptions              — subscribe to source
-DELETE /notebooks/{id}/subscriptions/{sourceId}    — unsubscribe
-GET    /notebooks/{id}/subscriptions               — list subscriptions
+GET  /notebooks/{id}/export?since={seq}&scope={scope}  — Ed25519-signed JSON bundle
+POST /notebooks/{id}/import                            — validate signature, process as sync batch
 ```
 
-### 6.6 Admin UI — Subscription Management
+Bundle contains entries/claims with source notebook metadata + Ed25519 signature over canonical JSON. See 12-SUBSCRIPTION-ARCHITECTURE.md §3.4 for full bundle format.
+
+### 6.5 Cross-Boundary Neighbor Search
+
+**Create:** `EntryRepository.FindNearestWithMirroredAsync`
+
+Extends the existing cosine similarity SQL with a `UNION ALL` against `mirrored_claims`. Returns `List<NeighborResult>` with `IsMirrored` and `SubscriptionId` fields. Existing `FindNearestByEmbeddingAsync` is unchanged. See 12-SUBSCRIPTION-ARCHITECTURE.md §4 for full SQL.
+
+### 6.6 Pipeline Modifications
+
+**EMBED_MIRRORED result handler** in `JobResultProcessor`:
+- Updates `mirrored_claims.embedding` but does NOT trigger neighbor search. Mirrored claims are passive — found as neighbors when local entries are embedded.
+
+**EMBED_CLAIMS handler modification:**
+- Calls `FindNearestWithMirroredAsync` instead of `FindNearestByEmbeddingAsync`
+- For mirrored neighbors: queues `COMPARE_CLAIMS` with additional payload fields `cross_boundary: true`, `subscription_id`, `discount_factor`
+
+**COMPARE_CLAIMS handler modification:**
+- Reads optional `cross_boundary` and `discount_factor` from payload
+- Computes `effective_friction = friction * discount_factor` (default 1.0 when not cross-boundary)
+- `AppendComparisonAsync` gains optional `discountFactor` parameter; `max_friction` update uses effective friction; raw friction preserved in stored comparison for audit
+
+Agent routing: cross-boundary jobs are scoped to subscriber's `notebook_id`, so Hush-5 clearance filtering works automatically — no special routing needed.
+
+### 6.7 Topology Validation
+
+- **No cycles:** prevented at subscription creation (§6.2)
+- **Transitive subscriptions:** A→B→C allowed. A sees B's local content only; mirrored content is not re-exported via observe. A must subscribe directly to C if desired.
+- **Classification changes:** if source classification rises above subscriber's level, subscription is set to `sync_status = 'suspended'`. Admin must resolve (raise subscriber's level, delete subscription, or accept stale data).
+
+### 6.8 Modified Browse/Search Responses
+
+- `GET /notebooks/{id}/browse` gains optional `include_mirrored=true` — returns additional `mirrored_topics` array
+- `POST /notebooks/{id}/semantic-search` automatically includes mirrored claims in results, tagged with `source: "mirrored"` and `subscription_id`
+- `GET /notebooks/{id}/observe` unchanged — local entries only
+
+### 6.9 API Endpoints
+
+```
+POST   /notebooks/{id}/subscriptions                — create subscription
+DELETE /notebooks/{id}/subscriptions/{subId}         — remove + cascade delete mirrored data
+GET    /notebooks/{id}/subscriptions                 — list (with sync status summary)
+POST   /notebooks/{id}/subscriptions/{subId}/sync    — trigger immediate sync
+GET    /notebooks/{id}/subscriptions/{subId}/status   — detailed sync status
+GET    /notebooks/{id}/export?since={seq}&scope={scope}  — air-gapped export
+POST   /notebooks/{id}/import                            — air-gapped import
+```
+
+### 6.10 Admin UI — Subscription Management
 
 **Modify: `Components/Pages/Notebooks/View.razor`**
 - Add **Subscriptions** tab (visible to notebook admins):
-  - **Subscribing to** — table of source notebooks this notebook pulls from: source name, scope (catalog/claims/entries), topic filter, sync status (last sync time, entry count)
-  - **Subscribers** — table of higher-classified notebooks that subscribe to this notebook: subscriber name, scope, approved by
-  - "Add Subscription" form: notebook picker (only shows notebooks at equal or lower classification), scope dropdown, optional topic filter. Validates classification dominance before submission.
-  - Unsubscribe button per row (with confirmation)
+  - **Subscribing to** — table of source notebooks: source name, scope, topic filter, sync status (`idle`/`syncing`/`error`/`suspended`), last sync time, mirrored count, watermark staleness indicator
+  - **Subscribers** — table of higher-classified subscribers: subscriber name, scope, approved by
+  - "Add Subscription" form: notebook picker (only shows notebooks at equal or lower classification), scope dropdown, optional topic filter, discount factor slider (0.1–1.0, default 0.3). Validates classification dominance before submission.
+  - Per-row actions: "Sync Now" button (triggers immediate sync), "Unsubscribe" button (with confirmation warning about cascading deletion of mirrored data)
 
 **Page: `Components/Pages/Admin/Subscriptions.razor`** — `/admin/subscriptions`
 - Global overview: all active subscriptions across all notebooks
-- Table: subscriber → source, scope, topic filter, last sync, entry count
-- Filter by organization, classification level
-- Useful for admins to audit cross-thinktank information flow
+- Table: subscriber → source, scope, topic filter, sync status, last sync, mirrored count, discount factor
+- Filter by organization, classification level, sync status
+- Status indicators: green=idle, yellow=syncing, red=error, grey=suspended
+- Bulk actions: "Resume All Suspended" (re-validates classification, resumes if valid)
+
+### Files
+
+| File | Change |
+|---|---|
+| `Notebook.Data/Migrations/017_subscriptions.sql` | **New** — subscription table with sync state |
+| `Notebook.Data/Migrations/018_mirrored_content.sql` | **New** — mirrored_claims, mirrored_entries |
+| `Notebook.Data/Migrations/019_embed_mirrored_job_type.sql` | **New** — extend job type constraint |
+| `Notebook.Data/Repositories/SubscriptionRepository.cs` | **New** — CRUD, cycle detection, sync watermark updates |
+| `Notebook.Data/Repositories/MirroredClaimsRepository.cs` | **New** — UPSERT, tombstone, embedding update |
+| `Notebook.Data/Repositories/EntryRepository.cs` | Add `FindNearestWithMirroredAsync` (UNION query) |
+| `Notebook.Server/Services/SubscriptionService.cs` | **New** — validation, create/delete logic |
+| `Notebook.Server/Services/SubscriptionSyncService.cs` | **New** — BackgroundService, per-subscription sync loop |
+| `Notebook.Server/Services/JobResultProcessor.cs` | Modify EMBED_CLAIMS + COMPARE_CLAIMS handlers |
+| `Notebook.Server/Endpoints/SubscriptionEndpoints.cs` | **New** — CRUD + sync trigger + export/import |
+| `Notebook.Core/Types/Subscription.cs` | **New** — domain types |
+| `Notebook.Core/Types/NeighborResult.cs` | **New** — result record with IsMirrored flag |
+| `Components/Pages/Notebooks/View.razor` | Add Subscriptions tab |
+| `Components/Pages/Admin/Subscriptions.razor` | **New** — global subscription overview |
 
 ---
 
@@ -504,7 +659,7 @@ On write, verify:
 
 ### 7.2 External Contribution Review Queue
 
-**Migration:** `018_review_queue.sql`
+**Migration:** `020_review_queue.sql`
 
 ```sql
 CREATE TABLE entry_reviews (
@@ -560,7 +715,7 @@ POST   /notebooks/{id}/reviews/{id}/reject  — reject entry (admin tier)
 
 ### 8.1 Database Schema
 
-**Migration:** `019_audit_log.sql`
+**Migration:** `021_audit_log.sql`
 
 ```sql
 CREATE TABLE audit_log (
@@ -596,6 +751,11 @@ CREATE INDEX idx_audit_log_resource ON audit_log (resource);
 | `agent.job.claim` | Agent claimed a job |
 | `agent.job.complete` | Agent completed a job |
 | `subscription.create` | Cross-thinktank subscription created |
+| `subscription.delete` | Subscription removed (mirrored data cascaded) |
+| `subscription.sync` | Subscription sync completed (watermark, mirrored count in detail) |
+| `subscription.sync.error` | Subscription sync failed (error message in detail) |
+| `subscription.suspend` | Subscription suspended due to classification change |
+| `subscription.import` | Air-gapped bundle imported |
 | `clearance.grant` | Principal clearance issued |
 | `clearance.revoke` | Principal clearance revoked |
 
@@ -654,7 +814,7 @@ All admin UI lives in the Blazor frontend (`frontend/admin/`). The following tab
 
 | Page | Sub-Phases | Changes |
 |---|---|---|
-| `Notebooks/View.razor` | Hush-1, 2, 3, 4, 6, 7, 8 | Participants panel, owning group, classification badge, access tier display, subscriptions tab, reviews tab, audit tab |
+| `Notebooks/View.razor` | Hush-1, 2, 3, 4, 6, 7, 8 | Participants panel, owning group, classification badge, access tier display, subscriptions tab (with sync status, sync-now, staleness), reviews tab, audit tab |
 | `Notebooks/List.razor` | Hush-3 | Classification badge column, filter by level |
 | `Admin/Dashboard.razor` | Hush-7, 8 | Pending reviews card, recent security events card |
 | `Admin/OrganizationDetail.razor` | Hush-3 | Clearances tab |
@@ -682,7 +842,7 @@ Consider extracting reusable Blazor components to reduce duplication:
 | **Hush-4: Access Tiers** | Medium | Replaces current boolean ACL with richer model. Admin UI: upgrade share panel to tier dropdown. Must be backward-compatible during migration. |
 | **Hush-5: Agent Trust** | Medium | Changes job routing. Admin UI: 2 new pages. Must handle gracefully when agents lack clearance for available jobs. |
 | **Hush-7: Ingestion Gate** | Medium | New review workflow. Admin UI: reviews tab on notebook view, dashboard card. Changes entry lifecycle (pending → approved). |
-| **Hush-6: Subscriptions** | High | Highest complexity. Admin UI: subscriptions tab on notebook view + global overview page. Cross-thinktank data flow, sync consistency, classification boundary enforcement. Should be last. |
+| **Hush-6: Subscriptions** | High | Highest complexity: 3 migrations, sync service, pipeline mods, air-gapped export/import. Admin UI: subscriptions tab + global overview. Full architecture in [12-SUBSCRIPTION-ARCHITECTURE.md](12-SUBSCRIPTION-ARCHITECTURE.md). Requires Hush-3/4/5. Should be last. |
 
 ## Migration Path
 
@@ -692,4 +852,5 @@ The existing system has notebooks with no org/group/classification. The migratio
 2. **Hush-2** adds org/group tables with nullable `owning_group_id` on notebooks. Existing notebooks have `owning_group_id = NULL` (legacy mode — owner-based ACL still works).
 3. **Hush-3** adds classification with default `INTERNAL`. Existing notebooks are `INTERNAL` with empty compartments. All existing principals get `INTERNAL` clearance by default.
 4. **Hush-4** migrates `(read, write)` booleans to tier enum. `(read=true, write=true)` → `read_write`. `(read=true, write=false)` → `read`.
-5. Subsequent phases are purely additive.
+5. **Hush-6** adds 3 migrations (017–019): subscription table, mirrored content tables, and EMBED_MIRRORED job type. Pipeline modifications (FindNearestWithMirroredAsync, COMPARE_CLAIMS discount factor) are backward-compatible — no subscriptions means identical behavior.
+6. Subsequent phases (Hush-7, Hush-8) are purely additive (migrations 020–021).
