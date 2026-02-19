@@ -11,7 +11,7 @@ namespace Notebook.Server.Services;
 /// </summary>
 public sealed class ContentNormalizer : IContentNormalizer
 {
-    private static readonly HtmlParser Parser = new(new HtmlParserOptions(), BrowsingContext.New(Configuration.Default));
+    private static readonly HtmlParser Parser = new(new HtmlParserOptions(), BrowsingContext.New(AngleSharp.Configuration.Default));
 
     public NormalizeResult Normalize(string content, string contentType)
     {

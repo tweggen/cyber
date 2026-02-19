@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Notebook.Data;
 using Notebook.Data.Repositories;
 using Notebook.Server.Auth;
+using Notebook.Server.Configuration;
 using Notebook.Server.Endpoints;
 using Notebook.Server.Services;
 using Org.BouncyCastle.Crypto.Parameters;
@@ -28,6 +29,7 @@ builder.Services.AddSingleton<IContentFilterPipeline, ContentFilterPipeline>();
 builder.Services.AddSingleton<IMarkdownFragmenter, MarkdownFragmenter>();
 
 // Embedding (for semantic search)
+builder.Services.Configure<EmbeddingOptions>(builder.Configuration.GetSection("Embedding"));
 builder.Services.AddSingleton<IEmbeddingService, EmbeddingService>();
 
 // Authentication — EdDSA (Ed25519) JWT signed by admin app
