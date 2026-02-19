@@ -105,10 +105,10 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ConnectionStrings__Notebook: "Host=notebook-db;Database=thinktank;Username=notebook;Password=notebook_dev"
       Jwt__PublicKey: "MCowBQYDK2VwAyEAFeQQ0luuDcgS6GHN2wT1niHpkR1p50csIVcifMjMEBU="
-      Embedding__ApiType: "Ollama"
-      Embedding__Url: "http://ollama:11434"
-      Embedding__Model: "nomic-embed-text"
-      # Embedding__Token: ""  # Uncomment for OpenAI or authenticated APIs
+      Embedding__ApiType: "${Embedding__ApiType:-Ollama}"
+      Embedding__Url: "${Embedding__Url:-http://ollama:11434}"
+      Embedding__Model: "${Embedding__Model:-nomic-embed-text}"
+      Embedding__Token: "${Embedding__Token:-}"
     depends_on:
       notebook-db:
         condition: service_healthy
