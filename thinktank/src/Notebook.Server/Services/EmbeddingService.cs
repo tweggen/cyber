@@ -15,9 +15,11 @@ public sealed class EmbeddingService : IEmbeddingService
     public EmbeddingService(IOptions<EmbeddingOptions> options)
     {
         _options = options.Value;
+        // Ensure trailing slash so relative URIs append correctly
+        var baseUrl = _options.Url.TrimEnd('/') + "/";
         _http = new HttpClient
         {
-            BaseAddress = new Uri(_options.Url),
+            BaseAddress = new Uri(baseUrl),
             Timeout = TimeSpan.FromSeconds(30),
         };
 
@@ -46,7 +48,7 @@ public sealed class EmbeddingService : IEmbeddingService
             Input = [text],
         };
 
-        var response = await _http.PostAsJsonAsync("/api/embed", request, ct);
+        var response = await _http.PostAsJsonAsync("api/embed", request, ct);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<OllamaEmbedResponse>(ct);
@@ -64,7 +66,7 @@ public sealed class EmbeddingService : IEmbeddingService
             Input = text,
         };
 
-        var response = await _http.PostAsJsonAsync("/embeddings", request, ct);
+        var response = await _http.PostAsJsonAsync("embeddings", request, ct);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<OpenAIEmbedResponse>(ct);
