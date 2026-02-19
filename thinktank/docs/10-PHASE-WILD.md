@@ -85,7 +85,7 @@ The embedding nearest-neighbor search (`FindNearestByEmbeddingAsync`) is current
 
 The server embeds the query string using the same Ollama embedding model as the claim pipeline, then runs the existing `FindNearestByEmbeddingAsync` query (extended to return `integration_status`). This is the only new server-side code required.
 
-**Decision: embed on server or in MCP?** On the server. The MCP shouldn't need Ollama access — it's a thin API client. The server already has the embedding model configured and the query is a simple Ollama `/api/embed` call.
+**Decision: embed on server or in MCP?** On the server. The MCP shouldn't need embedding API access — it's a thin API client. The server's `EmbeddingService` is configured via environment variables (`Embedding__ApiType`, `Embedding__Url`, `Embedding__Token`, `Embedding__Model`) and supports both Ollama and OpenAI-compatible APIs.
 
 ## MCP Tools
 
@@ -213,11 +213,15 @@ The endpoint:
 4. Returns entries with claims, similarity scores
 
 **Design choice — Ollama dependency in Notebook.Server:**
-The server currently has no Ollama dependency (only ThinkerAgent does). Two options:
-- **Option A:** Add a lightweight embed-only HTTP client to Notebook.Server. Config: `Embedding:OllamaUrl`, `Embedding:Model`.
-- **Option B:** Accept a pre-computed embedding vector in the request. The MCP calls Ollama directly for embedding, sends the vector. Server only does the similarity search.
+~~The server currently has no Ollama dependency (only ThinkerAgent does).~~ **Implemented: Option A.**
 
-**Recommended: Option A.** Keeps the MCP thin (no Ollama dependency, no model config), and the server already knows which embedding model was used for existing embeddings (must match).
+The server has an `EmbeddingService` (`Configuration/EmbeddingOptions.cs`) configured via environment variables:
+- `Embedding__ApiType` — `"Ollama"` (default) or `"OpenAI"`
+- `Embedding__Url` — base URL (default: `http://localhost:11434`)
+- `Embedding__Token` — Bearer token (optional for Ollama, required for OpenAI)
+- `Embedding__Model` — model name (default: `nomic-embed-text`)
+
+This keeps the MCP thin (no embedding API dependency, no model config), and the server ensures the query embedding model matches the one used for stored embeddings.
 
 ### Step 2: Batch Claims Endpoint
 
@@ -282,10 +286,11 @@ Test the semantic search endpoint:
 |---|---|
 | `Notebook.Server/Endpoints/SearchEndpoints.cs` | Add semantic search + batch claims endpoints |
 | `Notebook.Server/Models/SearchModels.cs` | New DTOs |
-| `Notebook.Server/Services/EmbeddingService.cs` | **New** — lightweight Ollama embed client for query embedding |
+| `Notebook.Server/Services/EmbeddingService.cs` | **Done** — embed client supporting Ollama and OpenAI APIs |
+| `Notebook.Server/Configuration/EmbeddingOptions.cs` | **Done** — configuration model (ApiType, Url, Token, Model) |
 | `Notebook.Data/Repositories/IEntryRepository.cs` | Add `SemanticSearchAsync`, `GetClaimsBatchAsync` |
 | `Notebook.Data/Repositories/EntryRepository.cs` | Implement new queries |
-| `Notebook.Server/Program.cs` | Register EmbeddingService, config |
+| `Notebook.Server/Program.cs` | **Done** — Register EmbeddingService with options binding |
 | `mcp/wild_mcp.py` | **New** — full MCP server |
 | `tests/Notebook.Tests/Endpoints/SemanticSearchTests.cs` | **New** — integration tests |
 
