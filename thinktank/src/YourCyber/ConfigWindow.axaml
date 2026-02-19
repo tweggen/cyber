@@ -2,48 +2,83 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="580"
+        mc:Ignorable="d" d:DesignWidth="450" d:DesignHeight="680"
         x:Class="YourCyber.ConfigWindow"
         Title="ThinkerAgent Configuration"
-        Height="620" Width="450"
+        Height="680" Width="450"
         WindowStartupLocation="CenterScreen"
         CanResize="False">
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>  <!-- 0: Profile selector -->
+            <RowDefinition Height="Auto"/>  <!-- 1: Separator -->
+            <RowDefinition Height="Auto"/>  <!-- 2: Server URL -->
+            <RowDefinition Height="Auto"/>  <!-- 3: Server URL error -->
+            <RowDefinition Height="Auto"/>  <!-- 4: Notebook ID -->
+            <RowDefinition Height="Auto"/>  <!-- 5: Notebook ID error -->
+            <RowDefinition Height="Auto"/>  <!-- 6: Token -->
+            <RowDefinition Height="Auto"/>  <!-- 7: Token error -->
+            <RowDefinition Height="Auto"/>  <!-- 8: Separator (profile/global) -->
+            <RowDefinition Height="Auto"/>  <!-- 9: API Type -->
+            <RowDefinition Height="Auto"/>  <!-- 10: LLM URL -->
+            <RowDefinition Height="Auto"/>  <!-- 11: LLM URL error -->
+            <RowDefinition Height="Auto"/>  <!-- 12: API Key -->
+            <RowDefinition Height="Auto"/>  <!-- 13: Model -->
+            <RowDefinition Height="Auto"/>  <!-- 14: Embed Model -->
+            <RowDefinition Height="Auto"/>  <!-- 15: Worker Count -->
+            <RowDefinition Height="Auto"/>  <!-- 16: Poll Interval -->
+            <RowDefinition Height="Auto"/>  <!-- 17: Status -->
+            <RowDefinition Height="*"/>     <!-- 18: Spacer -->
+            <RowDefinition Height="Auto"/>  <!-- 19: Buttons -->
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="120"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- Server URL -->
+        <!-- Profile selector -->
         <TextBlock Grid.Row="0" Grid.Column="0"
+                   Text="Profile:"
+                   VerticalAlignment="Center"/>
+        <Grid Grid.Row="0" Grid.Column="1" Margin="5,5,5,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <ComboBox Grid.Column="0"
+                      Name="ProfileComboBox"
+                      HorizontalAlignment="Stretch"/>
+            <Button Grid.Column="1" Content="+"
+                    Name="AddProfileButton"
+                    Width="30" Margin="4,0,0,0"
+                    Click="OnAddProfileClicked"
+                    ToolTip.Tip="Add profile"/>
+            <Button Grid.Column="2" Content="&#x2212;"
+                    Name="DeleteProfileButton"
+                    Width="30" Margin="4,0,0,0"
+                    Click="OnDeleteProfileClicked"
+                    ToolTip.Tip="Delete profile"/>
+            <Button Grid.Column="3" Content="Rename"
+                    Name="RenameProfileButton"
+                    Margin="4,0,0,0"
+                    Click="OnRenameProfileClicked"
+                    ToolTip.Tip="Rename profile"/>
+        </Grid>
+
+        <!-- Separator: per-profile fields -->
+        <Separator Grid.Row="1" Grid.ColumnSpan="2" Margin="0,4,0,4"/>
+
+        <!-- Server URL -->
+        <TextBlock Grid.Row="2" Grid.Column="0"
                    Text="Server URL:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="0" Grid.Column="1"
+        <TextBox Grid.Row="2" Grid.Column="1"
                  Name="ServerUrlTextBox"
                  Margin="5,5,5,0"/>
-        <TextBlock Grid.Row="1" Grid.Column="1"
+        <TextBlock Grid.Row="3" Grid.Column="1"
                    Name="ServerUrlErrorText"
                    Foreground="Red"
                    FontSize="11"
@@ -52,13 +87,13 @@
                    IsVisible="False"/>
 
         <!-- Notebook ID -->
-        <TextBlock Grid.Row="2" Grid.Column="0"
+        <TextBlock Grid.Row="4" Grid.Column="0"
                    Text="Notebook ID:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="2" Grid.Column="1"
+        <TextBox Grid.Row="4" Grid.Column="1"
                  Name="NotebookIdTextBox"
                  Margin="5,5,5,0"/>
-        <TextBlock Grid.Row="3" Grid.Column="1"
+        <TextBlock Grid.Row="5" Grid.Column="1"
                    Name="NotebookIdErrorText"
                    Foreground="Red"
                    FontSize="11"
@@ -67,14 +102,14 @@
                    IsVisible="False"/>
 
         <!-- Token -->
-        <TextBlock Grid.Row="4" Grid.Column="0"
+        <TextBlock Grid.Row="6" Grid.Column="0"
                    Text="Token:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="4" Grid.Column="1"
+        <TextBox Grid.Row="6" Grid.Column="1"
                  Name="TokenTextBox"
                  PasswordChar="&#x2022;"
                  Margin="5,5,5,0"/>
-        <TextBlock Grid.Row="5" Grid.Column="1"
+        <TextBlock Grid.Row="7" Grid.Column="1"
                    Name="TokenErrorText"
                    Foreground="Red"
                    FontSize="11"
@@ -82,11 +117,14 @@
                    TextWrapping="Wrap"
                    IsVisible="False"/>
 
+        <!-- Separator: global fields below -->
+        <Separator Grid.Row="8" Grid.ColumnSpan="2" Margin="0,4,0,4"/>
+
         <!-- API Type -->
-        <TextBlock Grid.Row="6" Grid.Column="0"
+        <TextBlock Grid.Row="9" Grid.Column="0"
                    Text="API Type:"
                    VerticalAlignment="Center"/>
-        <ComboBox Grid.Row="6" Grid.Column="1"
+        <ComboBox Grid.Row="9" Grid.Column="1"
                   Name="ApiTypeComboBox"
                   Margin="5,5,5,5"
                   HorizontalAlignment="Stretch">
@@ -95,13 +133,13 @@
         </ComboBox>
 
         <!-- LLM URL -->
-        <TextBlock Grid.Row="7" Grid.Column="0"
+        <TextBlock Grid.Row="10" Grid.Column="0"
                    Text="LLM URL:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="7" Grid.Column="1"
+        <TextBox Grid.Row="10" Grid.Column="1"
                  Name="LlmUrlTextBox"
                  Margin="5,5,5,0"/>
-        <TextBlock Grid.Row="8" Grid.Column="1"
+        <TextBlock Grid.Row="11" Grid.Column="1"
                    Name="LlmUrlErrorText"
                    Foreground="Red"
                    FontSize="11"
@@ -110,46 +148,46 @@
                    IsVisible="False"/>
 
         <!-- API Key -->
-        <TextBlock Grid.Row="9" Grid.Column="0"
+        <TextBlock Grid.Row="12" Grid.Column="0"
                    Text="API Key:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="9" Grid.Column="1"
+        <TextBox Grid.Row="12" Grid.Column="1"
                  Name="ApiKeyTextBox"
                  PasswordChar="&#x2022;"
                  Watermark="Optional for local endpoints"
                  Margin="5,5,5,5"/>
 
         <!-- Model -->
-        <TextBlock Grid.Row="10" Grid.Column="0"
+        <TextBlock Grid.Row="13" Grid.Column="0"
                    Text="Model:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="10" Grid.Column="1"
+        <TextBox Grid.Row="13" Grid.Column="1"
                  Name="ModelTextBox"
                  Margin="5,5,5,5"/>
 
         <!-- Embedding Model -->
-        <TextBlock Grid.Row="11" Grid.Column="0"
+        <TextBlock Grid.Row="14" Grid.Column="0"
                    Text="Embed Model:"
                    VerticalAlignment="Center"/>
-        <TextBox Grid.Row="11" Grid.Column="1"
+        <TextBox Grid.Row="14" Grid.Column="1"
                  Name="EmbeddingModelTextBox"
                  Margin="5,5,5,5"/>
 
         <!-- Worker Count -->
-        <TextBlock Grid.Row="12" Grid.Column="0"
+        <TextBlock Grid.Row="15" Grid.Column="0"
                    Text="Worker Count:"
                    VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="12" Grid.Column="1"
+        <NumericUpDown Grid.Row="15" Grid.Column="1"
                        Name="WorkerCountUpDown"
                        Minimum="1" Maximum="16"
                        Value="1"
                        Margin="5,5,5,5"/>
 
         <!-- Poll Interval -->
-        <TextBlock Grid.Row="13" Grid.Column="0"
+        <TextBlock Grid.Row="16" Grid.Column="0"
                    Text="Poll Interval (s):"
                    VerticalAlignment="Center"/>
-        <NumericUpDown Grid.Row="13" Grid.Column="1"
+        <NumericUpDown Grid.Row="16" Grid.Column="1"
                        Name="PollIntervalUpDown"
                        Minimum="1" Maximum="300"
                        Value="5"
@@ -157,7 +195,7 @@
                        Margin="5,5,5,5"/>
 
         <!-- Status message -->
-        <TextBlock Grid.Row="14" Grid.ColumnSpan="2"
+        <TextBlock Grid.Row="17" Grid.ColumnSpan="2"
                    Name="StatusText"
                    Foreground="Green"
                    FontSize="11"
@@ -167,7 +205,7 @@
                    IsVisible="False"/>
 
         <!-- Buttons -->
-        <StackPanel Grid.Row="18" Grid.ColumnSpan="2"
+        <StackPanel Grid.Row="19" Grid.ColumnSpan="2"
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="5">

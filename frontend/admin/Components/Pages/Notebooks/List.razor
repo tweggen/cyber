@@ -188,7 +188,15 @@ else if (notebooks != null)
                 <button class="btn btn-sm btn-outline-secondary" @onclick="CloseToken">Close</button>
             </div>
             <div class="card-body">
-                <p class="text-muted small">Copy this JWT token to authenticate with the notebook API:</p>
+                <label class="text-muted small mb-1">Notebook ID</label>
+                <div class="input-group input-group-sm mb-3">
+                    <input type="text" class="form-control font-monospace" value="@tokenNotebookId" readonly />
+                    <button class="btn btn-outline-secondary"
+                            onclick="clipboardCopyFromSibling(this)"
+                            title="Copy to clipboard">Copy</button>
+                </div>
+
+                <label class="text-muted small mb-1">JWT Token</label>
                 <div class="input-group input-group-sm">
                     <input type="text" class="form-control font-monospace" value="@tokenValue" readonly />
                     <button class="btn btn-outline-secondary"

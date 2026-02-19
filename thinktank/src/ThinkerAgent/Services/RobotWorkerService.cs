@@ -229,7 +229,8 @@ public sealed class RobotWorkerService : BackgroundService
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Worker {WorkerId}: unexpected error", workerId);
-                await Task.Delay(pollInterval, ct);
+                try { await Task.Delay(pollInterval, ct); }
+                catch (OperationCanceledException) { break; }
             }
         }
 
