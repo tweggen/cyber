@@ -16,6 +16,7 @@ public static class JobEndpoints
         group.MapPost("/{jobId}/complete", CompleteJob);
         group.MapPost("/{jobId}/fail", FailJob);
         group.MapGet("/stats", JobStats);
+        group.MapPost("/retry-failed", RetryFailedJobs);
     }
 
     /// <summary>
@@ -103,6 +104,18 @@ public static class JobEndpoints
             await jobRepo.MarkFailedAsync(jobId, request.Error, ct);
             return Results.Ok(new { status = "failed" });
         }
+    }
+
+    /// <summary>
+    /// Resets all failed jobs back to pending so they can be retried.
+    /// </summary>
+    private static async Task<IResult> RetryFailedJobs(
+        Guid notebookId,
+        IJobRepository jobRepo,
+        CancellationToken ct)
+    {
+        var count = await jobRepo.RetryFailedJobsAsync(notebookId, ct);
+        return Results.Ok(new { retried = count });
     }
 
     /// <summary>

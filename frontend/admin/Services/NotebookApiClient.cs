@@ -205,6 +205,20 @@ public class NotebookApiClient
     }
 
     /// <summary>
+    /// Reset all failed jobs back to pending (owner only).
+    /// </summary>
+    public async Task<int> RetryFailedJobsAsync(string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/notebooks/{notebookId}/jobs/retry-failed");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>(JsonOptions);
+        return body.GetProperty("retried").GetInt32();
+    }
+
+    /// <summary>
     /// Delete a notebook (owner only).
     /// </summary>
     public async Task<DeleteNotebookResponse?> DeleteNotebookAsync(

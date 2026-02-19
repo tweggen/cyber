@@ -14,6 +14,7 @@ public interface IJobRepository
     Task MarkFailedAsync(Guid jobId, string error, CancellationToken ct);
     Task<List<JobStatusCount>> GetStatsAsync(Guid notebookId, CancellationToken ct);
     Task<long> CountPendingAsync(Guid notebookId, CancellationToken ct);
+    Task<int> RetryFailedJobsAsync(Guid notebookId, CancellationToken ct);
 }
 
 public record JobStatusCount(string JobType, string Status, long Count);

@@ -134,4 +134,17 @@ public class JobRepository(NotebookDbContext db) : IJobRepository
             .Where(j => j.NotebookId == notebookId && j.Status == "pending")
             .LongCountAsync(ct);
     }
+
+    public async Task<int> RetryFailedJobsAsync(Guid notebookId, CancellationToken ct)
+    {
+        return await db.Database.ExecuteSqlRawAsync(
+            """
+            UPDATE jobs
+            SET status = 'pending', retry_count = 0, error = NULL,
+                claimed_at = NULL, claimed_by = NULL, completed_at = NULL
+            WHERE notebook_id = {0} AND status = 'failed'
+            """,
+            [notebookId],
+            ct);
+    }
 }

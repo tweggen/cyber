@@ -66,6 +66,10 @@ else if (browseResult != null)
             <button class="btn btn-outline-warning"
                     @onclick="ShowToken">Token</button>
 
+            <button class="btn btn-outline-secondary"
+                    @onclick="RetryFailedJobs"
+                    disabled="@isRetryingJobs">@(isRetryingJobs ? "Retrying..." : "Retry Failed Jobs")</button>
+
             @if (showDeleteConfirm)
             {
                 <button class="btn btn-danger" @onclick="DeleteNotebook">Yes, Delete</button>
@@ -77,6 +81,14 @@ else if (browseResult != null)
             }
         }
     </div>
+
+    @if (retryMessage != null)
+    {
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            @retryMessage
+            <button type="button" class="btn-close" @onclick="() => retryMessage = null"></button>
+        </div>
+    }
 
     @if (isRenamingInline)
     {
@@ -283,9 +295,7 @@ else if (browseResult != null)
                             <span class="badge @(entry.Operation == "write" ? "bg-success" : "bg-info")">@entry.Operation</span>
                         </td>
                         <td>
-                            <a href="/notebooks/@NotebookId/entries/@entry.EntryId"
-                               @onclick="() => NavigateToEntry(entry.EntryId)"
-                               @onclick:preventDefault>@(entry.Topic ?? "-")</a>
+                            <a href="/notebooks/@NotebookId/entries/@entry.EntryId">@(entry.Topic ?? "-")</a>
                         </td>
                         <td>@entry.IntegrationCost.CatalogShift.ToString("F3")</td>
                         <td class="text-muted small">@entry.Created.ToString("yyyy-MM-dd HH:mm")</td>
@@ -344,9 +354,7 @@ else if (browseResult != null)
                             {
                                 <a href="/notebooks/@NotebookId/entries/@eid"
                                    class="btn btn-sm btn-outline-secondary me-1"
-                                   title="@eid"
-                                   @onclick="() => NavigateToEntry(eid)"
-                                   @onclick:preventDefault>@eid.ToString()[..8]</a>
+                                   title="@eid">@eid.ToString()[..8]</a>
                             }
                         </div>
                     }
@@ -434,6 +442,10 @@ else if (browseResult != null)
     private bool isOwner;
     private bool showDeleteConfirm;
     private string shareAuthorId = string.Empty;
+
+    // Retry failed jobs state
+    private bool isRetryingJobs;
+    private string? retryMessage;
 
     // Rename state
     private bool isRenamingInline;
@@ -647,11 +659,6 @@ else if (browseResult != null)
             currentPage = page;
     }
 
-    private void NavigateToEntry(Guid entryId)
-    {
-        Navigation.NavigateTo($"/notebooks/{NotebookId}/entries/{entryId}");
-    }
-
     // ===== Rename =====
 
     private void StartRename()
@@ -761,6 +768,28 @@ else if (browseResult != null)
     private void CloseToken()
     {
         viewTokenValue = null;
+    }
+
+    // ===== Retry Failed Jobs =====
+
+    private async Task RetryFailedJobs()
+    {
+        if (authorIdHex == null) return;
+        isRetryingJobs = true;
+        retryMessage = null;
+        try
+        {
+            var count = await ApiClient.RetryFailedJobsAsync(authorIdHex, NotebookId);
+            retryMessage = count > 0 ? $"{count} job(s) retried" : "No failed jobs";
+        }
+        catch (Exception ex)
+        {
+            retryMessage = $"Failed to retry jobs: {ex.Message}";
+        }
+        finally
+        {
+            isRetryingJobs = false;
+        }
     }
 
     // ===== Delete =====
