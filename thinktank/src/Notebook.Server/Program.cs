@@ -20,6 +20,11 @@ builder.Services.AddScoped<IEntryRepository, EntryRepository>();
 builder.Services.AddScoped<IJobRepository, JobRepository>();
 builder.Services.AddScoped<IJobResultProcessor, JobResultProcessor>();
 builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
+builder.Services.AddScoped<IAccessRepository, AccessRepository>();
+
+// Audit — fire-and-forget bounded channel writer
+builder.Services.AddSingleton<IAuditService, AuditService>();
+builder.Services.AddHostedService(sp => (AuditService)sp.GetRequiredService<IAuditService>());
 
 // Authentication — EdDSA (Ed25519) JWT signed by admin app
 builder.Services.AddAuthentication(EdDsaAuthenticationHandler.SchemeName)
@@ -38,7 +43,15 @@ builder.Services.AddAuthentication(EdDsaAuthenticationHandler.SchemeName)
 
             options.AllowDevIdentity = builder.Configuration.GetValue<bool>("AllowDevIdentity");
         });
-builder.Services.AddAuthorization();
+
+// Authorization — scope-based policies
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CanRead", p => p.RequireClaim("scope", "notebook:read"));
+    options.AddPolicy("CanWrite", p => p.RequireClaim("scope", "notebook:write"));
+    options.AddPolicy("CanShare", p => p.RequireClaim("scope", "notebook:share"));
+    options.AddPolicy("CanAdmin", p => p.RequireClaim("scope", "notebook:admin"));
+});
 
 var app = builder.Build();
 
@@ -51,6 +64,8 @@ app.MapClaimsEndpoints();
 app.MapJobEndpoints();
 app.MapBrowseEndpoints();
 app.MapSearchEndpoints();
+app.MapShareEndpoints();
+app.MapAuditEndpoints();
 
 app.Run();
 

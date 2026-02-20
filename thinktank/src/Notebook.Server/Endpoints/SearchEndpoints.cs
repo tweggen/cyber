@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Data.Repositories;
+using Notebook.Server.Filters;
 using Notebook.Server.Models;
 
 namespace Notebook.Server.Endpoints;
@@ -9,7 +10,8 @@ public static class SearchEndpoints
     public static void MapSearchEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet("/notebooks/{notebookId}/search", Search)
-            .RequireAuthorization();
+            .AddEndpointFilter<NotebookAccessFilter>()
+            .RequireAuthorization("CanRead");
     }
 
     private static async Task<IResult> Search(

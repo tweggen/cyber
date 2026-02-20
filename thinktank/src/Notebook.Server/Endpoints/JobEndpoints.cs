@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Data.Repositories;
+using Notebook.Server.Filters;
 using Notebook.Server.Models;
 using Notebook.Server.Services;
 
@@ -10,7 +11,8 @@ public static class JobEndpoints
     public static void MapJobEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/notebooks/{notebookId}/jobs")
-            .RequireAuthorization();
+            .AddEndpointFilter<NotebookAccessFilter>()
+            .RequireAuthorization("CanWrite");
 
         group.MapGet("/next", NextJob);
         group.MapPost("/{jobId}/complete", CompleteJob);

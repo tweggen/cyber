@@ -2,7 +2,9 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Core.Types;
 using Notebook.Data.Repositories;
+using Notebook.Server.Filters;
 using Notebook.Server.Models;
+using Notebook.Server.Services;
 
 namespace Notebook.Server.Endpoints;
 
@@ -11,7 +13,8 @@ public static class BatchEndpoints
     public static void MapBatchEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapPost("/notebooks/{notebookId}/batch", BatchWrite)
-            .RequireAuthorization();
+            .AddEndpointFilter<NotebookAccessFilter>()
+            .RequireAuthorization("CanWrite");
     }
 
     /// <summary>
@@ -23,6 +26,7 @@ public static class BatchEndpoints
         [FromBody] BatchWriteRequest request,
         IEntryRepository entryRepo,
         IJobRepository jobRepo,
+        IAuditService auditService,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -80,6 +84,11 @@ public static class BatchEndpoints
         }
 
         await transaction.CommitAsync(ct);
+
+        auditService.Log(authorId, "entry.write", $"notebook:{notebookId}",
+            new { count = results.Count, jobs_created = jobsCreated },
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            httpContext.Request.Headers.UserAgent.ToString());
 
         return Results.Created("", new BatchWriteResponse
         {

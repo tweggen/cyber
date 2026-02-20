@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Core.Types;
 using Notebook.Data.Repositories;
+using Notebook.Server.Filters;
 
 namespace Notebook.Server.Endpoints;
 
@@ -9,7 +10,8 @@ public static class BrowseEndpoints
     public static void MapBrowseEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet("/notebooks/{notebookId}/browse", Browse)
-            .RequireAuthorization();
+            .AddEndpointFilter<NotebookAccessFilter>()
+            .RequireAuthorization("CanRead");
     }
 
     private static async Task<IResult> Browse(

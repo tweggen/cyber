@@ -1,6 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Data.Repositories;
+using Notebook.Server.Filters;
 using Notebook.Server.Models;
+using Notebook.Server.Services;
 
 namespace Notebook.Server.Endpoints;
 
@@ -8,14 +10,19 @@ public static class NotebookEndpoints
 {
     public static void MapNotebookEndpoints(this IEndpointRouteBuilder routes)
     {
-        routes.MapGet("/notebooks", ListNotebooks).RequireAuthorization();
-        routes.MapPost("/notebooks", CreateNotebook).RequireAuthorization();
-        routes.MapDelete("/notebooks/{notebookId}", DeleteNotebook).RequireAuthorization();
-        routes.MapPatch("/notebooks/{notebookId}", RenameNotebook).RequireAuthorization();
+        routes.MapGet("/notebooks", ListNotebooks).RequireAuthorization("CanRead");
+        routes.MapPost("/notebooks", CreateNotebook).RequireAuthorization("CanWrite");
+        routes.MapDelete("/notebooks/{notebookId}", DeleteNotebook)
+            .AddEndpointFilter<NotebookAccessFilter>()
+            .RequireAuthorization("CanWrite");
+        routes.MapPatch("/notebooks/{notebookId}", RenameNotebook)
+            .AddEndpointFilter<NotebookAccessFilter>()
+            .RequireAuthorization("CanWrite");
     }
 
     private static async Task<IResult> ListNotebooks(
         INotebookRepository notebookRepo,
+        IAccessRepository accessRepo,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -34,13 +41,27 @@ public static class NotebookEndpoints
             var totalEntries = await notebookRepo.CountEntriesAsync(n.Id, ct);
             var participantCount = await notebookRepo.CountParticipantsAsync(n.Id, ct);
 
+            // Get actual permissions from ACL
+            bool canRead, canWrite;
+            if (isOwner)
+            {
+                canRead = true;
+                canWrite = true;
+            }
+            else
+            {
+                var access = await accessRepo.GetAccessAsync(n.Id, authorId, ct);
+                canRead = access?.Read ?? false;
+                canWrite = access?.Write ?? false;
+            }
+
             summaries.Add(new NotebookSummaryResponse
             {
                 Id = n.Id,
                 Name = n.Name,
                 Owner = ownerHex,
                 IsOwner = isOwner,
-                Permissions = new NotebookPermissionsResponse { Read = true, Write = isOwner },
+                Permissions = new NotebookPermissionsResponse { Read = canRead, Write = canWrite },
                 TotalEntries = totalEntries,
                 TotalEntropy = 0.0,
                 LastActivitySequence = n.CurrentSequence,
@@ -54,6 +75,7 @@ public static class NotebookEndpoints
     private static async Task<IResult> CreateNotebook(
         [FromBody] CreateNotebookRequest request,
         INotebookRepository notebookRepo,
+        IAuditService auditService,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -67,6 +89,11 @@ public static class NotebookEndpoints
 
         var notebook = await notebookRepo.CreateNotebookAsync(request.Name.Trim(), authorId, ct);
 
+        auditService.Log(authorId, "notebook.create", $"notebook:{notebook.Id}",
+            new { name = notebook.Name },
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            httpContext.Request.Headers.UserAgent.ToString());
+
         return Results.Created($"/notebooks/{notebook.Id}", new CreateNotebookResponse
         {
             Id = notebook.Id,
@@ -79,6 +106,7 @@ public static class NotebookEndpoints
     private static async Task<IResult> DeleteNotebook(
         Guid notebookId,
         INotebookRepository notebookRepo,
+        IAuditService auditService,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -91,6 +119,11 @@ public static class NotebookEndpoints
         if (!deleted)
             return Results.NotFound(new { error = $"Notebook {notebookId} not found or not owned by you" });
 
+        auditService.Log(authorId, "notebook.delete", $"notebook:{notebookId}",
+            detail: null,
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            httpContext.Request.Headers.UserAgent.ToString());
+
         return Results.Ok(new DeleteNotebookResponse
         {
             Id = notebookId,
@@ -102,6 +135,7 @@ public static class NotebookEndpoints
         Guid notebookId,
         [FromBody] RenameNotebookRequest request,
         INotebookRepository notebookRepo,
+        IAuditService auditService,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -116,6 +150,11 @@ public static class NotebookEndpoints
         var notebook = await notebookRepo.RenameNotebookAsync(notebookId, request.Name.Trim(), authorId, ct);
         if (notebook is null)
             return Results.NotFound(new { error = $"Notebook {notebookId} not found or not owned by you" });
+
+        auditService.Log(authorId, "notebook.rename", $"notebook:{notebookId}",
+            new { name = notebook.Name },
+            httpContext.Connection.RemoteIpAddress?.ToString(),
+            httpContext.Request.Headers.UserAgent.ToString());
 
         return Results.Ok(new RenameNotebookResponse
         {

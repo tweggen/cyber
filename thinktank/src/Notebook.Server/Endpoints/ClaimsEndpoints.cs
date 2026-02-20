@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Core.Types;
 using Notebook.Data.Repositories;
+using Notebook.Server.Filters;
 using Notebook.Server.Models;
 
 namespace Notebook.Server.Endpoints;
@@ -11,7 +12,8 @@ public static class ClaimsEndpoints
     public static void MapClaimsEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapPost("/notebooks/{notebookId}/entries/{entryId}/claims", UpdateClaims)
-            .RequireAuthorization();
+            .AddEndpointFilter<NotebookAccessFilter>()
+            .RequireAuthorization("CanWrite");
     }
 
     /// <summary>

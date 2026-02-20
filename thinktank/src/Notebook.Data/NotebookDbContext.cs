@@ -15,6 +15,7 @@ public class NotebookDbContext : DbContext
     public DbSet<JobEntity> Jobs => Set<JobEntity>();
     public DbSet<NotebookEntity> Notebooks => Set<NotebookEntity>();
     public DbSet<NotebookAccessEntity> NotebookAccess => Set<NotebookAccessEntity>();
+    public DbSet<AuditLogEntity> AuditLog => Set<AuditLogEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
