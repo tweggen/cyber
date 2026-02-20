@@ -1,0 +1,327 @@
+@page "/admin/organizations/{OrgId:guid}"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>@(orgName ?? "Organization")</PageTitle>
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/organizations">Organizations</a></li>
+        <li class="breadcrumb-item active">@(orgName ?? OrgId.ToString())</li>
+    </ol>
+</nav>
+
+<h3>@(orgName ?? "Organization")</h3>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+
+@if (groupsData == null && errorMessage == null)
+{
+    <p>Loading...</p>
+}
+else if (groupsData != null)
+{
+    <div class="row mb-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Groups</h5>
+
+                    @if (rootGroups.Count == 0)
+                    {
+                        <p class="text-muted">No groups yet.</p>
+                    }
+                    else
+                    {
+                        <div class="group-tree">
+                            @foreach (var root in rootGroups)
+                            {
+                                @RenderGroupNode(root, 0)
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Create Group</h5>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input class="form-control" placeholder="Group name"
+                           @bind="newGroupName" @bind:event="oninput"
+                           disabled="@isSubmitting" />
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select" @bind="newGroupParentId" disabled="@isSubmitting">
+                        <option value="">— No parent (root group) —</option>
+                        @foreach (var g in groupsData.Groups)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-primary" @onclick="CreateGroup"
+                            disabled="@(isSubmitting || string.IsNullOrWhiteSpace(newGroupName))">
+                        @(isSubmitting ? "Creating..." : "Create Group")
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Add Edge (parent → child relationship)</h5>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label">Parent Group</label>
+                    <select class="form-select" @bind="edgeParentId" disabled="@isSubmitting">
+                        <option value="">— Select parent —</option>
+                        @foreach (var g in groupsData.Groups)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Child Group</label>
+                    <select class="form-select" @bind="edgeChildId" disabled="@isSubmitting">
+                        <option value="">— Select child —</option>
+                        @foreach (var g in groupsData.Groups)
+                        {
+                            <option value="@g.Id">@g.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <button class="btn btn-outline-primary" @onclick="AddEdge"
+                            disabled="@(isSubmitting || string.IsNullOrEmpty(edgeParentId) || string.IsNullOrEmpty(edgeChildId))">
+                        Add Edge
+                    </button>
+                </div>
+            </div>
+
+            @if (groupsData.Edges.Count > 0)
+            {
+                <table class="table table-sm mt-3">
+                    <thead>
+                        <tr><th>Parent</th><th>Child</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var edge in groupsData.Edges)
+                        {
+                            var parent = groupsData.Groups.FirstOrDefault(g => g.Id == edge.ParentId);
+                            var child = groupsData.Groups.FirstOrDefault(g => g.Id == edge.ChildId);
+                            <tr>
+                                <td>@(parent?.Name ?? edge.ParentId.ToString())</td>
+                                <td>@(child?.Name ?? edge.ChildId.ToString())</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-danger"
+                                            @onclick="() => RemoveEdge(edge.ParentId, edge.ChildId)"
+                                            disabled="@isSubmitting">Remove</button>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter] public Guid OrgId { get; set; }
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string? authorId;
+    private string? orgName;
+    private ListGroupsResponse? groupsData;
+    private string? errorMessage;
+    private bool isSubmitting;
+
+    private string newGroupName = string.Empty;
+    private string newGroupParentId = string.Empty;
+    private string edgeParentId = string.Empty;
+    private string edgeChildId = string.Empty;
+
+    private List<GroupResponse> rootGroups = [];
+    private Dictionary<Guid, List<GroupResponse>> childMap = new();
+    private HashSet<Guid> expandedGroups = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = AuthState != null ? await AuthState : null;
+        authorId = await CurrentUser.GetAuthorIdHexAsync(state?.User);
+        if (authorId == null) { Navigation.NavigateTo("/auth/login"); return; }
+
+        await LoadOrgs();
+        await LoadGroups();
+    }
+
+    private async Task LoadOrgs()
+    {
+        try
+        {
+            var result = await ApiClient.ListOrganizationsAsync(authorId!);
+            orgName = result?.Organizations.FirstOrDefault(o => o.Id == OrgId)?.Name;
+        }
+        catch { /* org name is decorative */ }
+    }
+
+    private async Task LoadGroups()
+    {
+        try
+        {
+            groupsData = await ApiClient.ListGroupsAsync(authorId!, OrgId);
+            RebuildTree();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"API error: {ex.Message}";
+        }
+    }
+
+    private void RebuildTree()
+    {
+        if (groupsData == null) return;
+        childMap = new Dictionary<Guid, List<GroupResponse>>();
+        var childIds = new HashSet<Guid>(groupsData.Edges.Select(e => e.ChildId));
+
+        foreach (var edge in groupsData.Edges)
+        {
+            if (!childMap.ContainsKey(edge.ParentId))
+                childMap[edge.ParentId] = [];
+            var child = groupsData.Groups.FirstOrDefault(g => g.Id == edge.ChildId);
+            if (child != null)
+                childMap[edge.ParentId].Add(child);
+        }
+
+        rootGroups = groupsData.Groups.Where(g => !childIds.Contains(g.Id)).ToList();
+    }
+
+    private RenderFragment RenderGroupNode(GroupResponse group, int level) => builder =>
+    {
+        var children = childMap.GetValueOrDefault(group.Id, []);
+        var isExpanded = expandedGroups.Contains(group.Id);
+
+        builder.OpenElement(0, "div");
+        builder.AddAttribute(1, "style", $"padding-left: {level * 20}px; margin-bottom: 4px;");
+
+        builder.OpenElement(2, "div");
+        builder.AddAttribute(3, "class", "d-flex align-items-center gap-2");
+
+        if (children.Count > 0)
+        {
+            builder.OpenElement(4, "button");
+            builder.AddAttribute(5, "class", "btn btn-sm btn-link p-0");
+            builder.AddAttribute(6, "onclick", EventCallback.Factory.Create(this, () => ToggleExpand(group.Id)));
+            builder.AddContent(7, isExpanded ? "▼" : "▶");
+            builder.CloseElement();
+        }
+        else
+        {
+            builder.OpenElement(8, "span");
+            builder.AddAttribute(9, "style", "width: 24px; display: inline-block;");
+            builder.AddContent(10, "•");
+            builder.CloseElement();
+        }
+
+        builder.OpenElement(11, "a");
+        builder.AddAttribute(12, "href", $"/admin/groups/{group.Id}");
+        builder.AddContent(13, group.Name);
+        builder.CloseElement();
+
+        builder.OpenElement(14, "span");
+        builder.AddAttribute(15, "class", "text-muted small");
+        builder.AddContent(16, $"(created {group.Created:yyyy-MM-dd})");
+        builder.CloseElement();
+
+        builder.CloseElement(); // d-flex
+
+        if (isExpanded && children.Count > 0)
+        {
+            foreach (var child in children)
+            {
+                builder.AddContent(17, RenderGroupNode(child, level + 1));
+            }
+        }
+
+        builder.CloseElement(); // outer div
+    };
+
+    private void ToggleExpand(Guid groupId)
+    {
+        if (!expandedGroups.Add(groupId))
+            expandedGroups.Remove(groupId);
+    }
+
+    private async Task CreateGroup()
+    {
+        if (string.IsNullOrWhiteSpace(newGroupName)) return;
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            Guid? parentId = Guid.TryParse(newGroupParentId, out var pid) ? pid : null;
+            await ApiClient.CreateGroupAsync(authorId!, OrgId, newGroupName.Trim(), parentId);
+            newGroupName = string.Empty;
+            newGroupParentId = string.Empty;
+            await LoadGroups();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to create group: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task AddEdge()
+    {
+        if (!Guid.TryParse(edgeParentId, out var parentId) || !Guid.TryParse(edgeChildId, out var childId)) return;
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            await ApiClient.AddEdgeAsync(authorId!, OrgId, parentId, childId);
+            edgeParentId = string.Empty;
+            edgeChildId = string.Empty;
+            await LoadGroups();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to add edge: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task RemoveEdge(Guid parentId, Guid childId)
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            await ApiClient.RemoveEdgeAsync(authorId!, parentId, childId);
+            await LoadGroups();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to remove edge: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+}

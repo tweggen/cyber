@@ -578,3 +578,121 @@ public class TokenResponse
     public string AuthorId { get; set; } = string.Empty;
     public long ExpiresAt { get; set; }
 }
+
+// ============================================================================
+// Organization & Group DTOs
+// ============================================================================
+
+public class CreateOrganizationRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+}
+
+public class OrganizationResponse
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("created")]
+    public DateTimeOffset Created { get; set; }
+}
+
+public class ListOrganizationsResponse
+{
+    [JsonPropertyName("organizations")]
+    public List<OrganizationResponse> Organizations { get; set; } = [];
+}
+
+public class CreateGroupRequest
+{
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("parent_id")]
+    public Guid? ParentId { get; set; }
+}
+
+public class GroupResponse
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("organization_id")]
+    public Guid OrganizationId { get; set; }
+
+    [JsonPropertyName("name")]
+    public string Name { get; set; } = string.Empty;
+
+    [JsonPropertyName("created")]
+    public DateTimeOffset Created { get; set; }
+}
+
+public class ListGroupsResponse
+{
+    [JsonPropertyName("groups")]
+    public List<GroupResponse> Groups { get; set; } = [];
+
+    [JsonPropertyName("edges")]
+    public List<EdgeResponse> Edges { get; set; } = [];
+}
+
+public class EdgeResponse
+{
+    [JsonPropertyName("parent_id")]
+    public Guid ParentId { get; set; }
+
+    [JsonPropertyName("child_id")]
+    public Guid ChildId { get; set; }
+}
+
+public class AddEdgeRequest
+{
+    [JsonPropertyName("parent_id")]
+    public Guid ParentId { get; set; }
+
+    [JsonPropertyName("child_id")]
+    public Guid ChildId { get; set; }
+}
+
+public class AddMemberRequest
+{
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = "member";
+}
+
+public class MemberResponse
+{
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("group_id")]
+    public Guid GroupId { get; set; }
+
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = string.Empty;
+
+    [JsonPropertyName("granted")]
+    public DateTimeOffset Granted { get; set; }
+
+    [JsonPropertyName("granted_by")]
+    public string? GrantedBy { get; set; }
+}
+
+public class ListMembersResponse
+{
+    [JsonPropertyName("members")]
+    public List<MemberResponse> Members { get; set; } = [];
+}
+
+public class AssignGroupRequest
+{
+    [JsonPropertyName("group_id")]
+    public Guid? GroupId { get; set; }
+}

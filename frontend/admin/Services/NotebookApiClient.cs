@@ -232,6 +232,108 @@ public class NotebookApiClient
         return await response.Content.ReadFromJsonAsync<DeleteNotebookResponse>(JsonOptions);
     }
 
+    // =========================================================================
+    // Organizations & Groups
+    // =========================================================================
+
+    public async Task<ListOrganizationsResponse?> ListOrganizationsAsync(string authorIdHex)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/organizations");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ListOrganizationsResponse>(JsonOptions);
+    }
+
+    public async Task<OrganizationResponse?> CreateOrganizationAsync(string authorIdHex, string name)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/organizations");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(new CreateOrganizationRequest { Name = name }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<OrganizationResponse>(JsonOptions);
+    }
+
+    public async Task<ListGroupsResponse?> ListGroupsAsync(string authorIdHex, Guid orgId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/organizations/{orgId}/groups");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ListGroupsResponse>(JsonOptions);
+    }
+
+    public async Task<GroupResponse?> CreateGroupAsync(string authorIdHex, Guid orgId, string name, Guid? parentId = null)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/organizations/{orgId}/groups");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(new CreateGroupRequest { Name = name, ParentId = parentId }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<GroupResponse>(JsonOptions);
+    }
+
+    public async Task DeleteGroupAsync(string authorIdHex, Guid groupId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/groups/{groupId}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task AddEdgeAsync(string authorIdHex, Guid orgId, Guid parentId, Guid childId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/organizations/{orgId}/edges");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(new AddEdgeRequest { ParentId = parentId, ChildId = childId }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task RemoveEdgeAsync(string authorIdHex, Guid parentId, Guid childId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/groups/{parentId}/edges/{childId}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<ListMembersResponse?> ListMembersAsync(string authorIdHex, Guid groupId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/groups/{groupId}/members");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ListMembersResponse>(JsonOptions);
+    }
+
+    public async Task AddMemberAsync(string authorIdHex, Guid groupId, string memberAuthorIdHex, string role)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/groups/{groupId}/members");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(new AddMemberRequest { AuthorId = memberAuthorIdHex, Role = role }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task RemoveMemberAsync(string authorIdHex, Guid groupId, string memberAuthorIdHex)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/groups/{groupId}/members/{memberAuthorIdHex}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task AssignNotebookToGroupAsync(string authorIdHex, Guid notebookId, Guid? groupId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/notebooks/{notebookId}/group");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(new AssignGroupRequest { GroupId = groupId }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
     /// <summary>
     /// Add JWT Bearer token to the request for the given author.
     /// </summary>

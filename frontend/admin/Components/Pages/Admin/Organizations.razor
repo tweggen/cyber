@@ -1,0 +1,143 @@
+@page "/admin/organizations"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Organizations</PageTitle>
+
+<h3>Organizations</h3>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+
+@if (organizations == null && errorMessage == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <div class="mb-3">
+        @if (showCreateForm)
+        {
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">New Organization</h5>
+                    <div class="d-flex gap-2">
+                        <input class="form-control" placeholder="Organization name"
+                               @bind="newOrgName" @bind:event="oninput"
+                               disabled="@isSubmitting" />
+                        <button class="btn btn-primary" @onclick="CreateOrganization"
+                                disabled="@(isSubmitting || string.IsNullOrWhiteSpace(newOrgName))">
+                            @(isSubmitting ? "Creating..." : "Create")
+                        </button>
+                        <button class="btn btn-outline-secondary" @onclick="() => showCreateForm = false"
+                                disabled="@isSubmitting">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        }
+        else
+        {
+            <button class="btn btn-primary" @onclick="() => { showCreateForm = true; newOrgName = string.Empty; }">
+                New Organization
+            </button>
+        }
+    </div>
+
+    @if (organizations != null && organizations.Count == 0)
+    {
+        <p class="text-muted">No organizations yet. Create one above.</p>
+    }
+    else if (organizations != null)
+    {
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Created</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var org in organizations)
+                {
+                    <tr>
+                        <td>
+                            <a href="/admin/organizations/@org.Id">@org.Name</a>
+                        </td>
+                        <td>@org.Created.ToString("yyyy-MM-dd")</td>
+                        <td>
+                            <a href="/admin/organizations/@org.Id" class="btn btn-sm btn-outline-primary">View</a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<OrganizationResponse>? organizations;
+    private string? errorMessage;
+    private bool showCreateForm;
+    private string newOrgName = string.Empty;
+    private bool isSubmitting;
+    private string? authorId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = AuthState != null ? await AuthState : null;
+        authorId = await CurrentUser.GetAuthorIdHexAsync(state?.User);
+        if (authorId == null)
+        {
+            Navigation.NavigateTo("/auth/login");
+            return;
+        }
+        await LoadOrganizations();
+    }
+
+    private async Task LoadOrganizations()
+    {
+        try
+        {
+            var result = await ApiClient.ListOrganizationsAsync(authorId!);
+            organizations = result?.Organizations ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"API error: {ex.Message}";
+        }
+    }
+
+    private async Task CreateOrganization()
+    {
+        if (string.IsNullOrWhiteSpace(newOrgName)) return;
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            await ApiClient.CreateOrganizationAsync(authorId!, newOrgName.Trim());
+            showCreateForm = false;
+            newOrgName = string.Empty;
+            await LoadOrganizations();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to create organization: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+}

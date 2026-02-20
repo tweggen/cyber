@@ -1,0 +1,34 @@
+@using Microsoft.AspNetCore.Identity
+@using NotebookAdmin.Models
+@inject UserManager<ApplicationUser> UserManager
+
+@if (displayName != null)
+{
+    <span title="@AuthorIdHex">@displayName</span>
+}
+else
+{
+    <span title="@AuthorIdHex">@TruncatedHex</span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string AuthorIdHex { get; set; } = string.Empty;
+
+    private string? displayName;
+
+    private string TruncatedHex =>
+        AuthorIdHex.Length >= 16
+            ? AuthorIdHex[..8] + "..." + AuthorIdHex[^8..]
+            : AuthorIdHex;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (string.IsNullOrEmpty(AuthorIdHex))
+            return;
+
+        var users = UserManager.Users.Where(u => u.AuthorIdHex == AuthorIdHex).ToList();
+        var user = users.FirstOrDefault();
+        displayName = user?.DisplayName ?? user?.UserName;
+    }
+}
