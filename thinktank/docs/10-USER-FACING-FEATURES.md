@@ -58,11 +58,11 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### UI Gaps
 
-- **Search is client-side only.** The search box filters on topic and entry ID prefix locally. It does not call `GET /notebooks/{id}/browse?query=...` for server-side full-text search. The placeholder text "Search topic or content..." is misleading — content is not searched.
+- ✅ **Server-side full-text search** (DONE). The search box now has a "Server Search" button that calls `GET /notebooks/{id}/search?query=...` and displays results in an expandable card with relevance scores.
 - **No semantic search UI.** The API has `POST /notebooks/{id}/semantic-search` for vector-based nearest-neighbor search, but there is no UI for it.
 - **No batch claims retrieval UI.** `POST /notebooks/{id}/claims/batch` exists for fetching claims for up to 100 entries but is only used programmatically.
-- **No classification assertion in entry creation.** The API supports `classification_assertion` on batch entries, but the entry creation form doesn't expose it.
-- **No source/provenance field in entry creation.** The API supports a `source` field for content provenance (Wikipedia, Confluence, etc.), but the UI doesn't expose it.
+- **No classification assertion in entry creation.** The single-entry API (`POST /notebooks/{id}/entries`) does not support `classification_assertion` (only the batch endpoint does). Entry creation form is correctly limited to content, type, topic, and references.
+- **No source/provenance field in entry creation.** The single-entry API does not support a `source` field (only the batch endpoint does). Entry creation form is correctly limited to content, type, topic, and references.
 - **Browse endpoint filters not exposed.** The API's `GET /notebooks/{id}/browse` supports rich filtering (claims_status, friction threshold, needs_review, integration_status, author, sequence range), but the UI only does client-side topic/ID filtering on the observe endpoint.
 
 ---
@@ -77,7 +77,7 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### UI Gaps
 
-- **No job queue visibility.** `GET /notebooks/{id}/jobs/stats` returns pending/in_progress/completed/failed counts per job type (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS, EMBED_MIRRORED), but the UI has no dashboard or table showing this.
+- ✅ **Job queue visibility** (DONE). The notebook view now includes a "Job Pipeline" section with a table showing pending/in_progress/completed/failed counts per job type (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS). Includes a refresh button to reload stats on demand.
 - **No individual job management.** The API supports claiming (`GET /jobs/next`), completing (`POST /jobs/{id}/complete`), and failing (`POST /jobs/{id}/fail`) individual jobs — these are for robot workers, but admins have no visibility into individual job status.
 
 ---
@@ -94,8 +94,8 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### UI Gaps
 
-- **Only two permission options exposed.** The UI offers "Read only" and "Read + Write", but the API supports four tiers: `existence`, `read`, `read_write`, `admin`. Users cannot grant `existence` or `admin` tier through the UI.
-- **No group-based access management.** Notebooks can be assigned to owning groups (which auto-propagates read_write to group members), but the UI has no way to assign a notebook to a group or see which group owns it.
+- ✅ **All four sharing tiers now exposed** (DONE). The sharing UI now offers a 4-tier dropdown: `existence` (can see notebook exists), `read` (can read entries), `read_write` (can write entries), `admin` (can share & manage). Participants table shows tier with colored badges.
+- ✅ **Group-based access management** (DONE). Notebooks now have a "Group Assignment" section in the notebook view (owner only) with a dropdown to assign/unassign the notebook from groups. Shows owning group with link to group detail page.
 
 ---
 
@@ -217,9 +217,9 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### UI Gaps
 
-- **Dashboard has no security events.** The spec calls for a "Recent Security Events" card showing the last 10 `access.denied` events. The current dashboard only shows aggregate counts.
-- **Dashboard uses zero-author admin mode.** It calls `GET /notebooks` with `000...000` as author, which is a workaround rather than proper admin authorization.
-- **About link is a placeholder.** The top-bar "About" links to Microsoft ASP.NET Core docs — should be removed or replaced.
+- ✅ **Security events card** (DONE). Dashboard now includes a "Recent Security Events" card showing the last 10 `access.denied` audit entries with timestamp, actor (truncated hex), and target.
+- ✅ **Proper admin authorization** (DONE). Dashboard now uses `CurrentUserService` to get the authenticated user's author ID instead of zero-author workaround. Page uses `@rendermode InteractiveServer` and `[CascadingParameter] Task<AuthenticationState>`.
+- ✅ **About link removed** (DONE). The placeholder "About" link has been removed from MainLayout.
 
 ---
 
@@ -238,22 +238,22 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### Partially Covered Features
 
-| Feature | What's Missing |
-|---------|---------------|
-| **Notebook creation** | Classification and compartment selection |
-| **Entry creation** | Classification assertion, source/provenance field |
-| **Sharing** | `existence` and `admin` tiers, group assignment |
-| **Search** | Server-side full-text search, semantic search |
-| **Browse** | Rich server-side filters (claims_status, friction, integration_status) |
-| **Job pipeline** | Queue stats dashboard, per-job-type visibility |
-| **Dashboard** | Security events card, proper admin authorization |
+| Feature | Status | What's Missing |
+|---------|:------:|---------------|
+| **Notebook creation** | ⚠️ Partial | Classification and compartment selection at creation (not exposed in UI) |
+| **Entry creation** | ⚠️ Partial | Classification assertion and source fields (single-entry API doesn't support these; batch API does) |
+| **Sharing** | ✅ DONE | All 4 tiers (`existence`, `read`, `read_write`, `admin`) now exposed; group assignment working |
+| **Search** | ⚠️ Partial | Server-side full-text search ✅ DONE. Semantic search still missing |
+| **Browse** | ⚠️ Partial | Rich server-side filters (claims_status, friction, integration_status, etc.) not exposed |
+| **Job pipeline** | ✅ DONE | Queue stats dashboard with per-job-type visibility now available |
+| **Dashboard** | ✅ DONE | Security events card ✅, proper admin authorization ✅ |
 
 ### Other Issues
 
-| Issue | Location | Severity |
-|-------|----------|----------|
-| Ed25519 key generation is a stub | `AuthorService.cs` | Medium |
-| Notebook quota not enforced on create | `List.razor` | Low |
-| Profile notebook count error silently swallowed | `Profile.razor` | Low |
-| Search placeholder text misleading | `View.razor` | Low |
-| "About" link is a template placeholder | `MainLayout.razor` | Low |
+| Issue | Location | Severity | Status |
+|-------|----------|----------|:------:|
+| Ed25519 key generation is a stub | `AuthorService.cs` | Medium | ⚠️ Open |
+| Notebook quota not enforced on create | `List.razor` | Low | ⚠️ Open |
+| Profile notebook count error silently swallowed | `Profile.razor` | Low | ⚠️ Open |
+| Search placeholder text misleading | `View.razor` | Low | ⚠️ Open (now has server-side option) |
+| "About" link is a template placeholder | `MainLayout.razor` | Low | ✅ FIXED |
