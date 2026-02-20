@@ -19,12 +19,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
     {
         // Atomically increment the notebook's causal sequence counter
         var sequence = await db.Database
-            .SqlQuery<long>(
-                $"""
-                UPDATE notebooks SET current_sequence = current_sequence + 1
-                WHERE id = {notebookId}
-                RETURNING current_sequence
-                """)
+            .SqlQuery<long>($"""SELECT next_sequence({notebookId}) AS "Value" """)
             .SingleAsync(ct);
 
         var entry = new Entry
@@ -35,7 +30,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
             ContentType = newEntry.ContentType,
             Topic = newEntry.Topic,
             AuthorId = authorId,
-            Signature = [], // Batch writes don't carry Ed25519 signatures
+            Signature = new byte[64], // Batch writes don't carry Ed25519 signatures
             References = newEntry.References,
             FragmentOf = newEntry.FragmentOf,
             FragmentIndex = newEntry.FragmentIndex,
