@@ -140,6 +140,106 @@ else if (groupsData != null)
             }
         </div>
     </div>
+
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title">Security Clearances</h5>
+
+            @if (clearances == null)
+            {
+                <p>Loading clearances...</p>
+            }
+            else if (clearances.Count == 0)
+            {
+                <p class="text-muted">No clearances granted for this organization.</p>
+            }
+            else
+            {
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Author</th>
+                            <th>Max Level</th>
+                            <th>Compartments</th>
+                            <th>Granted</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in clearances)
+                        {
+                            <tr>
+                                <td><NotebookAdmin.Components.Shared.AuthorDisplay AuthorIdHex="@c.AuthorId" /></td>
+                                <td><span class="badge bg-secondary">@c.MaxLevel</span></td>
+                                <td>@(c.Compartments.Count > 0 ? string.Join(", ", c.Compartments) : "—")</td>
+                                <td>@c.Granted.ToString("yyyy-MM-dd")</td>
+                                <td>
+                                    @if (revokingClearance == c.AuthorId)
+                                    {
+                                        <button class="btn btn-sm btn-danger"
+                                                @onclick="() => ConfirmRevokeClearance(c.AuthorId)"
+                                                disabled="@isSubmitting">Yes, Revoke</button>
+                                        <button class="btn btn-sm btn-outline-secondary ms-1"
+                                                @onclick="() => revokingClearance = null">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger"
+                                                @onclick="() => revokingClearance = c.AuthorId"
+                                                disabled="@isSubmitting">Revoke</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            <h6 class="mt-3">Grant Clearance</h6>
+            <div class="row g-2">
+                <div class="col-md-4">
+                    <input class="form-control font-monospace" placeholder="Author ID (64 hex chars)"
+                           @bind="clearanceAuthorId" @bind:event="oninput"
+                           disabled="@isSubmitting" />
+                    @if (clearanceAuthorIdError != null)
+                    {
+                        <div class="text-danger small">@clearanceAuthorIdError</div>
+                    }
+                </div>
+                <div class="col-md-3">
+                    <select class="form-select" @bind="clearanceMaxLevel" disabled="@isSubmitting">
+                        <option value="PUBLIC">PUBLIC</option>
+                        <option value="INTERNAL" selected>INTERNAL</option>
+                        <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+                        <option value="SECRET">SECRET</option>
+                        <option value="TOP_SECRET">TOP_SECRET</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <input class="form-control" placeholder="Compartments (comma-separated)"
+                           @bind="clearanceCompartments" @bind:event="oninput"
+                           disabled="@isSubmitting" />
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-outline-primary w-100" @onclick="GrantClearance"
+                            disabled="@(isSubmitting || string.IsNullOrWhiteSpace(clearanceAuthorId))">
+                        Grant
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-3">
+                <button class="btn btn-sm btn-outline-secondary" @onclick="FlushCache"
+                        disabled="@isSubmitting" title="Flush clearance cache on the server">
+                    Flush Cache
+                </button>
+                @if (cacheFlushMessage != null)
+                {
+                    <span class="ms-2 text-success small">@cacheFlushMessage</span>
+                }
+            </div>
+        </div>
+    </div>
 }
 
 @code {
@@ -159,6 +259,15 @@ else if (groupsData != null)
     private string edgeParentId = string.Empty;
     private string edgeChildId = string.Empty;
 
+    // Clearance state
+    private List<ClearanceSummaryResponse>? clearances;
+    private string clearanceAuthorId = string.Empty;
+    private string clearanceMaxLevel = "INTERNAL";
+    private string clearanceCompartments = string.Empty;
+    private string? clearanceAuthorIdError;
+    private string? revokingClearance;
+    private string? cacheFlushMessage;
+
     private List<GroupResponse> rootGroups = [];
     private Dictionary<Guid, List<GroupResponse>> childMap = new();
     private HashSet<Guid> expandedGroups = new();
@@ -170,7 +279,7 @@ else if (groupsData != null)
         if (authorId == null) { Navigation.NavigateTo("/auth/login"); return; }
 
         await LoadOrgs();
-        await LoadGroups();
+        await Task.WhenAll(LoadGroups(), LoadClearances());
     }
 
     private async Task LoadOrgs()
@@ -321,6 +430,85 @@ else if (groupsData != null)
         catch (HttpRequestException ex)
         {
             errorMessage = $"Failed to remove edge: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task LoadClearances()
+    {
+        try
+        {
+            var result = await ApiClient.ListClearancesAsync(authorId!, OrgId);
+            clearances = result?.Clearances ?? [];
+        }
+        catch (HttpRequestException)
+        {
+            clearances = [];
+        }
+    }
+
+    private bool ValidateAuthorHex(string hex) =>
+        hex.Length == 64 && hex.All(c =>
+            (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F'));
+
+    private async Task GrantClearance()
+    {
+        clearanceAuthorIdError = null;
+        var normalized = clearanceAuthorId.Trim().ToLowerInvariant();
+        if (!ValidateAuthorHex(normalized))
+        {
+            clearanceAuthorIdError = "Author ID must be exactly 64 hex characters.";
+            return;
+        }
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            var compartments = clearanceCompartments
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            await ApiClient.GrantClearanceAsync(authorId!, normalized, OrgId, clearanceMaxLevel, compartments);
+            clearanceAuthorId = string.Empty;
+            clearanceCompartments = string.Empty;
+            clearanceMaxLevel = "INTERNAL";
+            await LoadClearances();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to grant clearance: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task ConfirmRevokeClearance(string targetAuthorId)
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            await ApiClient.RevokeClearanceAsync(authorId!, targetAuthorId, OrgId);
+            revokingClearance = null;
+            await LoadClearances();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to revoke clearance: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task FlushCache()
+    {
+        isSubmitting = true;
+        cacheFlushMessage = null;
+        try
+        {
+            await ApiClient.FlushClearanceCacheAsync(authorId!);
+            cacheFlushMessage = "Cache flushed.";
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to flush cache: {ex.Message}";
         }
         finally { isSubmitting = false; }
     }

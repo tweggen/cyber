@@ -424,6 +424,69 @@ else if (browseResult != null)
         }
 
         <hr />
+        <h4>
+            Content Reviews
+            @if (pendingReviewCount > 0)
+            {
+                <span class="badge bg-warning text-dark ms-2">@pendingReviewCount pending</span>
+            }
+        </h4>
+
+        @if (reviewsError != null)
+        {
+            <div class="alert alert-warning mt-2">@reviewsError</div>
+        }
+
+        @if (reviews == null)
+        {
+            <p>Loading reviews...</p>
+        }
+        else if (reviews.Count == 0)
+        {
+            <p class="text-muted">No reviews for this notebook.</p>
+        }
+        else
+        {
+            <table class="table table-sm table-striped">
+                <thead>
+                    <tr>
+                        <th>Entry</th>
+                        <th>Submitter</th>
+                        <th>Status</th>
+                        <th>Submitted</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var r in reviews.OrderBy(r => r.Status != "pending").ThenBy(r => r.Created))
+                    {
+                        <tr>
+                            <td><a href="/notebooks/@NotebookId/entries/@r.EntryId"><code>@r.EntryId.ToString()[..8]…</code></a></td>
+                            <td><NotebookAdmin.Components.Shared.AuthorDisplay AuthorIdHex="@r.Submitter" /></td>
+                            <td>
+                                <span class="badge @(r.Status == "pending" ? "bg-warning text-dark" : r.Status == "approved" ? "bg-success" : "bg-danger")">
+                                    @r.Status
+                                </span>
+                            </td>
+                            <td>@r.Created.ToString("yyyy-MM-dd")</td>
+                            <td>
+                                @if (r.Status == "pending")
+                                {
+                                    <button class="btn btn-sm btn-outline-success"
+                                            @onclick="() => ApproveReview(r.Id)"
+                                            disabled="@isActingOnReview">Approve</button>
+                                    <button class="btn btn-sm btn-outline-danger ms-1"
+                                            @onclick="() => RejectReview(r.Id)"
+                                            disabled="@isActingOnReview">Reject</button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        }
+
+        <hr />
         <h4>Group Assignment</h4>
         @if (groupAssignError != null)
         {
@@ -473,6 +536,12 @@ else if (browseResult != null)
     private bool isOwner;
     private bool showDeleteConfirm;
     private string shareAuthorId = string.Empty;
+
+    // Reviews state
+    private List<ReviewItemResponse>? reviews;
+    private int pendingReviewCount;
+    private bool isActingOnReview;
+    private string? reviewsError;
 
     // Group assignment state
     private string assignGroupId = string.Empty;
@@ -572,19 +641,8 @@ else if (browseResult != null)
                 var participantsResp = await ApiClient.ListParticipantsAsync(authorIdHex, NotebookId);
                 participants = participantsResp?.Participants ?? [];
 
-                // Load groups for assignment dropdown
-                try
-                {
-                    var orgsResp = await ApiClient.ListOrganizationsAsync(authorIdHex);
-                    var groups = new List<GroupResponse>();
-                    foreach (var org in orgsResp?.Organizations ?? [])
-                    {
-                        var groupsResp = await ApiClient.ListGroupsAsync(authorIdHex, org.Id);
-                        if (groupsResp != null) groups.AddRange(groupsResp.Groups);
-                    }
-                    availableGroups = groups;
-                }
-                catch { availableGroups = []; }
+                // Load reviews and groups for assignment in parallel
+                await Task.WhenAll(LoadReviews(), LoadAvailableGroups());
             }
         }
         catch (HttpRequestException ex)
@@ -898,6 +956,71 @@ else if (browseResult != null)
         {
             errorMessage = $"Failed to revoke access: {ex.Message}";
         }
+    }
+
+    private async Task LoadReviews()
+    {
+        try
+        {
+            var result = await ApiClient.ListReviewsAsync(authorIdHex!, NotebookId);
+            reviews = result?.Reviews ?? [];
+            pendingReviewCount = result?.PendingCount ?? 0;
+        }
+        catch (HttpRequestException ex)
+        {
+            reviewsError = $"Could not load reviews: {ex.Message}";
+            reviews = [];
+        }
+    }
+
+    private async Task LoadAvailableGroups()
+    {
+        try
+        {
+            var orgsResp = await ApiClient.ListOrganizationsAsync(authorIdHex!);
+            var groups = new List<GroupResponse>();
+            foreach (var org in orgsResp?.Organizations ?? [])
+            {
+                var groupsResp = await ApiClient.ListGroupsAsync(authorIdHex!, org.Id);
+                if (groupsResp != null) groups.AddRange(groupsResp.Groups);
+            }
+            availableGroups = groups;
+        }
+        catch { availableGroups = []; }
+    }
+
+    private async Task ApproveReview(Guid reviewId)
+    {
+        if (authorIdHex == null) return;
+        isActingOnReview = true;
+        reviewsError = null;
+        try
+        {
+            await ApiClient.ApproveReviewAsync(authorIdHex, NotebookId, reviewId);
+            await LoadReviews();
+        }
+        catch (HttpRequestException ex)
+        {
+            reviewsError = $"Failed to approve review: {ex.Message}";
+        }
+        finally { isActingOnReview = false; }
+    }
+
+    private async Task RejectReview(Guid reviewId)
+    {
+        if (authorIdHex == null) return;
+        isActingOnReview = true;
+        reviewsError = null;
+        try
+        {
+            await ApiClient.RejectReviewAsync(authorIdHex, NotebookId, reviewId);
+            await LoadReviews();
+        }
+        catch (HttpRequestException ex)
+        {
+            reviewsError = $"Failed to reject review: {ex.Message}";
+        }
+        finally { isActingOnReview = false; }
     }
 
     private async Task AssignGroup()

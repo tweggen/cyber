@@ -334,6 +334,88 @@ public class NotebookApiClient
         response.EnsureSuccessStatusCode();
     }
 
+    // =========================================================================
+    // Clearances
+    // =========================================================================
+
+    public async Task<ClearanceSummaryResponse?> GrantClearanceAsync(
+        string authorIdHex, string targetAuthorIdHex, Guid orgId, string maxLevel, List<string>? compartments = null)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/clearances");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(new GrantClearanceRequest
+        {
+            AuthorId = targetAuthorIdHex,
+            OrganizationId = orgId,
+            MaxLevel = maxLevel,
+            Compartments = compartments ?? [],
+        }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ClearanceSummaryResponse>(JsonOptions);
+    }
+
+    public async Task RevokeClearanceAsync(string authorIdHex, string targetAuthorIdHex, Guid orgId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete,
+            $"/clearances/{targetAuthorIdHex}/{orgId}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task<ListClearancesResponse?> ListClearancesAsync(string authorIdHex, Guid orgId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"/organizations/{orgId}/clearances");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ListClearancesResponse>(JsonOptions);
+    }
+
+    public async Task FlushClearanceCacheAsync(string authorIdHex)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/admin/cache/flush");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    // =========================================================================
+    // Reviews
+    // =========================================================================
+
+    public async Task<ListReviewsResponse?> ListReviewsAsync(
+        string authorIdHex, Guid notebookId, string? status = null)
+    {
+        var url = $"/notebooks/{notebookId}/reviews";
+        if (status != null) url += $"?status={Uri.EscapeDataString(status)}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ListReviewsResponse>(JsonOptions);
+    }
+
+    public async Task ApproveReviewAsync(string authorIdHex, Guid notebookId, Guid reviewId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/notebooks/{notebookId}/reviews/{reviewId}/approve");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task RejectReviewAsync(string authorIdHex, Guid notebookId, Guid reviewId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/notebooks/{notebookId}/reviews/{reviewId}/reject");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
     /// <summary>
     /// Add JWT Bearer token to the request for the given author.
     /// </summary>

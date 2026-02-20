@@ -696,3 +696,86 @@ public class AssignGroupRequest
     [JsonPropertyName("group_id")]
     public Guid? GroupId { get; set; }
 }
+
+// ============================================================================
+// Clearance DTOs
+// ============================================================================
+
+public class GrantClearanceRequest
+{
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("organization_id")]
+    public Guid OrganizationId { get; set; }
+
+    [JsonPropertyName("max_level")]
+    public string MaxLevel { get; set; } = "INTERNAL";
+
+    [JsonPropertyName("compartments")]
+    public List<string> Compartments { get; set; } = [];
+}
+
+public class ClearanceSummaryResponse
+{
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("organization_id")]
+    public Guid OrganizationId { get; set; }
+
+    [JsonPropertyName("max_level")]
+    public string MaxLevel { get; set; } = string.Empty;
+
+    [JsonPropertyName("compartments")]
+    public List<string> Compartments { get; set; } = [];
+
+    [JsonPropertyName("granted")]
+    public DateTimeOffset Granted { get; set; }
+}
+
+public class ListClearancesResponse
+{
+    [JsonPropertyName("clearances")]
+    public List<ClearanceSummaryResponse> Clearances { get; set; } = [];
+}
+
+// ============================================================================
+// Review DTOs
+// ============================================================================
+
+public class ReviewItemResponse
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("notebook_id")]
+    public Guid NotebookId { get; set; }
+
+    [JsonPropertyName("entry_id")]
+    public Guid EntryId { get; set; }
+
+    [JsonPropertyName("submitter")]
+    public string Submitter { get; set; } = string.Empty;
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = string.Empty;
+
+    [JsonPropertyName("reviewer")]
+    public string? Reviewer { get; set; }
+
+    [JsonPropertyName("reviewed_at")]
+    public DateTimeOffset? ReviewedAt { get; set; }
+
+    [JsonPropertyName("created")]
+    public DateTimeOffset Created { get; set; }
+}
+
+public class ListReviewsResponse
+{
+    [JsonPropertyName("reviews")]
+    public List<ReviewItemResponse> Reviews { get; set; } = [];
+
+    [JsonPropertyName("pending_count")]
+    public int PendingCount { get; set; }
+}
