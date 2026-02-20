@@ -535,6 +535,36 @@ public class NotebookApiClient
         return await response.Content.ReadFromJsonAsync<AuditResponseDto>(JsonOptions);
     }
 
+    // =========================================================================
+    // Search
+    // =========================================================================
+
+    public async Task<LexicalSearchResponse?> ServerSearchAsync(
+        string authorIdHex, Guid notebookId, string query,
+        string searchIn = "both", int maxResults = 20)
+    {
+        var url = $"/notebooks/{notebookId}/search?query={Uri.EscapeDataString(query)}"
+                  + $"&search_in={Uri.EscapeDataString(searchIn)}&max_results={maxResults}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<LexicalSearchResponse>(JsonOptions);
+    }
+
+    // =========================================================================
+    // Job Stats
+    // =========================================================================
+
+    public async Task<JobStatsResponse?> QueryJobStatsAsync(string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/notebooks/{notebookId}/jobs/stats");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<JobStatsResponse>(JsonOptions);
+    }
+
     /// <summary>
     /// Add JWT Bearer token to the request for the given author.
     /// </summary>

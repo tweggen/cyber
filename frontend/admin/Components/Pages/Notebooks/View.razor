@@ -262,13 +262,63 @@ else if (browseResult != null)
                 <option value="cost">Cost (high to low)</option>
             </select>
         </div>
+        <div class="col-auto">
+            <button class="btn btn-sm btn-outline-info"
+                    @onclick="RunServerSearch"
+                    disabled="@(string.IsNullOrWhiteSpace(searchQuery) || isServerSearching)"
+                    title="Full-text search via API">
+                @(isServerSearching ? "Searching..." : "Server Search")
+            </button>
+            @if (serverSearchResults != null)
+            {
+                <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="ClearServerSearch">Clear</button>
+            }
+        </div>
         @if (!string.IsNullOrWhiteSpace(searchQuery) || pathFilter != "")
         {
             <div class="col-auto">
-                <span class="text-muted small">@filteredEntries.Count result(s)</span>
+                <span class="text-muted small">
+                    @if (serverSearchResults != null)
+                    { <text>@serverSearchResults.Count server result(s)</text> }
+                    else
+                    { <text>@filteredEntries.Count local result(s)</text> }
+                </span>
             </div>
         }
     </div>
+
+    @if (serverSearchResults != null)
+    {
+        <div class="card mb-3 border-info">
+            <div class="card-header bg-info bg-opacity-10 small py-1">Server search results for "<em>@searchQuery</em>"</div>
+            @if (serverSearchResults.Count == 0)
+            {
+                <div class="card-body py-2"><p class="text-muted mb-0">No results found.</p></div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Topic</th>
+                            <th>Snippet</th>
+                            <th>Score</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in serverSearchResults)
+                        {
+                            <tr>
+                                <td><a href="/notebooks/@NotebookId/entries/@r.EntryId">@(r.Topic ?? r.EntryId.ToString()[..8] + "…")</a></td>
+                                <td class="small text-muted">@r.Snippet</td>
+                                <td class="small">@r.RelevanceScore.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
 
     @if (allEntries == null || allEntries.Count == 0)
     {
@@ -378,8 +428,7 @@ else if (browseResult != null)
                 <thead>
                     <tr>
                         <th>Author ID</th>
-                        <th>Read</th>
-                        <th>Write</th>
+                        <th>Tier</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
@@ -388,8 +437,7 @@ else if (browseResult != null)
                     {
                         <tr>
                             <td><code>@(p.AuthorId[..16])...</code></td>
-                            <td>@(p.Permissions.Read ? "Yes" : "No")</td>
-                            <td>@(p.Permissions.Write ? "Yes" : "No")</td>
+                            <td><span class="badge @TierBadgeClass(p.Permissions.Tier ?? "read")">@(p.Permissions.Tier ?? "read")</span></td>
                             <td>
                                 @if (p.AuthorId != authorIdHex)
                                 {
@@ -409,9 +457,11 @@ else if (browseResult != null)
                     @bind="shareAuthorId" />
             </div>
             <div class="col-auto">
-                <select class="form-select form-select-sm" @bind="shareWrite">
-                    <option value="false">Read only</option>
-                    <option value="true">Read + Write</option>
+                <select class="form-select form-select-sm" @bind="shareTier">
+                    <option value="existence">existence (can see notebook exists)</option>
+                    <option value="read">read (can read entries)</option>
+                    <option value="read_write">read_write (can write entries)</option>
+                    <option value="admin">admin (can share + manage)</option>
                 </select>
             </div>
             <div class="col-auto">
@@ -603,6 +653,49 @@ else if (browseResult != null)
         }
 
         <hr />
+        <h4>Job Pipeline</h4>
+        @if (jobStatsError != null)
+        {
+            <div class="alert alert-warning mt-2">@jobStatsError</div>
+        }
+        @if (jobStats != null)
+        {
+            <table class="table table-sm table-bordered" style="font-size: 0.85rem; max-width: 700px;">
+                <thead class="table-light">
+                    <tr>
+                        <th>Job Type</th>
+                        <th class="text-center">Pending</th>
+                        <th class="text-center">In Progress</th>
+                        <th class="text-center">Completed</th>
+                        <th class="text-center text-danger">Failed</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var row in new[] {
+                        ("DISTILL_CLAIMS", jobStats.DistillClaims),
+                        ("COMPARE_CLAIMS", jobStats.CompareClaims),
+                        ("CLASSIFY_TOPIC", jobStats.ClassifyTopic),
+                        ("EMBED_CLAIMS", jobStats.EmbedClaims)
+                    })
+                    {
+                        <tr>
+                            <td class="font-monospace small">@row.Item1</td>
+                            <td class="text-center">@(row.Item2.Pending > 0 ? row.Item2.Pending.ToString() : "—")</td>
+                            <td class="text-center">@(row.Item2.InProgress > 0 ? row.Item2.InProgress.ToString() : "—")</td>
+                            <td class="text-center text-muted">@row.Item2.Completed</td>
+                            <td class="text-center @(row.Item2.Failed > 0 ? "text-danger fw-bold" : "text-muted")">@(row.Item2.Failed > 0 ? row.Item2.Failed.ToString() : "—")</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button class="btn btn-sm btn-outline-secondary" @onclick="LoadJobStats">Refresh</button>
+        }
+        else if (jobStatsError == null)
+        {
+            <p class="text-muted small">Loading job stats...</p>
+        }
+
+        <hr />
         <h4>Group Assignment</h4>
         @if (groupAssignError != null)
         {
@@ -704,8 +797,12 @@ else if (browseResult != null)
     };
 
     private string McpType => Configuration["NotebookApi:McpType"] ?? "notebook";
-    private string shareWrite = "false";
+    private string shareTier = "read";
     private string? shareError;
+
+    // Job stats state
+    private JobStatsResponse? jobStats;
+    private string? jobStatsError;
 
     // Path browser, search & pagination state
     private string pathFilter = "";
@@ -714,6 +811,10 @@ else if (browseResult != null)
     private string sortField = "sequence";
     private int currentPage = 1;
     private const int PageSize = 25;
+
+    // Server search state
+    private List<SearchResultDto>? serverSearchResults;
+    private bool isServerSearching;
 
     private List<string> PathSegments =>
         pathFilter == "" ? [] : pathFilter.TrimEnd('/').Split('/').ToList();
@@ -767,8 +868,8 @@ else if (browseResult != null)
                 var participantsResp = await ApiClient.ListParticipantsAsync(authorIdHex, NotebookId);
                 participants = participantsResp?.Participants ?? [];
 
-                // Load reviews, subscriptions and groups in parallel
-                await Task.WhenAll(LoadReviews(), LoadSubscriptions(), LoadAvailableGroups());
+                // Load reviews, subscriptions, groups and job stats in parallel
+                await Task.WhenAll(LoadReviews(), LoadSubscriptions(), LoadAvailableGroups(), LoadJobStats());
             }
         }
         catch (HttpRequestException ex)
@@ -893,6 +994,33 @@ else if (browseResult != null)
     {
         if (page >= 1 && page <= TotalPages)
             currentPage = page;
+    }
+
+    private async Task RunServerSearch()
+    {
+        if (string.IsNullOrWhiteSpace(searchQuery) || authorIdHex == null)
+            return;
+
+        isServerSearching = true;
+        try
+        {
+            var result = await ApiClient.ServerSearchAsync(authorIdHex, NotebookId, searchQuery.Trim());
+            serverSearchResults = result?.Results ?? [];
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Server search failed: {ex.Message}";
+            serverSearchResults = [];
+        }
+        finally
+        {
+            isServerSearching = false;
+        }
+    }
+
+    private void ClearServerSearch()
+    {
+        serverSearchResults = null;
     }
 
     // ===== Rename =====
@@ -1056,7 +1184,7 @@ else if (browseResult != null)
             var request = new ShareRequest
             {
                 AuthorId = shareAuthorId,
-                Permissions = new SharePermissions { Read = true, Write = bool.Parse(shareWrite) },
+                Tier = shareTier,
             };
             await ApiClient.ShareNotebookAsync(authorIdHex, NotebookId, request);
             shareAuthorId = string.Empty;
@@ -1128,6 +1256,27 @@ else if (browseResult != null)
             subscriptions = [];
         }
     }
+
+    private async Task LoadJobStats()
+    {
+        try
+        {
+            jobStats = await ApiClient.QueryJobStatsAsync(authorIdHex!, NotebookId);
+        }
+        catch (HttpRequestException ex)
+        {
+            jobStatsError = $"Could not load job stats: {ex.Message}";
+        }
+    }
+
+    private static string TierBadgeClass(string tier) => tier switch
+    {
+        "admin" => "bg-danger",
+        "read_write" => "bg-primary",
+        "read" => "bg-success",
+        "existence" => "bg-secondary",
+        _ => "bg-secondary",
+    };
 
     private async Task CreateSubscription()
     {

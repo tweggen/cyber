@@ -446,8 +446,8 @@ public class ShareRequest
     [JsonPropertyName("author_id")]
     public string AuthorId { get; set; } = string.Empty;
 
-    [JsonPropertyName("permissions")]
-    public SharePermissions Permissions { get; set; } = new();
+    [JsonPropertyName("tier")]
+    public string Tier { get; set; } = "read";
 }
 
 public class SharePermissions
@@ -457,27 +457,36 @@ public class SharePermissions
 
     [JsonPropertyName("write")]
     public bool Write { get; set; }
+
+    [JsonPropertyName("tier")]
+    public string? Tier { get; set; }
 }
 
 public class ShareResponse
 {
-    [JsonPropertyName("access_granted")]
-    public bool AccessGranted { get; set; }
+    [JsonPropertyName("notebook_id")]
+    public Guid NotebookId { get; set; }
 
     [JsonPropertyName("author_id")]
     public string AuthorId { get; set; } = string.Empty;
 
-    [JsonPropertyName("permissions")]
-    public SharePermissions Permissions { get; set; } = new();
+    [JsonPropertyName("tier")]
+    public string Tier { get; set; } = string.Empty;
+
+    [JsonPropertyName("granted")]
+    public bool Granted { get; set; }
 }
 
 public class RevokeResponse
 {
-    [JsonPropertyName("access_revoked")]
-    public bool AccessRevoked { get; set; }
+    [JsonPropertyName("notebook_id")]
+    public Guid NotebookId { get; set; }
 
     [JsonPropertyName("author_id")]
     public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = string.Empty;
 }
 
 /// <summary>
@@ -955,4 +964,66 @@ public class AuditResponseDto
 {
     [JsonPropertyName("entries")]
     public List<AuditLogEntryDto> Entries { get; set; } = [];
+}
+
+// ============================================================================
+// Search DTOs
+// ============================================================================
+
+public class SearchResultDto
+{
+    [JsonPropertyName("entry_id")]
+    public Guid EntryId { get; set; }
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; set; }
+
+    [JsonPropertyName("snippet")]
+    public string Snippet { get; set; } = string.Empty;
+
+    [JsonPropertyName("match_location")]
+    public string MatchLocation { get; set; } = string.Empty;
+
+    [JsonPropertyName("relevance_score")]
+    public double RelevanceScore { get; set; }
+}
+
+public class LexicalSearchResponse
+{
+    [JsonPropertyName("results")]
+    public List<SearchResultDto> Results { get; set; } = [];
+}
+
+// ============================================================================
+// Job Stats DTOs
+// ============================================================================
+
+public class JobTypeStats
+{
+    [JsonPropertyName("pending")]
+    public long Pending { get; set; }
+
+    [JsonPropertyName("in_progress")]
+    public long InProgress { get; set; }
+
+    [JsonPropertyName("completed")]
+    public long Completed { get; set; }
+
+    [JsonPropertyName("failed")]
+    public long Failed { get; set; }
+}
+
+public class JobStatsResponse
+{
+    [JsonPropertyName("DISTILL_CLAIMS")]
+    public JobTypeStats DistillClaims { get; set; } = new();
+
+    [JsonPropertyName("COMPARE_CLAIMS")]
+    public JobTypeStats CompareClaims { get; set; } = new();
+
+    [JsonPropertyName("CLASSIFY_TOPIC")]
+    public JobTypeStats ClassifyTopic { get; set; } = new();
+
+    [JsonPropertyName("EMBED_CLAIMS")]
+    public JobTypeStats EmbedClaims { get; set; } = new();
 }
