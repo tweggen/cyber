@@ -43,6 +43,9 @@
     <Content Include="..\..\..\postgres\migrations\015_security_labels.sql" Link="Migrations\015_security_labels.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\016_access_tiers.sql" Link="Migrations\016_access_tiers.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\017_agent_registry.sql" Link="Migrations\017_agent_registry.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\018_subscriptions.sql" Link="Migrations\018_subscriptions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\019_mirrored_content.sql" Link="Migrations\019_mirrored_content.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\020_embed_mirrored_job_type.sql" Link="Migrations\020_embed_mirrored_job_type.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

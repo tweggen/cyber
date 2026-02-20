@@ -8,7 +8,8 @@ namespace Notebook.Server.Services;
 
 public class JobResultProcessor(
     IEntryRepository entryRepo,
-    IJobRepository jobRepo) : IJobResultProcessor
+    IJobRepository jobRepo,
+    IMirroredContentRepository mirroredRepo) : IJobResultProcessor
 {
     public async Task<int> ProcessResultAsync(
         JobEntity job, JsonElement result, CancellationToken ct)
@@ -49,7 +50,8 @@ public class JobResultProcessor(
 
                     await entryRepo.UpdateEntryEmbeddingAsync(entryId, job.NotebookId, embedding, ct);
 
-                    var neighbors = await entryRepo.FindNearestByEmbeddingAsync(
+                    // Use cross-boundary search that includes mirrored claims
+                    var neighbors = await entryRepo.FindNearestWithMirroredAsync(
                         job.NotebookId, entryId, embedding, 5, ct);
 
                     // Set expected comparisons for integration status tracking
@@ -68,16 +70,34 @@ public class JobResultProcessor(
                         var entry = await entryRepo.GetEntryAsync(entryId, job.NotebookId, ct);
                         var entryClaims = entry?.Claims ?? [];
 
-                        foreach (var (neighborId, neighborClaims, _) in neighbors)
+                        foreach (var neighbor in neighbors)
                         {
-                            var comparePayload = JsonSerializer.SerializeToDocument(new
+                            if (neighbor.IsMirrored)
                             {
-                                entry_id = entryId.ToString(),
-                                compare_against_id = neighborId.ToString(),
-                                claims_a = neighborClaims,
-                                claims_b = entryClaims,
-                            });
-                            await jobRepo.InsertJobAsync(job.NotebookId, "COMPARE_CLAIMS", comparePayload, ct);
+                                // Cross-boundary comparison with discount factor
+                                var comparePayload = JsonSerializer.SerializeToDocument(new
+                                {
+                                    entry_id = entryId.ToString(),
+                                    compare_against_id = neighbor.Id.ToString(),
+                                    claims_a = neighbor.Claims,
+                                    claims_b = entryClaims,
+                                    cross_boundary = true,
+                                    subscription_id = neighbor.SubscriptionId?.ToString(),
+                                    discount_factor = neighbor.DiscountFactor,
+                                });
+                                await jobRepo.InsertJobAsync(job.NotebookId, "COMPARE_CLAIMS", comparePayload, ct);
+                            }
+                            else
+                            {
+                                var comparePayload = JsonSerializer.SerializeToDocument(new
+                                {
+                                    entry_id = entryId.ToString(),
+                                    compare_against_id = neighbor.Id.ToString(),
+                                    claims_a = neighbor.Claims,
+                                    claims_b = entryClaims,
+                                });
+                                await jobRepo.InsertJobAsync(job.NotebookId, "COMPARE_CLAIMS", comparePayload, ct);
+                            }
                             followUpJobs++;
                         }
                     }
@@ -87,7 +107,13 @@ public class JobResultProcessor(
             case "COMPARE_CLAIMS":
                 {
                     var entryId = Guid.Parse(job.Payload.RootElement.GetProperty("entry_id").GetString()!);
-                    var comparisonCount = await entryRepo.AppendComparisonAsync(entryId, result, ct);
+
+                    // Read optional cross-boundary discount factor from payload
+                    var discountFactor = 1.0;
+                    if (job.Payload.RootElement.TryGetProperty("discount_factor", out var df))
+                        discountFactor = df.GetDouble();
+
+                    var comparisonCount = await entryRepo.AppendComparisonAsync(entryId, result, discountFactor, ct);
 
                     // Check if all expected comparisons are complete → transition integration status
                     var entry = await entryRepo.GetEntryAsync(entryId, job.NotebookId, ct);
@@ -106,6 +132,15 @@ public class JobResultProcessor(
                     var entryId = Guid.Parse(job.Payload.RootElement.GetProperty("entry_id").GetString()!);
                     var topic = result.GetProperty("primary_topic").GetString()!;
                     await entryRepo.UpdateEntryTopicAsync(entryId, topic, ct);
+                    break;
+                }
+
+            case "EMBED_MIRRORED":
+                {
+                    var mirroredClaimId = Guid.Parse(job.Payload.RootElement.GetProperty("mirrored_claim_id").GetString()!);
+                    var embedding = JsonSerializer.Deserialize<double[]>(result.GetProperty("embedding"))!;
+                    await mirroredRepo.UpdateEmbeddingAsync(mirroredClaimId, embedding, ct);
+                    // No follow-up jobs — mirrored claims are passive
                     break;
                 }
 

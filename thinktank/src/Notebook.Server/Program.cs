@@ -23,6 +23,8 @@ builder.Services.AddScoped<IJobResultProcessor, JobResultProcessor>();
 builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
 builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IAgentRepository, AgentRepository>();
+builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
+builder.Services.AddScoped<IMirroredContentRepository, MirroredContentRepository>();
 
 // Content processing
 builder.Services.AddSingleton<IContentNormalizer, ContentNormalizer>();
@@ -75,6 +77,7 @@ builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<IAuditService>(sp => sp.GetRequiredService<AuditService>());
 builder.Services.AddHostedService<AuditConsumerService>();
 builder.Services.AddHostedService<AuditRecoveryService>();
+builder.Services.AddHostedService<SubscriptionSyncService>();
 
 var app = builder.Build();
 
@@ -95,6 +98,7 @@ app.MapAuditEndpoints();
 app.MapOrganizationEndpoints();
 app.MapClearanceEndpoints();
 app.MapAgentEndpoints();
+app.MapSubscriptionEndpoints();
 
 app.Run();
 

@@ -5,6 +5,11 @@ namespace Notebook.Data.Repositories;
 
 public class NotebookRepository(NotebookDbContext db) : INotebookRepository
 {
+    public async Task<NotebookEntity?> GetByIdAsync(Guid notebookId, CancellationToken ct)
+    {
+        return await db.Notebooks.FirstOrDefaultAsync(n => n.Id == notebookId, ct);
+    }
+
     public async Task<List<NotebookEntity>> ListNotebooksAsync(byte[] authorId, CancellationToken ct)
     {
         // Notebooks where the user is owner OR has been granted access

@@ -9,6 +9,7 @@ public class JobRepository(NotebookDbContext db) : IJobRepository
     private static readonly Dictionary<string, int> JobTypePriority = new()
     {
         ["EMBED_CLAIMS"] = 30,    // Fast, unblocks comparisons
+        ["EMBED_MIRRORED"] = 25,  // Embed mirrored claims for cross-boundary search
         ["COMPARE_CLAIMS"] = 20,  // Produces user-visible friction scores
         ["CLASSIFY_TOPIC"] = 10,  // Produces topic labels for navigation
         ["DISTILL_CLAIMS"] = 0,   // Background intake, can wait

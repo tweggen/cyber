@@ -141,9 +141,10 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
         return results;
     }
 
-    public async Task<int> AppendComparisonAsync(Guid entryId, JsonElement comparison, CancellationToken ct)
+    public async Task<int> AppendComparisonAsync(Guid entryId, JsonElement comparison, double discountFactor = 1.0, CancellationToken ct = default)
     {
         var friction = comparison.TryGetProperty("friction", out var f) ? f.GetDouble() : 0.0;
+        var effectiveFriction = friction * discountFactor;
         var comparisonJson = JsonSerializer.Serialize(comparison);
 
         var connection = db.Database.GetDbConnection();
@@ -155,17 +156,107 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
             """
             UPDATE entries SET
               comparisons = comparisons || jsonb_build_array(@comparison::jsonb),
-              max_friction = GREATEST(COALESCE(max_friction, 0.0), @friction),
-              needs_review = (GREATEST(COALESCE(max_friction, 0.0), @friction) > 0.2)
+              max_friction = GREATEST(COALESCE(max_friction, 0.0), @effectiveFriction),
+              needs_review = (GREATEST(COALESCE(max_friction, 0.0), @effectiveFriction) > 0.2)
             WHERE id = @entryId
             RETURNING jsonb_array_length(comparisons)
             """;
         cmd.Parameters.Add(new Npgsql.NpgsqlParameter("comparison", comparisonJson));
-        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("friction", friction));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("effectiveFriction", effectiveFriction));
         cmd.Parameters.Add(new Npgsql.NpgsqlParameter("entryId", entryId));
 
         var result = await cmd.ExecuteScalarAsync(ct);
         return result is int count ? count : Convert.ToInt32(result);
+    }
+
+    public async Task<List<NeighborResult>> FindNearestWithMirroredAsync(
+        Guid notebookId, Guid excludeEntryId, double[] query, int topK, CancellationToken ct)
+    {
+        var connection = db.Database.GetDbConnection();
+        if (connection.State != System.Data.ConnectionState.Open)
+            await connection.OpenAsync(ct);
+
+        await using var cmd = connection.CreateCommand();
+        cmd.CommandText =
+            """
+            SELECT id, claims, similarity, is_mirrored, subscription_id, discount_factor
+            FROM (
+              SELECT e.id, e.claims, false AS is_mirrored, NULL::uuid AS subscription_id, 1.0 AS discount_factor,
+                (SELECT SUM(q.val * d.val)
+                 FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
+                 JOIN unnest(e.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
+                /
+                NULLIF(
+                  SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
+                  * SQRT((SELECT SUM(v.val * v.val) FROM unnest(e.embedding) AS v(val))),
+                  0)
+                AS similarity
+              FROM entries e
+              WHERE e.notebook_id = @notebookId
+                AND e.id != @entryId
+                AND e.embedding IS NOT NULL
+                AND e.claims_status IN ('distilled', 'verified')
+                AND e.fragment_of IS NULL
+              UNION ALL
+              SELECT mc.id, mc.claims, true AS is_mirrored, mc.subscription_id, ns.discount_factor,
+                (SELECT SUM(q.val * d.val)
+                 FROM unnest(@query) WITH ORDINALITY AS q(val, ord)
+                 JOIN unnest(mc.embedding) WITH ORDINALITY AS d(val, ord) USING (ord))
+                /
+                NULLIF(
+                  SQRT((SELECT SUM(v.val * v.val) FROM unnest(@query) AS v(val)))
+                  * SQRT((SELECT SUM(v.val * v.val) FROM unnest(mc.embedding) AS v(val))),
+                  0)
+                AS similarity
+              FROM mirrored_claims mc
+              JOIN notebook_subscriptions ns ON mc.subscription_id = ns.id
+              WHERE mc.notebook_id = @notebookId
+                AND mc.embedding IS NOT NULL
+                AND mc.tombstoned = false
+            ) combined
+            ORDER BY similarity DESC NULLS LAST
+            LIMIT @topK
+            """;
+
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("query", query));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("notebookId", notebookId));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("entryId", excludeEntryId));
+        cmd.Parameters.Add(new Npgsql.NpgsqlParameter("topK", topK));
+
+        var results = new List<NeighborResult>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct);
+        while (await reader.ReadAsync(ct))
+        {
+            var id = reader.GetGuid(0);
+            var claimsJson = reader.IsDBNull(1) ? "[]" : reader.GetString(1);
+            var claims = JsonSerializer.Deserialize<List<Claim>>(claimsJson) ?? [];
+            var similarity = reader.IsDBNull(2) ? 0.0 : reader.GetDouble(2);
+            var isMirrored = reader.GetBoolean(3);
+            var subscriptionId = reader.IsDBNull(4) ? (Guid?)null : reader.GetGuid(4);
+            var discountFactor = reader.IsDBNull(5) ? 1.0 : reader.GetDouble(5);
+
+            results.Add(new NeighborResult
+            {
+                Id = id,
+                Claims = claims,
+                Similarity = similarity,
+                IsMirrored = isMirrored,
+                SubscriptionId = subscriptionId,
+                DiscountFactor = discountFactor,
+            });
+        }
+
+        return results;
+    }
+
+    public async Task<List<Entry>> GetEntriesAfterSequenceAsync(
+        Guid notebookId, long afterSequence, int limit, CancellationToken ct)
+    {
+        return await db.Entries
+            .Where(e => e.NotebookId == notebookId && e.Sequence > afterSequence)
+            .OrderBy(e => e.Sequence)
+            .Take(limit)
+            .ToListAsync(ct);
     }
 
     public async Task UpdateExpectedComparisonsAsync(

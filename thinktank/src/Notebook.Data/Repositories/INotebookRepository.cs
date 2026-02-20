@@ -4,6 +4,7 @@ namespace Notebook.Data.Repositories;
 
 public interface INotebookRepository
 {
+    Task<NotebookEntity?> GetByIdAsync(Guid notebookId, CancellationToken ct);
     Task<List<NotebookEntity>> ListNotebooksAsync(byte[] authorId, CancellationToken ct);
     Task<NotebookEntity> CreateNotebookAsync(string name, byte[] ownerId, CancellationToken ct,
         string classification = "INTERNAL", List<string>? compartments = null);

@@ -21,6 +21,9 @@ public class NotebookDbContext : DbContext
     public DbSet<GroupMembershipEntity> GroupMemberships => Set<GroupMembershipEntity>();
     public DbSet<PrincipalClearanceEntity> PrincipalClearances => Set<PrincipalClearanceEntity>();
     public DbSet<AgentEntity> Agents => Set<AgentEntity>();
+    public DbSet<SubscriptionEntity> Subscriptions => Set<SubscriptionEntity>();
+    public DbSet<MirroredClaimEntity> MirroredClaims => Set<MirroredClaimEntity>();
+    public DbSet<MirroredEntryEntity> MirroredEntries => Set<MirroredEntryEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
