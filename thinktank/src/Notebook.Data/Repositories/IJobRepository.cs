@@ -8,6 +8,7 @@ public interface IJobRepository
     Task<Guid> InsertJobAsync(Guid notebookId, string jobType, JsonDocument payload, CancellationToken ct);
     Task<int> ReclaimTimedOutJobsAsync(Guid notebookId, CancellationToken ct);
     Task<JobEntity?> ClaimNextJobAsync(Guid notebookId, string? jobType, string workerId, CancellationToken ct);
+    Task<JobEntity?> ClaimNextJobAsync(Guid notebookId, string? jobType, string workerId, string? agentId, CancellationToken ct);
     Task<JobEntity?> GetJobAsync(Guid jobId, CancellationToken ct);
     Task CompleteJobAsync(Guid jobId, string workerId, JsonElement result, CancellationToken ct);
     Task ReturnToPendingAsync(Guid jobId, string error, CancellationToken ct);

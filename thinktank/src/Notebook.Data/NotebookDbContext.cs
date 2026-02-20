@@ -20,6 +20,7 @@ public class NotebookDbContext : DbContext
     public DbSet<GroupEdgeEntity> GroupEdges => Set<GroupEdgeEntity>();
     public DbSet<GroupMembershipEntity> GroupMemberships => Set<GroupMembershipEntity>();
     public DbSet<PrincipalClearanceEntity> PrincipalClearances => Set<PrincipalClearanceEntity>();
+    public DbSet<AgentEntity> Agents => Set<AgentEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

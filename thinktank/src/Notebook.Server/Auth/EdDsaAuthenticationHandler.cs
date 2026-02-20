@@ -110,6 +110,9 @@ public class EdDsaAuthenticationHandler : AuthenticationHandler<EdDsaAuthenticat
                     claims.Add(new Claim("scope", scope));
             }
 
+            if (payload.agent_id is not null)
+                claims.Add(new Claim("agent_id", payload.agent_id));
+
             var identity = new ClaimsIdentity(claims, SchemeName);
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, SchemeName);
@@ -149,6 +152,13 @@ public class EdDsaAuthenticationHandler : AuthenticationHandler<EdDsaAuthenticat
             new("scope", "notebook:admin"),
         };
 
+        if (Request.Headers.TryGetValue("X-Agent-Id", out var agentHeader) &&
+            !string.IsNullOrEmpty(agentHeader.FirstOrDefault()))
+        {
+            claims.Add(new Claim("agent_id", agentHeader.First()!));
+            Logger.LogDebug("Using dev agent identity from X-Agent-Id header: {AgentId}", agentHeader.First());
+        }
+
         var identity = new ClaimsIdentity(claims, SchemeName);
         var principal = new ClaimsPrincipal(identity);
         var ticket = new AuthenticationTicket(principal, SchemeName);
@@ -175,6 +185,7 @@ public class EdDsaAuthenticationHandler : AuthenticationHandler<EdDsaAuthenticat
         public long nbf { get; set; }
         public long iat { get; set; }
         public string? scope { get; set; }
+        public string? agent_id { get; set; }
     }
 }
 

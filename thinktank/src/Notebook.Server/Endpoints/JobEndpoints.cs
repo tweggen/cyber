@@ -30,6 +30,7 @@ public static class JobEndpoints
         [FromQuery(Name = "type")] string? jobType,
         IAccessControl acl,
         IJobRepository jobRepo,
+        IAgentRepository agentRepo,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -41,10 +42,15 @@ public static class JobEndpoints
         var deny = await acl.RequireWriteAsync(notebookId, authorId, ct);
         if (deny is not null) return deny;
 
+        var agentId = httpContext.User.FindFirst("agent_id")?.Value;
+
         await jobRepo.ReclaimTimedOutJobsAsync(notebookId, ct);
 
-        var job = await jobRepo.ClaimNextJobAsync(notebookId, jobType, workerId, ct);
+        var job = await jobRepo.ClaimNextJobAsync(notebookId, jobType, workerId, agentId, ct);
         var queueDepth = await jobRepo.CountPendingAsync(notebookId, ct);
+
+        if (job is not null && agentId is not null)
+            await agentRepo.TouchLastSeenAsync(agentId, ct);
 
         if (job is null)
             return Results.Ok(new { queue_depth = queueDepth });

@@ -51,27 +51,47 @@ public class JobRepository(NotebookDbContext db) : IJobRepository
         return rowsAffected;
     }
 
-    public async Task<JobEntity?> ClaimNextJobAsync(
+    public Task<JobEntity?> ClaimNextJobAsync(
         Guid notebookId, string? jobType, string workerId, CancellationToken ct)
+    {
+        return ClaimNextJobAsync(notebookId, jobType, workerId, agentId: null, ct);
+    }
+
+    public async Task<JobEntity?> ClaimNextJobAsync(
+        Guid notebookId, string? jobType, string workerId, string? agentId, CancellationToken ct)
     {
         // FOR UPDATE SKIP LOCKED requires raw SQL
         var jobTypeParam = jobType ?? (object)DBNull.Value;
+        var agentIdParam = agentId ?? (object)DBNull.Value;
 
         var jobs = await db.Jobs.FromSqlRaw(
             """
             UPDATE jobs SET status = 'in_progress', claimed_at = NOW(), claimed_by = {0}
             WHERE id = (
-                SELECT id FROM jobs
-                WHERE notebook_id = {1}
-                  AND status = 'pending'
-                  AND ({2}::text IS NULL OR job_type = {2})
-                ORDER BY priority DESC, created ASC
+                SELECT j.id FROM jobs j
+                JOIN notebooks n ON j.notebook_id = n.id
+                LEFT JOIN agents a ON a.id = {3}
+                WHERE j.notebook_id = {1}
+                  AND j.status = 'pending'
+                  AND ({2}::text IS NULL OR j.job_type = {2})
+                  AND (
+                      {3}::text IS NULL
+                      OR (
+                          (SELECT pos FROM unnest(ARRAY['PUBLIC','INTERNAL','CONFIDENTIAL','SECRET','TOP_SECRET'])
+                              WITH ORDINALITY AS t(val, pos) WHERE t.val = a.max_level)
+                          >=
+                          (SELECT pos FROM unnest(ARRAY['PUBLIC','INTERNAL','CONFIDENTIAL','SECRET','TOP_SECRET'])
+                              WITH ORDINALITY AS t(val, pos) WHERE t.val = n.classification)
+                          AND n.compartments <@ a.compartments
+                      )
+                  )
+                ORDER BY j.priority DESC, j.created ASC
                 LIMIT 1
-                FOR UPDATE SKIP LOCKED
+                FOR UPDATE OF j SKIP LOCKED
             )
             RETURNING *
             """,
-            workerId, notebookId, jobTypeParam)
+            workerId, notebookId, jobTypeParam, agentIdParam)
             .ToListAsync(ct);
 
         return jobs.FirstOrDefault();
