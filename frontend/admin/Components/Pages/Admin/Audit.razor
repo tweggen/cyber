@@ -1,0 +1,295 @@
+@page "/admin/audit"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<PageTitle>Audit Trail</PageTitle>
+
+<h3>Audit Trail</h3>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-2">
+                <label class="form-label small">Actor (author hex)</label>
+                <input class="form-control form-control-sm font-monospace" placeholder="64 hex chars"
+                       @bind="filterActor" @bind:event="oninput" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Action</label>
+                <input class="form-control form-control-sm" placeholder="e.g. entry.write"
+                       @bind="filterAction" @bind:event="oninput" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Resource</label>
+                <input class="form-control form-control-sm" placeholder="e.g. notebook:{id}"
+                       @bind="filterResource" @bind:event="oninput" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">From</label>
+                <input type="date" class="form-control form-control-sm" @bind="filterFrom" />
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">To</label>
+                <input type="date" class="form-control form-control-sm" @bind="filterTo" />
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-1">
+                <button class="btn btn-primary btn-sm" @onclick="Search" disabled="@isLoading">
+                    @(isLoading ? "Loading…" : "Search")
+                </button>
+                <button class="btn btn-outline-secondary btn-sm" @onclick="Reset">Reset</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+
+@if (entries == null && !isLoading)
+{
+    <p class="text-muted">Use the filters above and click Search, or leave blank for recent entries.</p>
+}
+else if (isLoading)
+{
+    <p>Loading...</p>
+}
+else if (entries != null)
+{
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="text-muted small">Showing @entries.Count entries</span>
+        <div class="d-flex gap-2">
+            @if (entries.Count > 0)
+            {
+                <button class="btn btn-sm btn-outline-secondary" @onclick="LoadMore"
+                        disabled="@isLoading">Load More</button>
+                <button class="btn btn-sm btn-outline-secondary" @onclick="ExportCsv">CSV</button>
+            }
+        </div>
+    </div>
+
+    @if (entries.Count == 0)
+    {
+        <p class="text-muted">No audit entries match the current filters.</p>
+    }
+    else
+    {
+        <table class="table table-sm table-striped font-monospace" style="font-size: 0.85rem;">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Timestamp</th>
+                    <th>Action</th>
+                    <th>Actor</th>
+                    <th>Target</th>
+                    <th>Notebook</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var entry in entries)
+                {
+                    <tr>
+                        <td>@entry.Id</td>
+                        <td>@entry.Timestamp.ToString("yyyy-MM-dd HH:mm:ss")</td>
+                        <td>
+                            <span class="badge @ActionBadgeClass(entry.Action)">@entry.Action</span>
+                        </td>
+                        <td title="@entry.AuthorId">
+                            @if (entry.AuthorId != null)
+                            {
+                                <NotebookAdmin.Components.Shared.AuthorDisplay AuthorIdHex="@entry.AuthorId" />
+                            }
+                            else
+                            {
+                                <span class="text-muted">system</span>
+                            }
+                        </td>
+                        <td>
+                            @if (entry.TargetType != null)
+                            {
+                                <span>@entry.TargetType</span>
+                                @if (entry.TargetId != null)
+                                {
+                                    <span class="text-muted"> / @entry.TargetId[..Math.Min(8, entry.TargetId.Length)]…</span>
+                                }
+                            }
+                        </td>
+                        <td>
+                            @if (entry.NotebookId.HasValue)
+                            {
+                                <a href="/notebooks/@entry.NotebookId" class="small">@entry.NotebookId.Value.ToString()[..8]…</a>
+                            }
+                        </td>
+                        <td>
+                            @if (entry.Detail.HasValue)
+                            {
+                                <button class="btn btn-sm btn-link p-0"
+                                        @onclick="() => ToggleDetail(entry.Id)"
+                                        title="Show detail">detail</button>
+                            }
+                        </td>
+                    </tr>
+                    @if (expandedEntries.Contains(entry.Id) && entry.Detail.HasValue)
+                    {
+                        <tr class="table-light">
+                            <td colspan="7">
+                                <pre class="mb-0 small">@FormatDetail(entry.Detail.Value)</pre>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private string? authorId;
+    private List<AuditLogEntryDto>? entries;
+    private bool isLoading;
+    private string? errorMessage;
+
+    // Filters
+    private string filterActor = string.Empty;
+    private string filterAction = string.Empty;
+    private string filterResource = string.Empty;
+    private DateTime? filterFrom;
+    private DateTime? filterTo;
+
+    // Pagination
+    private long? beforeCursor;
+
+    // Expanded rows
+    private HashSet<long> expandedEntries = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = AuthState != null ? await AuthState : null;
+        authorId = await CurrentUser.GetAuthorIdHexAsync(state?.User);
+        if (authorId == null) { Navigation.NavigateTo("/auth/login"); return; }
+
+        await Search();
+    }
+
+    private async Task Search()
+    {
+        beforeCursor = null;
+        entries = null;
+        await LoadPage();
+    }
+
+    private async Task LoadMore()
+    {
+        if (entries == null || entries.Count == 0) return;
+        beforeCursor = entries[^1].Id;
+        await LoadPage(append: true);
+    }
+
+    private async Task LoadPage(bool append = false)
+    {
+        isLoading = true;
+        errorMessage = null;
+        try
+        {
+            string? actor = string.IsNullOrWhiteSpace(filterActor) ? null : filterActor.Trim();
+            string? action = string.IsNullOrWhiteSpace(filterAction) ? null : filterAction.Trim();
+            string? resource = string.IsNullOrWhiteSpace(filterResource) ? null : filterResource.Trim();
+            DateTimeOffset? from = filterFrom.HasValue ? new DateTimeOffset(filterFrom.Value, TimeSpan.Zero) : null;
+            DateTimeOffset? to = filterTo.HasValue ? new DateTimeOffset(filterTo.Value.AddDays(1), TimeSpan.Zero) : null;
+
+            var result = await ApiClient.QueryGlobalAuditAsync(
+                authorId!, actor, action, resource, from, to, limit: 100, before: beforeCursor);
+
+            if (append && entries != null)
+                entries.AddRange(result?.Entries ?? []);
+            else
+                entries = result?.Entries ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"API error: {ex.Message}";
+            entries ??= [];
+        }
+        finally { isLoading = false; }
+    }
+
+    private void Reset()
+    {
+        filterActor = string.Empty;
+        filterAction = string.Empty;
+        filterResource = string.Empty;
+        filterFrom = null;
+        filterTo = null;
+        beforeCursor = null;
+        entries = null;
+        expandedEntries.Clear();
+    }
+
+    private void ToggleDetail(long id)
+    {
+        if (!expandedEntries.Add(id))
+            expandedEntries.Remove(id);
+    }
+
+    private static string FormatDetail(System.Text.Json.JsonElement el)
+    {
+        try
+        {
+            return System.Text.Json.JsonSerializer.Serialize(el,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+        }
+        catch { return el.ToString() ?? ""; }
+    }
+
+    private static string ActionBadgeClass(string action) => action switch
+    {
+        var a when a.Contains("deny") || a.Contains("reject") || a.Contains("revoke") => "bg-danger",
+        var a when a.Contains("approve") || a.Contains("grant") => "bg-success",
+        var a when a.Contains("delete") || a.Contains("remove") => "bg-warning text-dark",
+        _ => "bg-secondary",
+    };
+
+    private async Task ExportCsv()
+    {
+        if (entries == null || entries.Count == 0) return;
+
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("id,timestamp,action,author_id,target_type,target_id,notebook_id,ip_address");
+        foreach (var e in entries)
+        {
+            sb.AppendLine(string.Join(",",
+                e.Id,
+                e.Timestamp.ToString("O"),
+                CsvEscape(e.Action),
+                CsvEscape(e.AuthorId ?? ""),
+                CsvEscape(e.TargetType ?? ""),
+                CsvEscape(e.TargetId ?? ""),
+                e.NotebookId?.ToString() ?? "",
+                CsvEscape(e.IpAddress ?? "")
+            ));
+        }
+
+        var bytes = System.Text.Encoding.UTF8.GetBytes(sb.ToString());
+        var base64 = Convert.ToBase64String(bytes);
+        await JS.InvokeVoidAsync("downloadBase64File", "audit-log.csv", "text/csv", base64);
+    }
+
+    private static string CsvEscape(string value)
+    {
+        if (value.Contains(',') || value.Contains('"') || value.Contains('\n'))
+            return "\"" + value.Replace("\"", "\"\"") + "\"";
+        return value;
+    }
+}

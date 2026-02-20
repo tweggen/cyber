@@ -416,6 +416,125 @@ public class NotebookApiClient
         response.EnsureSuccessStatusCode();
     }
 
+    // =========================================================================
+    // Agents
+    // =========================================================================
+
+    public async Task<ListAgentsResponse?> ListAgentsAsync(string authorIdHex)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/agents");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ListAgentsResponse>(JsonOptions);
+    }
+
+    public async Task<AgentResponse?> RegisterAgentAsync(string authorIdHex, RegisterAgentRequest body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/agents");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(body, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AgentResponse>(JsonOptions);
+    }
+
+    public async Task<AgentResponse?> UpdateAgentAsync(string authorIdHex, string agentId, UpdateAgentRequest body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Put, $"/agents/{Uri.EscapeDataString(agentId)}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(body, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AgentResponse>(JsonOptions);
+    }
+
+    public async Task DeleteAgentAsync(string authorIdHex, string agentId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete, $"/agents/{Uri.EscapeDataString(agentId)}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    // =========================================================================
+    // Subscriptions
+    // =========================================================================
+
+    public async Task<ListSubscriptionsResponse?> ListSubscriptionsAsync(string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"/notebooks/{notebookId}/subscriptions");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<ListSubscriptionsResponse>(JsonOptions);
+    }
+
+    public async Task<SubscriptionResponse?> CreateSubscriptionAsync(
+        string authorIdHex, Guid notebookId, CreateSubscriptionRequest body)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, $"/notebooks/{notebookId}/subscriptions");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(body, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SubscriptionResponse>(JsonOptions);
+    }
+
+    public async Task TriggerSyncAsync(string authorIdHex, Guid notebookId, Guid subId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/notebooks/{notebookId}/subscriptions/{subId}/sync");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task DeleteSubscriptionAsync(string authorIdHex, Guid notebookId, Guid subId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Delete,
+            $"/notebooks/{notebookId}/subscriptions/{subId}");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+    }
+
+    // =========================================================================
+    // Audit
+    // =========================================================================
+
+    public async Task<AuditResponseDto?> QueryNotebookAuditAsync(
+        string authorIdHex, Guid notebookId, string? action = null, int limit = 50, long? before = null)
+    {
+        var url = $"/notebooks/{notebookId}/audit?limit={limit}";
+        if (action != null) url += $"&action={Uri.EscapeDataString(action)}";
+        if (before.HasValue) url += $"&before={before.Value}";
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AuditResponseDto>(JsonOptions);
+    }
+
+    public async Task<AuditResponseDto?> QueryGlobalAuditAsync(
+        string authorIdHex, string? actor = null, string? action = null,
+        string? resource = null, DateTimeOffset? from = null, DateTimeOffset? to = null,
+        int limit = 100, long? before = null)
+    {
+        var parts = new List<string> { $"limit={limit}" };
+        if (actor != null) parts.Add($"actor={Uri.EscapeDataString(actor)}");
+        if (action != null) parts.Add($"action={Uri.EscapeDataString(action)}");
+        if (resource != null) parts.Add($"resource={Uri.EscapeDataString(resource)}");
+        if (from.HasValue) parts.Add($"from={Uri.EscapeDataString(from.Value.ToString("O"))}");
+        if (to.HasValue) parts.Add($"to={Uri.EscapeDataString(to.Value.ToString("O"))}");
+        if (before.HasValue) parts.Add($"before={before.Value}");
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/audit?" + string.Join("&", parts));
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<AuditResponseDto>(JsonOptions);
+    }
+
     /// <summary>
     /// Add JWT Bearer token to the request for the given author.
     /// </summary>

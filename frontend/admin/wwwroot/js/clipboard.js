@@ -73,3 +73,16 @@ function showCopied(btn) {
     btn.textContent = "Copied!";
     setTimeout(function () { btn.textContent = original; }, 2000);
 }
+
+/**
+ * Trigger a file download from a base64-encoded string.
+ * Used by the Audit page CSV export.
+ */
+window.downloadBase64File = function (filename, mimeType, base64) {
+    var link = document.createElement("a");
+    link.href = "data:" + mimeType + ";base64," + base64;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+};

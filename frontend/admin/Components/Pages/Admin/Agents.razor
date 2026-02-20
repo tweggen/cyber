@@ -1,0 +1,308 @@
+@page "/admin/agents"
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Components.Authorization
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+
+<PageTitle>Agents</PageTitle>
+
+<h3>Agent Management</h3>
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-warning">@errorMessage</div>
+}
+
+@if (agents == null && errorMessage == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    @if (agents != null && agents.Count > 0)
+    {
+        <table class="table table-striped mb-4">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Organization</th>
+                    <th>Max Level</th>
+                    <th>Compartments</th>
+                    <th>Infrastructure</th>
+                    <th>Registered</th>
+                    <th>Last Seen</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var agent in agents)
+                {
+                    <tr>
+                        <td><code>@agent.Id</code></td>
+                        <td><code class="small">@agent.OrganizationId.ToString()[..8]…</code></td>
+                        <td><span class="badge bg-secondary">@agent.MaxLevel</span></td>
+                        <td>@(agent.Compartments.Count > 0 ? string.Join(", ", agent.Compartments) : "—")</td>
+                        <td>@(agent.Infrastructure ?? "—")</td>
+                        <td>@agent.Registered.ToString("yyyy-MM-dd")</td>
+                        <td>@(agent.LastSeen?.ToString("yyyy-MM-dd HH:mm") ?? "never")</td>
+                        <td>
+                            @if (editingAgentId == agent.Id)
+                            {
+                                <button class="btn btn-sm btn-primary" @onclick="SaveEdit"
+                                        disabled="@isSubmitting">Save</button>
+                                <button class="btn btn-sm btn-outline-secondary ms-1"
+                                        @onclick="CancelEdit">Cancel</button>
+                            }
+                            else if (deletingAgentId == agent.Id)
+                            {
+                                <button class="btn btn-sm btn-danger" @onclick="() => ConfirmDelete(agent.Id)"
+                                        disabled="@isSubmitting">Yes, Delete</button>
+                                <button class="btn btn-sm btn-outline-secondary ms-1"
+                                        @onclick="() => deletingAgentId = null">Cancel</button>
+                            }
+                            else
+                            {
+                                <button class="btn btn-sm btn-outline-secondary"
+                                        @onclick="() => StartEdit(agent)"
+                                        disabled="@(editingAgentId != null || deletingAgentId != null)">Edit</button>
+                                <button class="btn btn-sm btn-outline-danger ms-1"
+                                        @onclick="() => deletingAgentId = agent.Id"
+                                        disabled="@(editingAgentId != null || deletingAgentId != null)">Delete</button>
+                            }
+                        </td>
+                    </tr>
+                    @if (editingAgentId == agent.Id)
+                    {
+                        <tr class="table-light">
+                            <td colspan="8">
+                                <div class="row g-2 p-2">
+                                    <div class="col-md-3">
+                                        <label class="form-label small">Max Level</label>
+                                        <select class="form-select form-select-sm" @bind="editMaxLevel">
+                                            <option value="PUBLIC">PUBLIC</option>
+                                            <option value="INTERNAL">INTERNAL</option>
+                                            <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+                                            <option value="SECRET">SECRET</option>
+                                            <option value="TOP_SECRET">TOP_SECRET</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Compartments (comma-separated)</label>
+                                        <input class="form-control form-control-sm" @bind="editCompartments" />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label small">Infrastructure</label>
+                                        <input class="form-control form-control-sm" @bind="editInfrastructure"
+                                               placeholder="e.g. aws-us-east-1" />
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                }
+            </tbody>
+        </table>
+    }
+    else if (agents != null)
+    {
+        <p class="text-muted">No agents registered yet.</p>
+    }
+
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">Register New Agent</h5>
+            <div class="row g-2">
+                <div class="col-md-3">
+                    <label class="form-label small">Agent ID</label>
+                    <input class="form-control" placeholder="e.g. worker-01" @bind="newId"
+                           disabled="@isSubmitting" />
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Organization</label>
+                    <select class="form-select" @bind="newOrgId" disabled="@isSubmitting">
+                        <option value="">— Select org —</option>
+                        @foreach (var org in organizations)
+                        {
+                            <option value="@org.Id">@org.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Max Level</label>
+                    <select class="form-select" @bind="newMaxLevel" disabled="@isSubmitting">
+                        <option value="PUBLIC">PUBLIC</option>
+                        <option value="INTERNAL" selected>INTERNAL</option>
+                        <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+                        <option value="SECRET">SECRET</option>
+                        <option value="TOP_SECRET">TOP_SECRET</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Compartments</label>
+                    <input class="form-control" placeholder="comma-separated" @bind="newCompartments"
+                           disabled="@isSubmitting" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small">Infrastructure</label>
+                    <input class="form-control" placeholder="optional" @bind="newInfrastructure"
+                           disabled="@isSubmitting" />
+                </div>
+            </div>
+            <div class="mt-2">
+                <button class="btn btn-primary" @onclick="RegisterAgent"
+                        disabled="@(isSubmitting || string.IsNullOrWhiteSpace(newId) || string.IsNullOrWhiteSpace(newOrgId))">
+                    @(isSubmitting ? "Registering..." : "Register Agent")
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private List<AgentResponse>? agents;
+    private List<OrganizationResponse> organizations = [];
+    private string? errorMessage;
+    private bool isSubmitting;
+    private string? authorId;
+
+    // Register form
+    private string newId = string.Empty;
+    private string newOrgId = string.Empty;
+    private string newMaxLevel = "INTERNAL";
+    private string newCompartments = string.Empty;
+    private string newInfrastructure = string.Empty;
+
+    // Edit state
+    private string? editingAgentId;
+    private string editMaxLevel = "INTERNAL";
+    private string editCompartments = string.Empty;
+    private string editInfrastructure = string.Empty;
+    private string? deletingAgentId;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = AuthState != null ? await AuthState : null;
+        authorId = await CurrentUser.GetAuthorIdHexAsync(state?.User);
+        if (authorId == null) { Navigation.NavigateTo("/auth/login"); return; }
+
+        await Task.WhenAll(LoadAgents(), LoadOrgs());
+    }
+
+    private async Task LoadAgents()
+    {
+        try
+        {
+            var result = await ApiClient.ListAgentsAsync(authorId!);
+            agents = result?.Agents ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"API error: {ex.Message}";
+        }
+    }
+
+    private async Task LoadOrgs()
+    {
+        try
+        {
+            var result = await ApiClient.ListOrganizationsAsync(authorId!);
+            organizations = result?.Organizations ?? [];
+        }
+        catch { organizations = []; }
+    }
+
+    private async Task RegisterAgent()
+    {
+        if (string.IsNullOrWhiteSpace(newId) || !Guid.TryParse(newOrgId, out var orgGuid)) return;
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            var compartments = newCompartments
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            await ApiClient.RegisterAgentAsync(authorId!, new RegisterAgentRequest
+            {
+                Id = newId.Trim(),
+                OrganizationId = orgGuid,
+                MaxLevel = newMaxLevel,
+                Compartments = compartments,
+                Infrastructure = string.IsNullOrWhiteSpace(newInfrastructure) ? null : newInfrastructure.Trim(),
+            });
+            newId = string.Empty;
+            newOrgId = string.Empty;
+            newMaxLevel = "INTERNAL";
+            newCompartments = string.Empty;
+            newInfrastructure = string.Empty;
+            await LoadAgents();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to register agent: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private void StartEdit(AgentResponse agent)
+    {
+        editingAgentId = agent.Id;
+        editMaxLevel = agent.MaxLevel;
+        editCompartments = string.Join(", ", agent.Compartments);
+        editInfrastructure = agent.Infrastructure ?? string.Empty;
+    }
+
+    private void CancelEdit()
+    {
+        editingAgentId = null;
+    }
+
+    private async Task SaveEdit()
+    {
+        if (editingAgentId == null) return;
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            var compartments = editCompartments
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .ToList();
+            await ApiClient.UpdateAgentAsync(authorId!, editingAgentId, new UpdateAgentRequest
+            {
+                MaxLevel = editMaxLevel,
+                Compartments = compartments,
+                Infrastructure = string.IsNullOrWhiteSpace(editInfrastructure) ? null : editInfrastructure.Trim(),
+            });
+            editingAgentId = null;
+            await LoadAgents();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to update agent: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+
+    private async Task ConfirmDelete(string agentId)
+    {
+        isSubmitting = true;
+        errorMessage = null;
+        try
+        {
+            await ApiClient.DeleteAgentAsync(authorId!, agentId);
+            deletingAgentId = null;
+            await LoadAgents();
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"Failed to delete agent: {ex.Message}";
+        }
+        finally { isSubmitting = false; }
+    }
+}

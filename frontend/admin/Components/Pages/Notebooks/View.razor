@@ -487,6 +487,122 @@ else if (browseResult != null)
         }
 
         <hr />
+        <h4>Subscriptions</h4>
+        @if (subsError != null)
+        {
+            <div class="alert alert-warning mt-2">@subsError</div>
+        }
+        @if (subscriptions == null)
+        {
+            <p>Loading subscriptions...</p>
+        }
+        else
+        {
+            @if (subscriptions.Count > 0)
+            {
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th>Source Notebook</th>
+                            <th>Scope</th>
+                            <th>Status</th>
+                            <th>Watermark</th>
+                            <th>Mirrored</th>
+                            <th>Last Sync</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var sub in subscriptions)
+                        {
+                            <tr>
+                                <td><a href="/notebooks/@sub.SourceId"><code>@sub.SourceId.ToString()[..8]…</code></a></td>
+                                <td><span class="badge bg-info text-dark">@sub.Scope</span></td>
+                                <td>
+                                    <span class="badge @SubStatusClass(sub.SyncStatus)">@sub.SyncStatus</span>
+                                    @if (sub.SyncError != null)
+                                    {
+                                        <span class="ms-1 text-danger small" title="@sub.SyncError">⚠</span>
+                                    }
+                                </td>
+                                <td>@sub.SyncWatermark</td>
+                                <td>@sub.MirroredCount</td>
+                                <td>@(sub.LastSyncAt?.ToString("yyyy-MM-dd HH:mm") ?? "never")</td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-info"
+                                            @onclick="() => TriggerSync(sub.Id)"
+                                            disabled="@isActingOnSub" title="Trigger immediate sync">Sync</button>
+                                    @if (deletingSubId == sub.Id)
+                                    {
+                                        <button class="btn btn-sm btn-danger ms-1"
+                                                @onclick="() => ConfirmDeleteSub(sub.Id)"
+                                                disabled="@isActingOnSub">Yes, Delete</button>
+                                        <button class="btn btn-sm btn-outline-secondary ms-1"
+                                                @onclick="() => deletingSubId = null">Cancel</button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-sm btn-outline-danger ms-1"
+                                                @onclick="() => deletingSubId = sub.Id"
+                                                disabled="@isActingOnSub">Delete</button>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+            else
+            {
+                <p class="text-muted">No subscriptions for this notebook.</p>
+            }
+
+            <div class="card mt-2">
+                <div class="card-body">
+                    <h6>Add Subscription</h6>
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            <label class="form-label small">Source Notebook ID</label>
+                            <input class="form-control form-control-sm font-monospace"
+                                   placeholder="UUID of source notebook"
+                                   @bind="newSubSourceId" disabled="@isActingOnSub" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Scope</label>
+                            <select class="form-select form-select-sm" @bind="newSubScope" disabled="@isActingOnSub">
+                                <option value="catalog">catalog</option>
+                                <option value="claims">claims</option>
+                                <option value="entries">entries</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Discount Factor</label>
+                            <input type="number" step="0.1" min="0.1" max="1.0"
+                                   class="form-control form-control-sm"
+                                   @bind="newSubDiscount" disabled="@isActingOnSub" />
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label small">Poll Interval (s)</label>
+                            <input type="number" min="10" class="form-control form-control-sm"
+                                   @bind="newSubPollInterval" disabled="@isActingOnSub" />
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button class="btn btn-outline-primary btn-sm w-100"
+                                    @onclick="CreateSubscription"
+                                    disabled="@(isActingOnSub || !Guid.TryParse(newSubSourceId, out _))">
+                                Subscribe
+                            </button>
+                        </div>
+                    </div>
+                    @if (newSubSourceId.Length > 0 && !Guid.TryParse(newSubSourceId, out _))
+                    {
+                        <div class="text-danger small mt-1">Source ID must be a valid UUID.</div>
+                    }
+                </div>
+            </div>
+        }
+
+        <hr />
         <h4>Group Assignment</h4>
         @if (groupAssignError != null)
         {
@@ -542,6 +658,16 @@ else if (browseResult != null)
     private int pendingReviewCount;
     private bool isActingOnReview;
     private string? reviewsError;
+
+    // Subscriptions state
+    private List<SubscriptionResponse>? subscriptions;
+    private bool isActingOnSub;
+    private string? subsError;
+    private Guid? deletingSubId;
+    private string newSubSourceId = string.Empty;
+    private string newSubScope = "catalog";
+    private double newSubDiscount = 0.3;
+    private int newSubPollInterval = 60;
 
     // Group assignment state
     private string assignGroupId = string.Empty;
@@ -641,8 +767,8 @@ else if (browseResult != null)
                 var participantsResp = await ApiClient.ListParticipantsAsync(authorIdHex, NotebookId);
                 participants = participantsResp?.Participants ?? [];
 
-                // Load reviews and groups for assignment in parallel
-                await Task.WhenAll(LoadReviews(), LoadAvailableGroups());
+                // Load reviews, subscriptions and groups in parallel
+                await Task.WhenAll(LoadReviews(), LoadSubscriptions(), LoadAvailableGroups());
             }
         }
         catch (HttpRequestException ex)
@@ -988,6 +1114,88 @@ else if (browseResult != null)
         }
         catch { availableGroups = []; }
     }
+
+    private async Task LoadSubscriptions()
+    {
+        try
+        {
+            var result = await ApiClient.ListSubscriptionsAsync(authorIdHex!, NotebookId);
+            subscriptions = result?.Subscriptions ?? [];
+        }
+        catch (HttpRequestException ex)
+        {
+            subsError = $"Could not load subscriptions: {ex.Message}";
+            subscriptions = [];
+        }
+    }
+
+    private async Task CreateSubscription()
+    {
+        if (!Guid.TryParse(newSubSourceId, out var sourceId)) return;
+        isActingOnSub = true;
+        subsError = null;
+        try
+        {
+            await ApiClient.CreateSubscriptionAsync(authorIdHex!, NotebookId, new CreateSubscriptionRequest
+            {
+                SourceId = sourceId,
+                Scope = newSubScope,
+                DiscountFactor = newSubDiscount,
+                PollIntervalSeconds = newSubPollInterval,
+            });
+            newSubSourceId = string.Empty;
+            newSubScope = "catalog";
+            newSubDiscount = 0.3;
+            newSubPollInterval = 60;
+            await LoadSubscriptions();
+        }
+        catch (HttpRequestException ex)
+        {
+            subsError = $"Failed to create subscription: {ex.Message}";
+        }
+        finally { isActingOnSub = false; }
+    }
+
+    private async Task TriggerSync(Guid subId)
+    {
+        isActingOnSub = true;
+        subsError = null;
+        try
+        {
+            await ApiClient.TriggerSyncAsync(authorIdHex!, NotebookId, subId);
+            await LoadSubscriptions();
+        }
+        catch (HttpRequestException ex)
+        {
+            subsError = $"Failed to trigger sync: {ex.Message}";
+        }
+        finally { isActingOnSub = false; }
+    }
+
+    private async Task ConfirmDeleteSub(Guid subId)
+    {
+        isActingOnSub = true;
+        subsError = null;
+        try
+        {
+            await ApiClient.DeleteSubscriptionAsync(authorIdHex!, NotebookId, subId);
+            deletingSubId = null;
+            await LoadSubscriptions();
+        }
+        catch (HttpRequestException ex)
+        {
+            subsError = $"Failed to delete subscription: {ex.Message}";
+        }
+        finally { isActingOnSub = false; }
+    }
+
+    private static string SubStatusClass(string status) => status switch
+    {
+        "syncing" => "bg-primary",
+        "idle" => "bg-secondary",
+        "error" => "bg-danger",
+        _ => "bg-secondary",
+    };
 
     private async Task ApproveReview(Guid reviewId)
     {

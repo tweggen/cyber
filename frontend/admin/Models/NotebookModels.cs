@@ -779,3 +779,180 @@ public class ListReviewsResponse
     [JsonPropertyName("pending_count")]
     public int PendingCount { get; set; }
 }
+
+// ============================================================================
+// Agent DTOs
+// ============================================================================
+
+public class RegisterAgentRequest
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("organization_id")]
+    public Guid OrganizationId { get; set; }
+
+    [JsonPropertyName("max_level")]
+    public string MaxLevel { get; set; } = "INTERNAL";
+
+    [JsonPropertyName("compartments")]
+    public List<string> Compartments { get; set; } = [];
+
+    [JsonPropertyName("infrastructure")]
+    public string? Infrastructure { get; set; }
+}
+
+public class UpdateAgentRequest
+{
+    [JsonPropertyName("max_level")]
+    public string MaxLevel { get; set; } = "INTERNAL";
+
+    [JsonPropertyName("compartments")]
+    public List<string> Compartments { get; set; } = [];
+
+    [JsonPropertyName("infrastructure")]
+    public string? Infrastructure { get; set; }
+}
+
+public class AgentResponse
+{
+    [JsonPropertyName("id")]
+    public string Id { get; set; } = string.Empty;
+
+    [JsonPropertyName("organization_id")]
+    public Guid OrganizationId { get; set; }
+
+    [JsonPropertyName("max_level")]
+    public string MaxLevel { get; set; } = string.Empty;
+
+    [JsonPropertyName("compartments")]
+    public List<string> Compartments { get; set; } = [];
+
+    [JsonPropertyName("infrastructure")]
+    public string? Infrastructure { get; set; }
+
+    [JsonPropertyName("registered")]
+    public DateTimeOffset Registered { get; set; }
+
+    [JsonPropertyName("last_seen")]
+    public DateTimeOffset? LastSeen { get; set; }
+}
+
+public class ListAgentsResponse
+{
+    [JsonPropertyName("agents")]
+    public List<AgentResponse> Agents { get; set; } = [];
+}
+
+// ============================================================================
+// Subscription DTOs
+// ============================================================================
+
+public class CreateSubscriptionRequest
+{
+    [JsonPropertyName("source_id")]
+    public Guid SourceId { get; set; }
+
+    [JsonPropertyName("scope")]
+    public string Scope { get; set; } = "catalog";
+
+    [JsonPropertyName("topic_filter")]
+    public string? TopicFilter { get; set; }
+
+    [JsonPropertyName("discount_factor")]
+    public double DiscountFactor { get; set; } = 0.3;
+
+    [JsonPropertyName("poll_interval_s")]
+    public int PollIntervalSeconds { get; set; } = 60;
+}
+
+public class SubscriptionResponse
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("subscriber_id")]
+    public Guid SubscriberId { get; set; }
+
+    [JsonPropertyName("source_id")]
+    public Guid SourceId { get; set; }
+
+    [JsonPropertyName("scope")]
+    public string Scope { get; set; } = string.Empty;
+
+    [JsonPropertyName("topic_filter")]
+    public string? TopicFilter { get; set; }
+
+    [JsonPropertyName("sync_status")]
+    public string SyncStatus { get; set; } = string.Empty;
+
+    [JsonPropertyName("sync_watermark")]
+    public long SyncWatermark { get; set; }
+
+    [JsonPropertyName("last_sync_at")]
+    public DateTimeOffset? LastSyncAt { get; set; }
+
+    [JsonPropertyName("sync_error")]
+    public string? SyncError { get; set; }
+
+    [JsonPropertyName("mirrored_count")]
+    public int MirroredCount { get; set; }
+
+    [JsonPropertyName("discount_factor")]
+    public double DiscountFactor { get; set; }
+
+    [JsonPropertyName("poll_interval_s")]
+    public int PollIntervalSeconds { get; set; }
+
+    [JsonPropertyName("created")]
+    public DateTimeOffset Created { get; set; }
+}
+
+public class ListSubscriptionsResponse
+{
+    [JsonPropertyName("subscriptions")]
+    public List<SubscriptionResponse> Subscriptions { get; set; } = [];
+}
+
+// ============================================================================
+// Audit DTOs
+// ============================================================================
+
+public class AuditLogEntryDto
+{
+    [JsonPropertyName("id")]
+    public long Id { get; set; }
+
+    [JsonPropertyName("ts")]
+    public DateTime Timestamp { get; set; }
+
+    [JsonPropertyName("notebook_id")]
+    public Guid? NotebookId { get; set; }
+
+    [JsonPropertyName("author_id")]
+    public string? AuthorId { get; set; }
+
+    [JsonPropertyName("action")]
+    public string Action { get; set; } = string.Empty;
+
+    [JsonPropertyName("target_type")]
+    public string? TargetType { get; set; }
+
+    [JsonPropertyName("target_id")]
+    public string? TargetId { get; set; }
+
+    [JsonPropertyName("detail")]
+    public System.Text.Json.JsonElement? Detail { get; set; }
+
+    [JsonPropertyName("ip_address")]
+    public string? IpAddress { get; set; }
+
+    [JsonPropertyName("user_agent")]
+    public string? UserAgent { get; set; }
+}
+
+public class AuditResponseDto
+{
+    [JsonPropertyName("entries")]
+    public List<AuditLogEntryDto> Entries { get; set; } = [];
+}
