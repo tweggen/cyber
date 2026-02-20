@@ -51,7 +51,7 @@ public static class AgentEndpoints
 
         await agentRepo.RegisterAsync(agent, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "agent.register", null,
+        await AuditHelper.LogActionAsync(audit, httpContext, "agent.register", null,
             targetType: "agent", targetId: request.Id,
             detail: new { max_level = request.MaxLevel, compartments = request.Compartments });
 
@@ -102,7 +102,7 @@ public static class AgentEndpoints
 
         await agentRepo.UpdateAsync(agent, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "agent.update", null,
+        await AuditHelper.LogActionAsync(audit, httpContext, "agent.update", null,
             targetType: "agent", targetId: agentId,
             detail: new { max_level = request.MaxLevel, compartments = request.Compartments });
 
@@ -120,7 +120,7 @@ public static class AgentEndpoints
         if (!deleted)
             return Results.NotFound(new { error = $"Agent '{agentId}' not found" });
 
-        AuditHelper.LogAction(audit, httpContext, "agent.delete", null,
+        await AuditHelper.LogActionAsync(audit, httpContext, "agent.delete", null,
             targetType: "agent", targetId: agentId);
 
         return Results.Ok(new { message = $"Agent '{agentId}' deleted" });

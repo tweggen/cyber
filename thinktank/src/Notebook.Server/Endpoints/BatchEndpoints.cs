@@ -209,7 +209,7 @@ public static class BatchEndpoints
 
         await transaction.CommitAsync(ct);
 
-        AuditHelper.LogAction(audit, httpContext, "entry.batch_write", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "entry.write", notebookId,
             targetType: "entries", targetId: null,
             detail: new { count = results.Count, jobs_created = jobsCreated,
                           requires_review = requiresReview });

@@ -94,7 +94,7 @@ public static class NotebookEndpoints
             request.Name.Trim(), authorId, ct,
             classification.ToDbString(), compartments);
 
-        AuditHelper.LogAction(audit, httpContext, "notebook.create", notebook.Id,
+        await AuditHelper.LogActionAsync(audit, httpContext, "notebook.create", notebook.Id,
             targetType: "notebook", targetId: notebook.Id.ToString(),
             detail: new { classification = notebook.Classification, compartments = notebook.Compartments });
 
@@ -129,7 +129,7 @@ public static class NotebookEndpoints
         if (!deleted)
             return Results.NotFound(new { error = $"Notebook {notebookId} not found or not owned by you" });
 
-        AuditHelper.LogAction(audit, httpContext, "notebook.delete", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "notebook.delete", notebookId,
             targetType: "notebook", targetId: notebookId.ToString());
 
         return Results.Ok(new DeleteNotebookResponse
@@ -163,7 +163,7 @@ public static class NotebookEndpoints
         if (notebook is null)
             return Results.NotFound(new { error = $"Notebook {notebookId} not found or not owned by you" });
 
-        AuditHelper.LogAction(audit, httpContext, "notebook.rename", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "notebook.rename", notebookId,
             targetType: "notebook", targetId: notebookId.ToString(),
             detail: new { name = notebook.Name });
 

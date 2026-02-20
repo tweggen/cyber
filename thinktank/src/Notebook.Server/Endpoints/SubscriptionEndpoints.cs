@@ -103,7 +103,7 @@ public static class SubscriptionEndpoints
 
         await subRepo.CreateAsync(subscription, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "subscription.create", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "subscription.create", notebookId,
             targetType: "subscription", targetId: subscription.Id.ToString(),
             detail: new { source_id = request.SourceId, scope = request.Scope });
 
@@ -181,7 +181,7 @@ public static class SubscriptionEndpoints
         // Set last_sync_at to null so the sync loop picks it up immediately
         await subRepo.SetSyncStatusAsync(subId, "idle", null, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "subscription.sync_triggered", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "subscription.sync_triggered", notebookId,
             targetType: "subscription", targetId: subId.ToString());
 
         return Results.Ok(new { message = "Sync triggered", subscription_id = subId });
@@ -210,7 +210,7 @@ public static class SubscriptionEndpoints
 
         await subRepo.DeleteAsync(subId, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "subscription.delete", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "subscription.delete", notebookId,
             targetType: "subscription", targetId: subId.ToString());
 
         return Results.Ok(new { id = subId, message = "Subscription deleted" });

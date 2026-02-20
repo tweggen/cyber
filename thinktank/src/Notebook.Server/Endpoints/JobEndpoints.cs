@@ -31,6 +31,7 @@ public static class JobEndpoints
         IAccessControl acl,
         IJobRepository jobRepo,
         IAgentRepository agentRepo,
+        IAuditService audit,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -54,6 +55,10 @@ public static class JobEndpoints
 
         if (job is null)
             return Results.Ok(new { queue_depth = queueDepth });
+
+        await AuditHelper.LogActionAsync(audit, httpContext, "agent.job.claim", notebookId,
+            targetType: "job", targetId: job.Id.ToString(),
+            detail: new { job_type = job.JobType, worker_id = workerId, agent_id = agentId });
 
         return Results.Ok(new JobResponse
         {
@@ -102,7 +107,7 @@ public static class JobEndpoints
 
         await jobRepo.CompleteJobAsync(jobId, request.WorkerId, request.Result, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "job.complete", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "agent.job.complete", notebookId,
             targetType: "job", targetId: jobId.ToString(),
             detail: new { job_type = job.JobType, follow_up_jobs = followUpJobs });
 
@@ -141,7 +146,7 @@ public static class JobEndpoints
         {
             await jobRepo.ReturnToPendingAsync(jobId, request.Error, ct);
 
-            AuditHelper.LogAction(audit, httpContext, "job.fail", notebookId,
+            await AuditHelper.LogActionAsync(audit, httpContext, "job.fail", notebookId,
                 targetType: "job", targetId: jobId.ToString(),
                 detail: new { job_type = job.JobType, error = request.Error, retrying = true });
 
@@ -151,7 +156,7 @@ public static class JobEndpoints
         {
             await jobRepo.MarkFailedAsync(jobId, request.Error, ct);
 
-            AuditHelper.LogAction(audit, httpContext, "job.fail", notebookId,
+            await AuditHelper.LogActionAsync(audit, httpContext, "job.fail", notebookId,
                 targetType: "job", targetId: jobId.ToString(),
                 detail: new { job_type = job.JobType, error = request.Error, retrying = false });
 
@@ -180,7 +185,7 @@ public static class JobEndpoints
 
         var count = await jobRepo.RetryFailedJobsAsync(notebookId, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "job.retry_all", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "job.retry_all", notebookId,
             detail: new { retried = count });
 
         return Results.Ok(new { retried = count });

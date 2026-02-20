@@ -92,7 +92,7 @@ public static class ReviewEndpoints
             await jobRepo.InsertJobAsync(notebookId, "DISTILL_CLAIMS", payload, ct);
         }
 
-        AuditHelper.LogAction(audit, httpContext, "entry.review.approve", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "entry.review.approve", notebookId,
             targetType: "entry_review", targetId: reviewId.ToString(),
             detail: new { entry_id = review.EntryId });
 
@@ -127,7 +127,7 @@ public static class ReviewEndpoints
         await reviewRepo.RejectAsync(reviewId, authorId, ct);
         await reviewRepo.SetEntryReviewStatusAsync(review.EntryId, "rejected", ct);
 
-        AuditHelper.LogAction(audit, httpContext, "entry.review.reject", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "entry.review.reject", notebookId,
             targetType: "entry_review", targetId: reviewId.ToString(),
             detail: new { entry_id = review.EntryId });
 

@@ -6,7 +6,7 @@ namespace Notebook.Server.Auth;
 
 public static class AuditHelper
 {
-    public static void LogAction(
+    public static ValueTask LogActionAsync(
         IAuditService audit,
         HttpContext? httpContext,
         string action,
@@ -36,7 +36,7 @@ public static class AuditHelper
             detailElement = JsonDocument.Parse(json).RootElement.Clone();
         }
 
-        audit.Log(new AuditEvent
+        return audit.LogAsync(new AuditEvent
         {
             NotebookId = notebookId,
             AuthorId = authorId,

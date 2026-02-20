@@ -8,14 +8,14 @@ public class AuditService : IAuditService
     private readonly Channel<AuditEvent> _channel = Channel.CreateBounded<AuditEvent>(
         new BoundedChannelOptions(10_000)
         {
-            FullMode = BoundedChannelFullMode.DropOldest,
+            FullMode = BoundedChannelFullMode.Wait,
             SingleReader = true,
         });
 
     internal ChannelReader<AuditEvent> Reader => _channel.Reader;
 
-    public void Log(AuditEvent auditEvent)
+    public ValueTask LogAsync(AuditEvent auditEvent)
     {
-        _channel.Writer.TryWrite(auditEvent);
+        return _channel.Writer.WriteAsync(auditEvent);
     }
 }

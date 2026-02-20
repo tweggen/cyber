@@ -9,7 +9,8 @@ public class AuditConsumerService(
     IConfiguration configuration,
     ILogger<AuditConsumerService> logger) : BackgroundService
 {
-    private const int BatchSize = 50;
+    private const int BatchSize = 100;
+    private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(1);
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -24,8 +25,32 @@ public class AuditConsumerService(
                 // Wait for at least one event
                 if (await reader.WaitToReadAsync(stoppingToken))
                 {
+                    // Read the first event(s) available
                     while (batch.Count < BatchSize && reader.TryRead(out var evt))
                         batch.Add(evt);
+
+                    // If we haven't filled the batch, wait up to FlushInterval for more
+                    if (batch.Count < BatchSize)
+                    {
+                        using var timerCts = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                        timerCts.CancelAfter(FlushInterval);
+
+                        try
+                        {
+                            while (batch.Count < BatchSize)
+                            {
+                                if (await reader.WaitToReadAsync(timerCts.Token))
+                                {
+                                    while (batch.Count < BatchSize && reader.TryRead(out var evt2))
+                                        batch.Add(evt2);
+                                }
+                            }
+                        }
+                        catch (OperationCanceledException) when (!stoppingToken.IsCancellationRequested)
+                        {
+                            // Timer expired — flush what we have
+                        }
+                    }
                 }
 
                 if (batch.Count > 0)

@@ -25,7 +25,7 @@ public class AccessControl(
         var tier = await GetEffectiveTierForNotebookAsync(notebook, authorId, ct);
         if (tier < AccessTier.Read)
         {
-            LogDenied(notebookId, authorId, "read");
+            await LogDeniedAsync(notebookId, authorId, "read");
             return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
         }
 
@@ -42,7 +42,7 @@ public class AccessControl(
         var tier = await GetEffectiveTierForNotebookAsync(notebook, authorId, ct);
         if (tier < AccessTier.ReadWrite)
         {
-            LogDenied(notebookId, authorId, "write");
+            await LogDeniedAsync(notebookId, authorId, "write");
             return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
         }
 
@@ -59,7 +59,7 @@ public class AccessControl(
         var tier = await GetEffectiveTierForNotebookAsync(notebook, authorId, ct);
         if (tier < AccessTier.Admin)
         {
-            LogDenied(notebookId, authorId, "admin");
+            await LogDeniedAsync(notebookId, authorId, "admin");
             return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
         }
 
@@ -75,7 +75,7 @@ public class AccessControl(
 
         if (!notebook.OwnerId.SequenceEqual(authorId))
         {
-            LogDenied(notebookId, authorId, "owner");
+            await LogDeniedAsync(notebookId, authorId, "owner");
             return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
         }
 
@@ -143,14 +143,14 @@ public class AccessControl(
         if (principalClearance.Dominates(notebookLabel))
             return null;
 
-        LogDenied(notebook.Id, authorId, $"clearance:{action}");
+        await LogDeniedAsync(notebook.Id, authorId, $"clearance:{action}");
         return Results.NotFound(new { error = $"Notebook {notebook.Id} not found" });
     }
 
-    private void LogDenied(Guid notebookId, byte[] authorId, string requiredLevel)
+    private async ValueTask LogDeniedAsync(Guid notebookId, byte[] authorId, string requiredLevel)
     {
         var httpContext = httpContextAccessor.HttpContext;
-        AuditHelper.LogAction(audit, httpContext, "access.denied", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "access.denied", notebookId,
             targetType: "notebook", targetId: notebookId.ToString(),
             detail: new { required = requiredLevel });
     }

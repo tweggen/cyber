@@ -72,7 +72,7 @@ public static class ShareEndpoints
 
         await db.SaveChangesAsync(ct);
 
-        AuditHelper.LogAction(audit, httpContext, "notebook.share", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "access.grant", notebookId,
             targetType: "author", targetId: request.AuthorId,
             detail: new { tier = tierStr });
 
@@ -114,7 +114,7 @@ public static class ShareEndpoints
         db.NotebookAccess.Remove(access);
         await db.SaveChangesAsync(ct);
 
-        AuditHelper.LogAction(audit, httpContext, "notebook.revoke", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "access.revoke", notebookId,
             targetType: "author", targetId: authorIdHex);
 
         return Results.Ok(new RevokeResponse

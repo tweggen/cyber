@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 using Notebook.Server.Auth;
 using Npgsql;
 
@@ -9,11 +10,16 @@ public static class AuditEndpoints
 {
     public static void MapAuditEndpoints(this IEndpointRouteBuilder routes)
     {
-        routes.MapGet("/notebooks/{notebookId}/audit", QueryAudit)
+        routes.MapGet("/notebooks/{notebookId}/audit", QueryNotebookAudit)
+            .RequireAuthorization("CanAdmin");
+        routes.MapGet("/audit", QueryGlobalAudit)
             .RequireAuthorization("CanAdmin");
     }
 
-    private static async Task<IResult> QueryAudit(
+    /// <summary>
+    /// Notebook-scoped audit log query. Returns audit entries for a specific notebook.
+    /// </summary>
+    private static async Task<IResult> QueryNotebookAudit(
         Guid notebookId,
         IAccessControl acl,
         IConfiguration configuration,
@@ -59,6 +65,102 @@ public static class AuditEndpoints
         if (before.HasValue)
             cmd.Parameters.AddWithValue("before", before.Value);
 
+        var entries = await ReadAuditEntriesAsync(cmd, ct);
+        return Results.Ok(new AuditResponse { Entries = entries });
+    }
+
+    /// <summary>
+    /// Global audit log query. Returns audit entries across all notebooks.
+    /// Supports filtering by actor, action, resource prefix, and date range.
+    /// </summary>
+    private static async Task<IResult> QueryGlobalAudit(
+        IConfiguration configuration,
+        HttpContext httpContext,
+        CancellationToken ct,
+        [FromQuery] string? actor = null,
+        [FromQuery] string? action = null,
+        [FromQuery(Name = "resource")] string? resource = null,
+        [FromQuery(Name = "from")] DateTimeOffset? from = null,
+        [FromQuery(Name = "to")] DateTimeOffset? to = null,
+        [FromQuery] int limit = 100,
+        [FromQuery] long? before = null)
+    {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+
+        limit = Math.Clamp(limit, 1, 200);
+
+        var connectionString = configuration.GetConnectionString("Notebook");
+        await using var conn = new NpgsqlConnection(connectionString);
+        await conn.OpenAsync(ct);
+
+        var sql = """
+            SELECT id, ts, notebook_id, author_id, action, target_type, target_id, detail, ip_address, user_agent
+            FROM audit_log
+            WHERE 1=1
+            """;
+
+        await using var cmd = conn.CreateCommand();
+
+        if (actor is not null)
+        {
+            sql += " AND author_id = @actor";
+            cmd.Parameters.AddWithValue("actor", Convert.FromHexString(actor));
+        }
+
+        if (action is not null)
+        {
+            sql += " AND action = @action";
+            cmd.Parameters.AddWithValue("action", action);
+        }
+
+        if (resource is not null)
+        {
+            // resource prefix can be "notebook:{id}" or "entry", "agent", etc.
+            if (resource.StartsWith("notebook:", StringComparison.OrdinalIgnoreCase)
+                && Guid.TryParse(resource.AsSpan(9), out var notebookGuid))
+            {
+                sql += " AND notebook_id = @resourceNotebookId";
+                cmd.Parameters.AddWithValue("resourceNotebookId", notebookGuid);
+            }
+            else
+            {
+                // Match target_type prefix
+                sql += " AND target_type LIKE @resourcePrefix";
+                cmd.Parameters.AddWithValue("resourcePrefix", resource + "%");
+            }
+        }
+
+        if (from.HasValue)
+        {
+            sql += " AND ts >= @from";
+            cmd.Parameters.AddWithValue("from", from.Value);
+        }
+
+        if (to.HasValue)
+        {
+            sql += " AND ts <= @to";
+            cmd.Parameters.AddWithValue("to", to.Value);
+        }
+
+        if (before.HasValue)
+        {
+            sql += " AND id < @before";
+            cmd.Parameters.AddWithValue("before", before.Value);
+        }
+
+        sql += " ORDER BY id DESC LIMIT @limit";
+        cmd.Parameters.AddWithValue("limit", limit);
+
+        cmd.CommandText = sql;
+
+        var entries = await ReadAuditEntriesAsync(cmd, ct);
+        return Results.Ok(new AuditResponse { Entries = entries });
+    }
+
+    private static async Task<List<AuditLogEntry>> ReadAuditEntriesAsync(NpgsqlCommand cmd, CancellationToken ct)
+    {
         var entries = new List<AuditLogEntry>();
         await using var reader = await cmd.ExecuteReaderAsync(ct);
         while (await reader.ReadAsync(ct))
@@ -78,7 +180,7 @@ public static class AuditEndpoints
             });
         }
 
-        return Results.Ok(new AuditResponse { Entries = entries });
+        return entries;
     }
 }
 

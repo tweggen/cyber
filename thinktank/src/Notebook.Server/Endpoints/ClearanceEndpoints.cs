@@ -90,7 +90,7 @@ public static class ClearanceEndpoints
         // Evict cache for this principal+org pair
         clearanceService.EvictCache(authorId, request.OrganizationId);
 
-        AuditHelper.LogAction(audit, httpContext, "clearance.grant", null,
+        await AuditHelper.LogActionAsync(audit, httpContext, "clearance.grant", null,
             targetType: "clearance",
             targetId: $"{request.AuthorId}:{request.OrganizationId}",
             detail: new { max_level = dbLevel, compartments = request.Compartments });
@@ -139,7 +139,7 @@ public static class ClearanceEndpoints
         // Evict cache
         clearanceService.EvictCache(authorId, organizationId);
 
-        AuditHelper.LogAction(audit, httpContext, "clearance.revoke", null,
+        await AuditHelper.LogActionAsync(audit, httpContext, "clearance.revoke", null,
             targetType: "clearance",
             targetId: $"{authorIdHex}:{organizationId}");
 

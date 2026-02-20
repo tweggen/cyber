@@ -5,6 +5,7 @@ using Notebook.Core.Types;
 using Notebook.Data;
 using Notebook.Data.Repositories;
 using Notebook.Server.Auth;
+using Notebook.Server.Services;
 
 namespace Notebook.Server.Endpoints;
 
@@ -22,6 +23,7 @@ public static class ReadEndpoints
         IAccessControl acl,
         IEntryRepository entryRepo,
         NotebookDbContext db,
+        IAuditService audit,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -36,6 +38,9 @@ public static class ReadEndpoints
         var entry = await entryRepo.GetEntryAsync(entryId, notebookId, ct);
         if (entry is null)
             return Results.NotFound(new { error = $"Entry {entryId} not found in notebook {notebookId}" });
+
+        await AuditHelper.LogActionAsync(audit, httpContext, "entry.read", notebookId,
+            targetType: "entry", targetId: entryId.ToString());
 
         // Revisions: entries that are revisions of this entry
         var revisions = (await db.Entries

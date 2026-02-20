@@ -4,5 +4,5 @@ namespace Notebook.Server.Services;
 
 public interface IAuditService
 {
-    void Log(AuditEvent auditEvent);
+    ValueTask LogAsync(AuditEvent auditEvent);
 }

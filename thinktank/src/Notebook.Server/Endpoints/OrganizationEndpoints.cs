@@ -57,7 +57,7 @@ public static class OrganizationEndpoints
 
         var org = await orgRepo.CreateOrganizationAsync(request.Name.Trim(), ct);
 
-        AuditHelper.LogAction(audit, httpContext, "organization.create",
+        await AuditHelper.LogActionAsync(audit, httpContext, "organization.create",
             targetType: "organization", targetId: org.Id.ToString(),
             detail: new { name = org.Name });
 
@@ -113,7 +113,7 @@ public static class OrganizationEndpoints
                 return Results.BadRequest(new { error = "Could not add parent edge (invalid parent or cycle)" });
         }
 
-        AuditHelper.LogAction(audit, httpContext, "group.create",
+        await AuditHelper.LogActionAsync(audit, httpContext, "group.create",
             targetType: "group", targetId: group.Id.ToString(),
             detail: new { name = group.Name, organization_id = orgId });
 
@@ -166,7 +166,7 @@ public static class OrganizationEndpoints
         if (!deleted)
             return Results.NotFound(new { error = $"Group {groupId} not found" });
 
-        AuditHelper.LogAction(audit, httpContext, "group.delete",
+        await AuditHelper.LogActionAsync(audit, httpContext, "group.delete",
             targetType: "group", targetId: groupId.ToString());
 
         return Results.Ok(new { id = groupId, message = "Group deleted" });
@@ -186,7 +186,7 @@ public static class OrganizationEndpoints
         if (!added)
             return Results.BadRequest(new { error = "Cannot add edge: invalid groups, cross-org, or would create cycle" });
 
-        AuditHelper.LogAction(audit, httpContext, "group.edge.add",
+        await AuditHelper.LogActionAsync(audit, httpContext, "group.edge.add",
             targetType: "group_edge",
             detail: new { parent_id = request.ParentId, child_id = request.ChildId });
 
@@ -205,7 +205,7 @@ public static class OrganizationEndpoints
         if (!removed)
             return Results.NotFound(new { error = "Edge not found" });
 
-        AuditHelper.LogAction(audit, httpContext, "group.edge.remove",
+        await AuditHelper.LogActionAsync(audit, httpContext, "group.edge.remove",
             targetType: "group_edge",
             detail: new { parent_id = parentId, child_id = childId });
 
@@ -240,7 +240,7 @@ public static class OrganizationEndpoints
         var authorId = Convert.FromHexString(request.AuthorId);
         var membership = await orgRepo.AddMemberAsync(groupId, authorId, request.Role, grantedBy, ct);
 
-        AuditHelper.LogAction(audit, httpContext, "group.member.add",
+        await AuditHelper.LogActionAsync(audit, httpContext, "group.member.add",
             targetType: "group_membership",
             detail: new { group_id = groupId, author_id = request.AuthorId, role = request.Role });
 
@@ -269,7 +269,7 @@ public static class OrganizationEndpoints
         if (!removed)
             return Results.NotFound(new { error = "Membership not found" });
 
-        AuditHelper.LogAction(audit, httpContext, "group.member.remove",
+        await AuditHelper.LogActionAsync(audit, httpContext, "group.member.remove",
             targetType: "group_membership",
             detail: new { group_id = groupId, author_id = authorIdHex });
 
@@ -321,7 +321,7 @@ public static class OrganizationEndpoints
         if (!assigned)
             return Results.NotFound(new { error = "Notebook not found, not owned by you, or group not found" });
 
-        AuditHelper.LogAction(audit, httpContext, "notebook.assign_group", notebookId,
+        await AuditHelper.LogActionAsync(audit, httpContext, "notebook.assign_group", notebookId,
             targetType: "notebook", targetId: notebookId.ToString(),
             detail: new { group_id = request.GroupId });
 

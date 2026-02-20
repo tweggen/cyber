@@ -7,6 +7,7 @@ namespace Notebook.Server.Services;
 
 public class SubscriptionSyncService(
     IServiceScopeFactory scopeFactory,
+    IAuditService auditService,
     ILogger<SubscriptionSyncService> logger) : BackgroundService
 {
     private static readonly TimeSpan LoopInterval = TimeSpan.FromSeconds(5);
@@ -165,11 +166,39 @@ public class SubscriptionSyncService(
 
             logger.LogDebug("Synced subscription {SubId}: {Count} entries, watermark {Watermark}",
                 subscription.Id, sourceEntries.Count, maxSequence);
+
+            await auditService.LogAsync(new Notebook.Core.Types.AuditEvent
+            {
+                NotebookId = subscription.SubscriberId,
+                Action = "subscription.sync",
+                TargetType = "subscription",
+                TargetId = subscription.Id.ToString(),
+                Detail = System.Text.Json.JsonSerializer.SerializeToDocument(new
+                {
+                    source_id = subscription.SourceId,
+                    watermark = maxSequence,
+                    mirrored_count = mirroredCount,
+                    entries_synced = sourceEntries.Count,
+                }).RootElement.Clone(),
+            });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error syncing subscription {SubId}", subscription.Id);
             await subRepo.SetSyncStatusAsync(subscription.Id, "error", ex.Message, ct);
+
+            await auditService.LogAsync(new Notebook.Core.Types.AuditEvent
+            {
+                NotebookId = subscription.SubscriberId,
+                Action = "subscription.sync.error",
+                TargetType = "subscription",
+                TargetId = subscription.Id.ToString(),
+                Detail = System.Text.Json.JsonSerializer.SerializeToDocument(new
+                {
+                    source_id = subscription.SourceId,
+                    error = ex.Message,
+                }).RootElement.Clone(),
+            });
         }
     }
 
