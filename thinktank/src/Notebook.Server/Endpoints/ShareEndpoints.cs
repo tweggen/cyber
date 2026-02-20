@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Notebook.Core.Security;
 using Notebook.Data;
 using Notebook.Data.Entities;
 using Notebook.Server.Auth;
@@ -10,6 +11,8 @@ namespace Notebook.Server.Endpoints;
 
 public static class ShareEndpoints
 {
+    private static readonly HashSet<string> ValidTiers = ["existence", "read", "read_write", "admin"];
+
     public static void MapShareEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapPost("/notebooks/{notebookId}/share", ShareNotebook)
@@ -32,7 +35,13 @@ public static class ShareEndpoints
             return Results.Unauthorized();
         var callerId = Convert.FromHexString(callerHex);
 
-        var deny = await acl.RequireOwnerAsync(notebookId, callerId, ct);
+        // Validate tier
+        var tierStr = request.Tier.ToLowerInvariant();
+        if (!ValidTiers.Contains(tierStr))
+            return Results.BadRequest(new { error = $"Invalid tier '{request.Tier}'. Valid: existence, read, read_write, admin" });
+
+        // Admin-tier users (or owners) can share
+        var deny = await acl.RequireAdminAsync(notebookId, callerId, ct);
         if (deny is not null) return deny;
 
         var targetAuthorId = Convert.FromHexString(request.AuthorId);
@@ -47,8 +56,7 @@ public static class ShareEndpoints
 
         if (existing is not null)
         {
-            existing.Read = request.Permissions.Read;
-            existing.Write = request.Permissions.Write;
+            existing.Tier = tierStr;
             existing.Granted = DateTimeOffset.UtcNow;
         }
         else
@@ -57,8 +65,7 @@ public static class ShareEndpoints
             {
                 NotebookId = notebookId,
                 AuthorId = targetAuthorId,
-                Read = request.Permissions.Read,
-                Write = request.Permissions.Write,
+                Tier = tierStr,
                 Granted = DateTimeOffset.UtcNow,
             });
         }
@@ -67,13 +74,14 @@ public static class ShareEndpoints
 
         AuditHelper.LogAction(audit, httpContext, "notebook.share", notebookId,
             targetType: "author", targetId: request.AuthorId,
-            detail: new { read = request.Permissions.Read, write = request.Permissions.Write });
+            detail: new { tier = tierStr });
 
         return Results.Ok(new ShareResponse
         {
             NotebookId = notebookId,
             AuthorId = request.AuthorId,
-            Permissions = request.Permissions,
+            Tier = tierStr,
+            Granted = true,
         });
     }
 
@@ -91,7 +99,8 @@ public static class ShareEndpoints
             return Results.Unauthorized();
         var callerId = Convert.FromHexString(callerHex);
 
-        var deny = await acl.RequireOwnerAsync(notebookId, callerId, ct);
+        // Admin-tier users (or owners) can revoke
+        var deny = await acl.RequireAdminAsync(notebookId, callerId, ct);
         if (deny is not null) return deny;
 
         var targetAuthorId = Convert.FromHexString(authorIdHex);

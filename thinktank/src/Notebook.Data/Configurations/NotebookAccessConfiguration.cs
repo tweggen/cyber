@@ -19,8 +19,7 @@ public class NotebookAccessConfiguration : IEntityTypeConfiguration<NotebookAcce
         builder.HasOne<NotebookEntity>()
             .WithMany()
             .HasForeignKey(a => a.NotebookId);
-        builder.Property(a => a.Read).HasColumnName("read");
-        builder.Property(a => a.Write).HasColumnName("write");
+        builder.Property(a => a.Tier).HasColumnName("tier");
         builder.Property(a => a.Granted).HasColumnName("granted").HasDefaultValueSql("NOW()");
     }
 }

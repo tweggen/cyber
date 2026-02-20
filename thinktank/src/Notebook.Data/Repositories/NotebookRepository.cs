@@ -43,8 +43,7 @@ public class NotebookRepository(NotebookDbContext db) : INotebookRepository
         {
             NotebookId = notebook.Id,
             AuthorId = ownerId,
-            Read = true,
-            Write = true,
+            Tier = "admin",
             Granted = DateTimeOffset.UtcNow,
         });
 

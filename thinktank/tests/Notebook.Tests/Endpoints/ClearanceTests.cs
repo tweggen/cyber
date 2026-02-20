@@ -139,7 +139,7 @@ public class ClearanceTests : IClassFixture<NotebookApiFixture>
         var shareResponse = await _client.PostAsJsonAsync($"/notebooks/{nb.Id}/share", new
         {
             author_id = AuthorB,
-            permissions = new { read = true, write = false },
+            tier = "read",
         });
         shareResponse.EnsureSuccessStatusCode();
 
@@ -205,7 +205,7 @@ public class ClearanceTests : IClassFixture<NotebookApiFixture>
         var shareResponse = await _client.PostAsJsonAsync($"/notebooks/{nb.Id}/share", new
         {
             author_id = AuthorB,
-            permissions = new { read = true, write = false },
+            tier = "read",
         });
         shareResponse.EnsureSuccessStatusCode();
 

@@ -2,12 +2,14 @@ using Microsoft.EntityFrameworkCore;
 using Notebook.Core.Security;
 using Notebook.Data;
 using Notebook.Data.Entities;
+using Notebook.Data.Repositories;
 using Notebook.Server.Services;
 
 namespace Notebook.Server.Auth;
 
 public class AccessControl(
     NotebookDbContext db,
+    IOrganizationRepository orgRepo,
     IClearanceService clearance,
     IAuditService audit,
     IHttpContextAccessor httpContextAccessor)
@@ -20,16 +22,11 @@ public class AccessControl(
         if (notebook is null)
             return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
 
-        if (!notebook.OwnerId.SequenceEqual(authorId))
+        var tier = await GetEffectiveTierForNotebookAsync(notebook, authorId, ct);
+        if (tier < AccessTier.Read)
         {
-            var access = await db.NotebookAccess.AsNoTracking()
-                .FirstOrDefaultAsync(a => a.NotebookId == notebookId && a.AuthorId == authorId && a.Read, ct);
-
-            if (access is null)
-            {
-                LogDenied(notebookId, authorId, "read");
-                return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
-            }
+            LogDenied(notebookId, authorId, "read");
+            return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
         }
 
         return await CheckClearanceAsync(notebook, authorId, "read", ct);
@@ -42,19 +39,31 @@ public class AccessControl(
         if (notebook is null)
             return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
 
-        if (!notebook.OwnerId.SequenceEqual(authorId))
+        var tier = await GetEffectiveTierForNotebookAsync(notebook, authorId, ct);
+        if (tier < AccessTier.ReadWrite)
         {
-            var access = await db.NotebookAccess.AsNoTracking()
-                .FirstOrDefaultAsync(a => a.NotebookId == notebookId && a.AuthorId == authorId && a.Write, ct);
-
-            if (access is null)
-            {
-                LogDenied(notebookId, authorId, "write");
-                return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
-            }
+            LogDenied(notebookId, authorId, "write");
+            return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
         }
 
         return await CheckClearanceAsync(notebook, authorId, "write", ct);
+    }
+
+    public async Task<IResult?> RequireAdminAsync(Guid notebookId, byte[] authorId, CancellationToken ct)
+    {
+        var notebook = await db.Notebooks.AsNoTracking()
+            .FirstOrDefaultAsync(n => n.Id == notebookId, ct);
+        if (notebook is null)
+            return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
+
+        var tier = await GetEffectiveTierForNotebookAsync(notebook, authorId, ct);
+        if (tier < AccessTier.Admin)
+        {
+            LogDenied(notebookId, authorId, "admin");
+            return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
+        }
+
+        return await CheckClearanceAsync(notebook, authorId, "admin", ct);
     }
 
     public async Task<IResult?> RequireOwnerAsync(Guid notebookId, byte[] authorId, CancellationToken ct)
@@ -71,6 +80,45 @@ public class AccessControl(
         }
 
         return await CheckClearanceAsync(notebook, authorId, "owner", ct);
+    }
+
+    public async Task<AccessTier> GetEffectiveTierAsync(Guid notebookId, byte[] authorId, CancellationToken ct)
+    {
+        var notebook = await db.Notebooks.AsNoTracking()
+            .FirstOrDefaultAsync(n => n.Id == notebookId, ct);
+        if (notebook is null)
+            return AccessTier.Existence;
+
+        return await GetEffectiveTierForNotebookAsync(notebook, authorId, ct);
+    }
+
+    private async Task<AccessTier> GetEffectiveTierForNotebookAsync(
+        NotebookEntity notebook, byte[] authorId, CancellationToken ct)
+    {
+        // Owner always has admin tier
+        if (notebook.OwnerId.SequenceEqual(authorId))
+            return AccessTier.Admin;
+
+        // Check direct ACL
+        var access = await db.NotebookAccess.AsNoTracking()
+            .FirstOrDefaultAsync(a => a.NotebookId == notebook.Id && a.AuthorId == authorId, ct);
+        var directTier = access is not null
+            ? AccessTierExtensions.ParseAccessTier(access.Tier)
+            : AccessTier.Existence;
+
+        // Check group-propagated tier
+        var groupTier = AccessTier.Existence;
+        if (notebook.OwningGroupId is not null)
+        {
+            var role = await orgRepo.GetGroupMembershipRoleAsync(notebook.OwningGroupId.Value, authorId, ct);
+            if (role is not null)
+            {
+                groupTier = role == "admin" ? AccessTier.Admin : AccessTier.ReadWrite;
+            }
+        }
+
+        // Return the highest tier found
+        return directTier >= groupTier ? directTier : groupTier;
     }
 
     private async Task<IResult?> CheckClearanceAsync(

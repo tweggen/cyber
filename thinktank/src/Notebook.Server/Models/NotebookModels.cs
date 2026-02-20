@@ -102,6 +102,9 @@ public sealed record NotebookPermissionsResponse
 
     [JsonPropertyName("write")]
     public required bool Write { get; init; }
+
+    [JsonPropertyName("tier")]
+    public required string Tier { get; init; }
 }
 
 public sealed record ListNotebooksResponse

@@ -26,6 +26,9 @@ public interface IOrganizationRepository
     Task<List<GroupMembershipEntity>> ListMembersAsync(Guid groupId, CancellationToken ct);
     Task<List<GroupEntity>> ListGroupsForAuthorAsync(byte[] authorId, CancellationToken ct);
 
+    // Group membership lookup (recursive, for access tier propagation)
+    Task<string?> GetGroupMembershipRoleAsync(Guid owningGroupId, byte[] authorId, CancellationToken ct);
+
     // Notebook ownership
     Task<bool> AssignNotebookToGroupAsync(Guid notebookId, Guid groupId, byte[] requestingAuthorId, CancellationToken ct);
 }

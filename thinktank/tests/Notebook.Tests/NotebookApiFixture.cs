@@ -37,6 +37,7 @@ public class NotebookApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
         "013_audit_log.sql",
         "014_organizations_and_groups.sql",
         "015_security_labels.sql",
+        "016_access_tiers.sql",
     ];
 
     private readonly string _testDb = $"thinktank_test_{Guid.NewGuid():N}";

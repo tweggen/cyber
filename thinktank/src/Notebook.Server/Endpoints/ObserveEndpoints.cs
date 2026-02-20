@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Notebook.Core.Security;
 using Notebook.Core.Types;
 using Notebook.Data;
 using Notebook.Server.Auth;
@@ -102,11 +103,20 @@ public static class ObserveEndpoints
             .Where(a => a.NotebookId == notebookId)
             .ToListAsync(ct);
 
-        var participants = access.Select(a => new ParticipantResponse
+        var participants = access.Select(a =>
         {
-            AuthorId = Convert.ToHexString(a.AuthorId).ToLowerInvariant(),
-            Permissions = new PermissionsResponse { Read = a.Read, Write = a.Write },
-            GrantedAt = a.Granted.UtcDateTime,
+            var tier = AccessTierExtensions.ParseAccessTier(a.Tier);
+            return new ParticipantResponse
+            {
+                AuthorId = Convert.ToHexString(a.AuthorId).ToLowerInvariant(),
+                Permissions = new PermissionsResponse
+                {
+                    Read = tier >= AccessTier.Read,
+                    Write = tier >= AccessTier.ReadWrite,
+                    Tier = a.Tier,
+                },
+                GrantedAt = a.Granted.UtcDateTime,
+            };
         }).ToList();
 
         return Results.Ok(new ParticipantsApiResponse { Participants = participants });
@@ -185,4 +195,7 @@ internal sealed record PermissionsResponse
 
     [JsonPropertyName("write")]
     public required bool Write { get; init; }
+
+    [JsonPropertyName("tier")]
+    public required string Tier { get; init; }
 }

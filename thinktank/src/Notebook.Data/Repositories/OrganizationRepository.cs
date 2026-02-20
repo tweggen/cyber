@@ -178,6 +178,33 @@ public class OrganizationRepository(NotebookDbContext db) : IOrganizationReposit
             .OrderBy(g => g.Name)
             .ToListAsync(ct);
 
+    // ── Group Membership Lookup (recursive) ──
+
+    public async Task<string?> GetGroupMembershipRoleAsync(
+        Guid owningGroupId, byte[] authorId, CancellationToken ct)
+    {
+        // Walk the owning group and all its descendants, find the highest-priority
+        // membership role for the given author.
+        var role = await db.Database
+            .SqlQueryRaw<string>(
+                """
+                WITH RECURSIVE group_tree AS (
+                    SELECT id FROM groups WHERE id = {0}
+                    UNION
+                    SELECT ge.child_id FROM group_edges ge
+                    JOIN group_tree gt ON ge.parent_id = gt.id
+                )
+                SELECT role AS "Value" FROM group_memberships
+                WHERE author_id = {1} AND group_id IN (SELECT id FROM group_tree)
+                ORDER BY CASE role WHEN 'admin' THEN 0 ELSE 1 END
+                LIMIT 1
+                """,
+                owningGroupId, authorId)
+            .FirstOrDefaultAsync(ct);
+
+        return role;
+    }
+
     // ── Notebook Ownership ──
 
     public async Task<bool> AssignNotebookToGroupAsync(

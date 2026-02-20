@@ -7,17 +7,8 @@ public sealed record ShareRequest
     [JsonPropertyName("author_id")]
     public required string AuthorId { get; init; }
 
-    [JsonPropertyName("permissions")]
-    public required SharePermissionsDto Permissions { get; init; }
-}
-
-public sealed record SharePermissionsDto
-{
-    [JsonPropertyName("read")]
-    public bool Read { get; init; }
-
-    [JsonPropertyName("write")]
-    public bool Write { get; init; }
+    [JsonPropertyName("tier")]
+    public required string Tier { get; init; }
 }
 
 public sealed record ShareResponse
@@ -28,8 +19,11 @@ public sealed record ShareResponse
     [JsonPropertyName("author_id")]
     public required string AuthorId { get; init; }
 
-    [JsonPropertyName("permissions")]
-    public required SharePermissionsDto Permissions { get; init; }
+    [JsonPropertyName("tier")]
+    public required string Tier { get; init; }
+
+    [JsonPropertyName("granted")]
+    public required bool Granted { get; init; }
 }
 
 public sealed record RevokeResponse

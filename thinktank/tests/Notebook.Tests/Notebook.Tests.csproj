@@ -41,6 +41,7 @@
     <Content Include="..\..\..\postgres\migrations\013_audit_log.sql" Link="Migrations\013_audit_log.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\014_organizations_and_groups.sql" Link="Migrations\014_organizations_and_groups.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\015_security_labels.sql" Link="Migrations\015_security_labels.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\016_access_tiers.sql" Link="Migrations\016_access_tiers.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

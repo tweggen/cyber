@@ -21,6 +21,7 @@ public static class NotebookEndpoints
 
     private static async Task<IResult> ListNotebooks(
         INotebookRepository notebookRepo,
+        IAccessControl acl,
         NotebookDbContext db,
         HttpContext httpContext,
         CancellationToken ct)
@@ -40,9 +41,9 @@ public static class NotebookEndpoints
             var totalEntries = await notebookRepo.CountEntriesAsync(n.Id, ct);
             var participantCount = await notebookRepo.CountParticipantsAsync(n.Id, ct);
 
-            // Look up actual permissions from notebook_access
-            var access = await db.NotebookAccess.AsNoTracking()
-                .FirstOrDefaultAsync(a => a.NotebookId == n.Id && a.AuthorId == authorId, ct);
+            // Compute effective tier (considers direct ACL + group propagation)
+            var effectiveTier = await acl.GetEffectiveTierAsync(n.Id, authorId, ct);
+            var tierStr = effectiveTier.ToDbString();
 
             summaries.Add(new NotebookSummaryResponse
             {
@@ -52,8 +53,9 @@ public static class NotebookEndpoints
                 IsOwner = isOwner,
                 Permissions = new NotebookPermissionsResponse
                 {
-                    Read = access?.Read ?? isOwner,
-                    Write = access?.Write ?? isOwner,
+                    Read = effectiveTier >= AccessTier.Read,
+                    Write = effectiveTier >= AccessTier.ReadWrite,
+                    Tier = tierStr,
                 },
                 TotalEntries = totalEntries,
                 TotalEntropy = 0.0,
@@ -120,7 +122,7 @@ public static class NotebookEndpoints
             return Results.Unauthorized();
         var authorId = Convert.FromHexString(authorHex);
 
-        var deny = await acl.RequireOwnerAsync(notebookId, authorId, ct);
+        var deny = await acl.RequireAdminAsync(notebookId, authorId, ct);
         if (deny is not null) return deny;
 
         var deleted = await notebookRepo.DeleteNotebookAsync(notebookId, authorId, ct);
@@ -154,7 +156,7 @@ public static class NotebookEndpoints
             return Results.Unauthorized();
         var authorId = Convert.FromHexString(authorHex);
 
-        var deny = await acl.RequireOwnerAsync(notebookId, authorId, ct);
+        var deny = await acl.RequireAdminAsync(notebookId, authorId, ct);
         if (deny is not null) return deny;
 
         var notebook = await notebookRepo.RenameNotebookAsync(notebookId, request.Name.Trim(), authorId, ct);

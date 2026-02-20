@@ -59,7 +59,7 @@ public class AccessControlTests : IClassFixture<NotebookApiFixture>
         var shareResponse = await _client.PostAsJsonAsync($"/notebooks/{notebookId}/share", new
         {
             author_id = AuthorB,
-            permissions = new { read = true, write = false },
+            tier = "read",
         });
         Assert.Equal(HttpStatusCode.OK, shareResponse.StatusCode);
 
@@ -85,11 +85,11 @@ public class AccessControlTests : IClassFixture<NotebookApiFixture>
     {
         var notebookId = await CreateNotebookAsync();
 
-        // Share with write access
+        // Share with read_write access
         await _client.PostAsJsonAsync($"/notebooks/{notebookId}/share", new
         {
             author_id = AuthorB,
-            permissions = new { read = true, write = true },
+            tier = "read_write",
         });
 
         // Author B can batch write
@@ -112,7 +112,7 @@ public class AccessControlTests : IClassFixture<NotebookApiFixture>
         await _client.PostAsJsonAsync($"/notebooks/{notebookId}/share", new
         {
             author_id = AuthorB,
-            permissions = new { read = true, write = false },
+            tier = "read",
         });
         var revokeResponse = await _client.DeleteAsync($"/notebooks/{notebookId}/share/{AuthorB}");
         Assert.Equal(HttpStatusCode.OK, revokeResponse.StatusCode);
@@ -169,6 +169,66 @@ public class AccessControlTests : IClassFixture<NotebookApiFixture>
         Assert.NotNull(notebook);
         Assert.True(notebook.Permissions.Read);
         Assert.True(notebook.Permissions.Write);
+        Assert.Equal("admin", notebook.Permissions.Tier);
+    }
+
+    [Fact]
+    public async Task ExistenceTierHidesFromBrowse()
+    {
+        var notebookId = await CreateNotebookAsync();
+
+        // Share with existence-only access
+        var shareResponse = await _client.PostAsJsonAsync($"/notebooks/{notebookId}/share", new
+        {
+            author_id = AuthorB,
+            tier = "existence",
+        });
+        Assert.Equal(HttpStatusCode.OK, shareResponse.StatusCode);
+
+        // Author B cannot browse (existence tier < read)
+        var browseRequest = new HttpRequestMessage(HttpMethod.Get, $"/notebooks/{notebookId}/browse");
+        browseRequest.Headers.Add("X-Author-Id", AuthorB);
+        var browseResponse = await _client.SendAsync(browseRequest);
+        Assert.Equal(HttpStatusCode.NotFound, browseResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminTierCanShare()
+    {
+        var notebookId = await CreateNotebookAsync();
+        var authorC = "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc";
+
+        // Grant AuthorB admin tier
+        var shareB = await _client.PostAsJsonAsync($"/notebooks/{notebookId}/share", new
+        {
+            author_id = AuthorB,
+            tier = "admin",
+        });
+        Assert.Equal(HttpStatusCode.OK, shareB.StatusCode);
+
+        // AuthorB shares with AuthorC
+        var shareCRequest = new HttpRequestMessage(HttpMethod.Post, $"/notebooks/{notebookId}/share");
+        shareCRequest.Headers.Add("X-Author-Id", AuthorB);
+        shareCRequest.Content = JsonContent.Create(new
+        {
+            author_id = authorC,
+            tier = "read",
+        });
+        var shareCResponse = await _client.SendAsync(shareCRequest);
+        Assert.Equal(HttpStatusCode.OK, shareCResponse.StatusCode);
+    }
+
+    [Fact]
+    public async Task InvalidTierReturnsBadRequest()
+    {
+        var notebookId = await CreateNotebookAsync();
+
+        var shareResponse = await _client.PostAsJsonAsync($"/notebooks/{notebookId}/share", new
+        {
+            author_id = AuthorB,
+            tier = "superadmin",
+        });
+        Assert.Equal(HttpStatusCode.BadRequest, shareResponse.StatusCode);
     }
 
     private async Task<Guid> CreateNotebookAsync()
