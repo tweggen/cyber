@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Notebook.Core.Security;
 using Notebook.Data;
 using Notebook.Data.Repositories;
 using Notebook.Server.Auth;
@@ -58,6 +59,8 @@ public static class NotebookEndpoints
                 TotalEntropy = 0.0,
                 LastActivitySequence = n.CurrentSequence,
                 ParticipantCount = participantCount,
+                Classification = n.Classification,
+                Compartments = n.Compartments,
             });
         }
 
@@ -79,10 +82,19 @@ public static class NotebookEndpoints
             return Results.Unauthorized();
         var authorId = Convert.FromHexString(authorHex);
 
-        var notebook = await notebookRepo.CreateNotebookAsync(request.Name.Trim(), authorId, ct);
+        // Parse requested classification (default: INTERNAL)
+        var classification = ClassificationLevel.Internal;
+        if (!string.IsNullOrWhiteSpace(request.Classification))
+            classification = ClassificationLevelExtensions.ParseClassification(request.Classification);
+        var compartments = request.Compartments ?? [];
+
+        var notebook = await notebookRepo.CreateNotebookAsync(
+            request.Name.Trim(), authorId, ct,
+            classification.ToDbString(), compartments);
 
         AuditHelper.LogAction(audit, httpContext, "notebook.create", notebook.Id,
-            targetType: "notebook", targetId: notebook.Id.ToString());
+            targetType: "notebook", targetId: notebook.Id.ToString(),
+            detail: new { classification = notebook.Classification, compartments = notebook.Compartments });
 
         return Results.Created($"/notebooks/{notebook.Id}", new CreateNotebookResponse
         {
@@ -90,6 +102,8 @@ public static class NotebookEndpoints
             Name = notebook.Name,
             Owner = Convert.ToHexString(notebook.OwnerId).ToLowerInvariant(),
             Created = notebook.Created,
+            Classification = notebook.Classification,
+            Compartments = notebook.Compartments,
         });
     }
 

@@ -65,6 +65,8 @@ builder.Services.AddAuthorization(options =>
 
 // Access control
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddMemoryCache();
+builder.Services.AddSingleton<IClearanceService, ClearanceService>();
 builder.Services.AddScoped<IAccessControl, AccessControl>();
 
 // Audit
@@ -90,6 +92,7 @@ app.MapReadEndpoints();
 app.MapShareEndpoints();
 app.MapAuditEndpoints();
 app.MapOrganizationEndpoints();
+app.MapClearanceEndpoints();
 
 app.Run();
 

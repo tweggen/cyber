@@ -15,7 +15,8 @@ public class NotebookRepository(NotebookDbContext db) : INotebookRepository
             .ToListAsync(ct);
     }
 
-    public async Task<NotebookEntity> CreateNotebookAsync(string name, byte[] ownerId, CancellationToken ct)
+    public async Task<NotebookEntity> CreateNotebookAsync(string name, byte[] ownerId, CancellationToken ct,
+        string classification = "INTERNAL", List<string>? compartments = null)
     {
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
 
@@ -32,6 +33,8 @@ public class NotebookRepository(NotebookDbContext db) : INotebookRepository
             OwnerId = ownerId,
             Created = DateTimeOffset.UtcNow,
             CurrentSequence = 0,
+            Classification = classification,
+            Compartments = compartments ?? [],
         };
 
         db.Notebooks.Add(notebook);

@@ -6,6 +6,12 @@ public sealed record CreateNotebookRequest
 {
     [JsonPropertyName("name")]
     public required string Name { get; init; }
+
+    [JsonPropertyName("classification")]
+    public string? Classification { get; init; }
+
+    [JsonPropertyName("compartments")]
+    public List<string>? Compartments { get; init; }
 }
 
 public sealed record CreateNotebookResponse
@@ -21,6 +27,12 @@ public sealed record CreateNotebookResponse
 
     [JsonPropertyName("created")]
     public required DateTimeOffset Created { get; init; }
+
+    [JsonPropertyName("classification")]
+    public required string Classification { get; init; }
+
+    [JsonPropertyName("compartments")]
+    public required List<string> Compartments { get; init; }
 }
 
 public sealed record RenameNotebookRequest
@@ -75,6 +87,12 @@ public sealed record NotebookSummaryResponse
 
     [JsonPropertyName("participant_count")]
     public required long ParticipantCount { get; init; }
+
+    [JsonPropertyName("classification")]
+    public required string Classification { get; init; }
+
+    [JsonPropertyName("compartments")]
+    public required List<string> Compartments { get; init; }
 }
 
 public sealed record NotebookPermissionsResponse
