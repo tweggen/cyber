@@ -16,5 +16,6 @@ public class NotebookConfiguration : IEntityTypeConfiguration<NotebookEntity>
         builder.Property(n => n.OwnerId).HasColumnName("owner_id");
         builder.Property(n => n.Created).HasColumnName("created").HasDefaultValueSql("NOW()");
         builder.Property(n => n.CurrentSequence).HasColumnName("current_sequence").HasDefaultValue(0L);
+        builder.Property(n => n.OwningGroupId).HasColumnName("owning_group_id");
     }
 }

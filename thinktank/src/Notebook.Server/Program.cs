@@ -21,6 +21,7 @@ builder.Services.AddScoped<IEntryRepository, EntryRepository>();
 builder.Services.AddScoped<IJobRepository, JobRepository>();
 builder.Services.AddScoped<IJobResultProcessor, JobResultProcessor>();
 builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
+builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 
 // Content processing
 builder.Services.AddSingleton<IContentNormalizer, ContentNormalizer>();
@@ -88,6 +89,7 @@ app.MapSearchEndpoints();
 app.MapReadEndpoints();
 app.MapShareEndpoints();
 app.MapAuditEndpoints();
+app.MapOrganizationEndpoints();
 
 app.Run();
 

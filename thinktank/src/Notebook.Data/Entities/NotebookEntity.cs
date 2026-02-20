@@ -7,4 +7,5 @@ public class NotebookEntity
     public byte[] OwnerId { get; set; } = null!;
     public DateTimeOffset Created { get; set; }
     public long CurrentSequence { get; set; }
+    public Guid? OwningGroupId { get; set; }
 }
