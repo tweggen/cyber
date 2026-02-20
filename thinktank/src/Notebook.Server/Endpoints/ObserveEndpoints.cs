@@ -35,7 +35,7 @@ public static class ObserveEndpoints
         if (deny is not null) return deny;
 
         var query = db.Entries
-            .Where(e => e.NotebookId == notebookId && e.FragmentOf == null);
+            .Where(e => e.NotebookId == notebookId && e.FragmentOf == null && e.ReviewStatus == "approved");
 
         if (since.HasValue)
             query = query.Where(e => e.Sequence > since.Value);

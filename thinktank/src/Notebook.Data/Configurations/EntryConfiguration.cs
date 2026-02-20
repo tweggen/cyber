@@ -88,5 +88,9 @@ public class EntryConfiguration : IEntityTypeConfiguration<Entry>
 
         builder.Property(e => e.ExpectedComparisons)
             .HasColumnName("expected_comparisons");
+
+        builder.Property(e => e.ReviewStatus)
+            .HasColumnName("review_status")
+            .HasDefaultValue("approved");
     }
 }

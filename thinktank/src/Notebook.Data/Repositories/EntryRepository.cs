@@ -296,7 +296,7 @@ public class EntryRepository(NotebookDbContext db) : IEntryRepository
                         THEN jsonb_array_length(claims) ELSE 0
                    END as claim_count,
                    integration_status
-            FROM entries WHERE notebook_id = @notebookId
+            FROM entries WHERE notebook_id = @notebookId AND review_status = 'approved'
             """);
 
         var parameters = new List<Npgsql.NpgsqlParameter>

@@ -46,6 +46,7 @@
     <Content Include="..\..\..\postgres\migrations\018_subscriptions.sql" Link="Migrations\018_subscriptions.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\019_mirrored_content.sql" Link="Migrations\019_mirrored_content.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\020_embed_mirrored_job_type.sql" Link="Migrations\020_embed_mirrored_job_type.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\021_review_queue.sql" Link="Migrations\021_review_queue.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>

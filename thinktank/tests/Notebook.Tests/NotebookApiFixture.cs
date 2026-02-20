@@ -42,6 +42,7 @@ public class NotebookApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
         "018_subscriptions.sql",
         "019_mirrored_content.sql",
         "020_embed_mirrored_job_type.sql",
+        "021_review_queue.sql",
     ];
 
     private readonly string _testDb = $"thinktank_test_{Guid.NewGuid():N}";

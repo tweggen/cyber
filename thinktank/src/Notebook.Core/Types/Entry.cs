@@ -96,4 +96,8 @@ public class Entry
     /// <summary>Number of comparisons expected from the EMBED_CLAIMS pipeline step.</summary>
     [JsonPropertyName("expected_comparisons")]
     public int? ExpectedComparisons { get; set; }
+
+    /// <summary>Review status for content ingestion gate (approved, pending, rejected).</summary>
+    [JsonPropertyName("review_status")]
+    public string ReviewStatus { get; set; } = "approved";
 }

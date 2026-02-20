@@ -25,6 +25,7 @@ builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
 builder.Services.AddScoped<IAgentRepository, AgentRepository>();
 builder.Services.AddScoped<ISubscriptionRepository, SubscriptionRepository>();
 builder.Services.AddScoped<IMirroredContentRepository, MirroredContentRepository>();
+builder.Services.AddScoped<IReviewRepository, ReviewRepository>();
 
 // Content processing
 builder.Services.AddSingleton<IContentNormalizer, ContentNormalizer>();
@@ -99,6 +100,7 @@ app.MapOrganizationEndpoints();
 app.MapClearanceEndpoints();
 app.MapAgentEndpoints();
 app.MapSubscriptionEndpoints();
+app.MapReviewEndpoints();
 
 app.Run();
 

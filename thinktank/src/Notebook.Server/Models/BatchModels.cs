@@ -25,6 +25,9 @@ public sealed record BatchEntryRequest
 
     [JsonPropertyName("source")]
     public string? Source { get; init; }
+
+    [JsonPropertyName("classification_assertion")]
+    public string? ClassificationAssertion { get; init; }
 }
 
 public sealed record BatchWriteRequest
@@ -49,6 +52,9 @@ public sealed record BatchEntryResult
 
     [JsonPropertyName("claims_status")]
     public required ClaimsStatus ClaimsStatus { get; init; }
+
+    [JsonPropertyName("review_status")]
+    public string? ReviewStatus { get; init; }
 }
 
 public sealed record BatchWriteResponse
