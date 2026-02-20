@@ -127,6 +127,15 @@ This keeps share management contextual (on the notebook page) rather than adding
 | `ThinkerAgent/Program.cs` | Add endpoint auth |
 | `Components/Pages/Notebooks/View.razor` | Add participants panel with grant/revoke |
 
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Server.Tests/Middleware/NotebookAccessMiddlewareTests.cs` | **New** — ACL enforcement: unauthenticated → 401, no ACL → 404, read-only → 403 on write, scope mismatch → 403 |
+| `Notebook.Server.Tests/Endpoints/ShareEndpointsTests.cs` | **New** — non-owner grant → 403, non-owner revoke → 403, happy path grant/revoke |
+| `Notebook.Server.Tests/Endpoints/BatchEndpointsTests.cs` | **New** — quota exceeded → 429, write without ACL → 404 |
+| `ThinkerAgent.Tests/AuthenticationTests.cs` | **New** — unauthenticated /quit → 401, unauthenticated /config → 401 |
+
 ---
 
 ## Hush-2: Organizations & Groups
@@ -182,7 +191,21 @@ ALTER TABLE notebooks ADD COLUMN owning_group_id UUID REFERENCES groups(id);
 
 **Create:** `Notebook.Data/Repositories/IOrganizationRepository.cs`, `OrganizationRepository.cs`
 
-Operations: CRUD for orgs, groups, edges, memberships. DAG traversal (ancestors, descendants). Cycle detection on edge insert.
+Operations: CRUD for orgs, groups, edges, memberships. DAG traversal (ancestors, descendants).
+
+**Cycle detection:** On `group_edges` insert, execute a recursive CTE from the proposed child walking parent edges. If the proposed parent is reachable, reject the insert.
+
+```sql
+WITH RECURSIVE ancestors AS (
+    SELECT parent_id FROM group_edges WHERE child_id = @proposed_parent_id
+    UNION
+    SELECT ge.parent_id FROM group_edges ge
+    JOIN ancestors a ON ge.child_id = a.parent_id
+)
+SELECT EXISTS (SELECT 1 FROM ancestors WHERE parent_id = @proposed_child_id);
+```
+
+This runs in the same transaction as the insert. At the expected scale (< 1000 groups per org), this is sufficient. If group counts grow beyond 10k, consider a materialized transitive closure table with trigger-based maintenance.
 
 ### 2.4 API Endpoints
 
@@ -199,6 +222,13 @@ POST   /groups/{id}/edges                      — add parent→child edge
 ```
 
 All admin operations require `notebook:admin` scope + group admin role.
+
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Data.Tests/Repositories/OrganizationRepositoryTests.cs` | **New** — CRUD orgs/groups, DAG edge insert, cycle detection rejection |
+| `Notebook.Server.Tests/Endpoints/OrganizationEndpointsTests.cs` | **New** — non-admin create → 403, membership operations |
 
 ### 2.5 Admin UI — Organization & Group Management
 
@@ -277,9 +307,31 @@ After ACL check, also verify:
 - Principal's clearance (from `principal_clearances` for the notebook's org) dominates the notebook's security label
 - If not → 404 (not 403 — don't reveal existence)
 
+### 3.3a Clearance Cache
+
+To avoid a DB query per request, cache clearance lookups in `IMemoryCache` keyed by `(author_id, organization_id)` with a 30-second sliding expiration.
+
+**Invalidation:** When `POST /clearances` or `DELETE /clearances` modifies a principal's clearance, evict the cache entry for that `(author_id, organization_id)` pair. Since the server is single-process, in-memory eviction is sufficient. Multi-instance deployments would need a pub/sub invalidation channel (Redis, PostgreSQL NOTIFY).
+
+**Staleness contract:** A revoked clearance may still be honored for up to 30 seconds. This is an accepted trade-off. For immediate revocation (e.g., incident response), add a `POST /admin/cache/flush` endpoint that clears all cached clearances.
+
 ### 3.4 Notebook Creation with Label
 
 **Modify:** `POST /notebooks` — accept `classification` and `compartments` fields. Validate that the creating principal's clearance dominates the requested label.
+
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Core.Tests/Security/SecurityLabelTests.cs` | **New** — dominance logic: equal, higher, lower, compartment subset/superset, disjoint |
+| `Notebook.Server.Tests/Middleware/ClearanceCheckTests.cs` | **New** — insufficient clearance → 404, sufficient clearance → pass-through |
+
+### Files
+
+| File | Change |
+|---|---|
+| `Notebook.Server/Services/ClearanceCacheService.cs` | **New** — IMemoryCache wrapper with eviction |
+| `Notebook.Server/Middleware/NotebookAccessMiddleware.cs` | Inject ClearanceCacheService instead of direct DB query |
 
 ### 3.5 Admin UI — Classification & Clearance Management
 
@@ -310,16 +362,30 @@ After ACL check, also verify:
 
 ### 4.1 Extend `notebook_access`
 
-**Migration:** `015_access_tiers.sql`
+**Migration: `015a_add_access_tiers.sql`**
 
 ```sql
-ALTER TABLE notebook_access ADD COLUMN tier TEXT NOT NULL DEFAULT 'read_write';
--- Tiers: 'existence', 'read', 'read_write', 'admin'
--- Replaces the current (read, write) booleans
+ALTER TABLE notebook_access ADD COLUMN tier TEXT NOT NULL DEFAULT 'read_write'
+    CHECK (tier IN ('existence', 'read', 'read_write', 'admin'));
 
+-- Backfill from existing booleans
+UPDATE notebook_access SET tier = CASE
+    WHEN read AND write THEN 'read_write'
+    WHEN read AND NOT write THEN 'read'
+    ELSE 'existence'
+END;
+```
+
+Deploy application code that reads `tier` column. Verify in production. Then:
+
+**Migration: `015b_drop_legacy_acl_booleans.sql`**
+
+```sql
 ALTER TABLE notebook_access DROP COLUMN read;
 ALTER TABLE notebook_access DROP COLUMN write;
 ```
+
+This two-step approach enables rollback: if the application has issues after 015a, revert application code while the old columns still exist.
 
 ### 4.2 Tier Semantics
 
@@ -344,6 +410,13 @@ Resolves effective access for a principal to a notebook by combining:
 ### 4.4 Existence Concealment
 
 Endpoints must return 404 (not 403) when a principal lacks existence-tier access. This prevents information leakage about what notebooks exist. Error messages must not reference the notebook ID.
+
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Server.Tests/Services/AccessResolverTests.cs` | **New** — direct grant vs group inheritance, tier precedence, existence concealment |
+| `Notebook.Data.Tests/Migrations/TierMigrationTests.cs` | **New** — backfill correctness: (true,true)→read_write, (true,false)→read, (false,false)→existence |
 
 ### 4.5 Admin UI — Access Tier Management
 
@@ -405,6 +478,13 @@ GET    /agents                    — list agents
 PUT    /agents/{id}               — update agent label
 DELETE /agents/{id}               — deregister agent
 ```
+
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Server.Tests/Endpoints/AgentEndpointsTests.cs` | **New** — register, label update, deregister |
+| `Notebook.Data.Tests/Repositories/JobRepositoryTests.cs` | **Add** — agent clearance filtering: agent below notebook level → no jobs returned |
 
 ### 5.5 Admin UI — Agent Management
 
@@ -536,9 +616,22 @@ On insert, enforce:
 
 **Create:** `Notebook.Server/Services/SubscriptionSyncService.cs` (BackgroundService)
 
-A timer-per-subscription model. On startup loads all non-suspended subscriptions; schedules polling at each subscription's `poll_interval_s`.
+A single polling loop replaces per-subscription timers for bounded resource usage regardless of subscription count.
 
-**Sync loop per subscription:**
+**Loop (every 5 seconds):**
+1. Query subscriptions due for sync:
+   ```sql
+   SELECT * FROM notebook_subscriptions
+   WHERE sync_status != 'suspended'
+     AND (last_sync_at IS NULL
+          OR last_sync_at + (poll_interval_s * INTERVAL '1 second') < now())
+   ORDER BY last_sync_at ASC NULLS FIRST
+   LIMIT @max_concurrent - @currently_syncing;
+   ```
+2. Dispatch each to a bounded `SemaphoreSlim` worker pool (default max concurrency: 10, configurable via `SubscriptionSync:MaxConcurrency`)
+3. Each worker executes the sync steps below
+
+**Sync steps per subscription:**
 1. Set `sync_status = 'syncing'`
 2. Call source's `GET /notebooks/{sourceId}/observe?since={sync_watermark}` (auth: read-scoped JWT for source notebook)
 3. For each new entry in response (batch size: 100):
@@ -548,6 +641,8 @@ A timer-per-subscription model. On startup loads all non-suspended subscriptions
 4. Queue `EMBED_MIRRORED` jobs for new/updated mirrored claims (priority 25)
 5. Update `sync_watermark`, `last_sync_at`, `mirrored_count`, `sync_status = 'idle'`
 6. On error: set `sync_status = 'error'`, `sync_error = message`
+
+**Error backoff:** On consecutive errors for the same subscription, multiply `poll_interval_s` by 2^(error_count), capped at 1 hour. Reset on successful sync.
 
 Idempotency: `UNIQUE (subscription_id, source_entry_id)` + UPSERT. Deletion handling: source entries removed → `tombstoned = true` (excluded from neighbor search via partial index). Revision handling: claims overwritten, new `EMBED_MIRRORED` job queued.
 
@@ -607,6 +702,15 @@ GET    /notebooks/{id}/subscriptions/{subId}/status   — detailed sync status
 GET    /notebooks/{id}/export?since={seq}&scope={scope}  — air-gapped export
 POST   /notebooks/{id}/import                            — air-gapped import
 ```
+
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Server.Tests/Services/SubscriptionServiceTests.cs` | **New** — validation: self-sub rejected, classification violation rejected, cycle rejected |
+| `Notebook.Server.Tests/Services/SubscriptionSyncServiceTests.cs` | **New** — watermark advancement, tombstoning, error → status update, backoff |
+| `Notebook.Data.Tests/Repositories/EntryRepositoryTests.cs` | **Add** — FindNearestWithMirrored returns mirrored results, respects tombstone filter |
+| `Notebook.Server.Tests/Services/JobResultProcessorTests.cs` | **Add** — cross-boundary COMPARE_CLAIMS applies discount factor |
 
 ### 6.10 Admin UI — Subscription Management
 
@@ -692,6 +796,13 @@ POST   /notebooks/{id}/reviews/{id}/approve — approve entry (admin tier)
 POST   /notebooks/{id}/reviews/{id}/reject  — reject entry (admin tier)
 ```
 
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Server.Tests/Endpoints/ReviewEndpointsTests.cs` | **New** — non-admin review → 403, approve queues DISTILL_CLAIMS, reject returns no reason |
+| `Notebook.Server.Tests/Endpoints/BatchEndpointsTests.cs` | **Add** — non-member write → pending review_status, pending entry excluded from browse |
+
 ### 7.5 Admin UI — Review Queue
 
 **Modify: `Components/Pages/Notebooks/View.razor`**
@@ -763,7 +874,17 @@ CREATE INDEX idx_audit_log_resource ON audit_log (resource);
 
 **Create:** `Notebook.Server/Services/IAuditService.cs`, `AuditService.cs`
 
-Injected into all endpoints and middleware. Writes async (fire-and-forget with bounded queue) to avoid latency impact on API responses.
+Injected into all endpoints and middleware.
+
+**Write strategy: back-pressure with overflow**
+
+1. `AuditService` maintains a `Channel<AuditEvent>` (bounded, capacity: 10,000)
+2. API endpoints call `AuditService.LogAsync(event)` which writes to the channel. If the channel is full, the call blocks (back-pressure) — this slows the API rather than dropping events
+3. A background consumer reads from the channel and batch-inserts into `audit_log` (batch size: 100, flush interval: 1 second, whichever comes first)
+4. If the batch insert fails (DB down), events are serialized to a local append-only file (`audit-overflow-{date}.jsonl`). A recovery task replays overflow files on startup
+5. Emit a metric (`audit_queue_depth`) for monitoring. Alert at 80% capacity
+
+**Guarantee:** No audit event is silently dropped. Under sustained DB failure, the overflow file grows — operators must be alerted to restore DB connectivity.
 
 ### 8.4 Audit API
 
@@ -772,6 +893,20 @@ GET /audit?actor={authorId}&resource={prefix}&from={ts}&to={ts}&limit=100
 ```
 
 Requires `notebook:admin` scope. Returns paginated audit log entries.
+
+### Files
+
+| File | Change |
+|---|---|
+| `Notebook.Server/Services/IAuditService.cs` | **New** — interface |
+| `Notebook.Server/Services/AuditService.cs` | **New** — Channel + batch writer + overflow |
+| `Notebook.Server/Services/AuditRecoveryService.cs` | **New** — replays overflow files on startup |
+
+### Tests
+
+| File | Covers |
+|---|---|
+| `Notebook.Server.Tests/Services/AuditServiceTests.cs` | **New** — event queued on write, back-pressure when full, overflow-to-file on DB failure, recovery replay |
 
 ### 8.5 Admin UI — Audit Log Viewer
 
@@ -851,6 +986,6 @@ The existing system has notebooks with no org/group/classification. The migratio
 1. **Hush-1** is purely additive — enforcing checks that currently don't happen. No schema changes needed beyond what exists.
 2. **Hush-2** adds org/group tables with nullable `owning_group_id` on notebooks. Existing notebooks have `owning_group_id = NULL` (legacy mode — owner-based ACL still works).
 3. **Hush-3** adds classification with default `INTERNAL`. Existing notebooks are `INTERNAL` with empty compartments. All existing principals get `INTERNAL` clearance by default.
-4. **Hush-4** migrates `(read, write)` booleans to tier enum. `(read=true, write=true)` → `read_write`. `(read=true, write=false)` → `read`.
+4. **Hush-4** migrates `(read, write)` booleans to tier enum in two steps: 015a adds `tier` column and backfills (`(read=true, write=true)` → `read_write`, `(read=true, write=false)` → `read`), 015b drops old columns after verification.
 5. **Hush-6** adds 3 migrations (017–019): subscription table, mirrored content tables, and EMBED_MIRRORED job type. Pipeline modifications (FindNearestWithMirroredAsync, COMPARE_CLAIMS discount factor) are backward-compatible — no subscriptions means identical behavior.
 6. Subsequent phases (Hush-7, Hush-8) are purely additive (migrations 020–021).
