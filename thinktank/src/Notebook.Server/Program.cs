@@ -21,6 +21,8 @@ builder.Services.AddScoped<IJobRepository, JobRepository>();
 builder.Services.AddScoped<IJobResultProcessor, JobResultProcessor>();
 builder.Services.AddScoped<INotebookRepository, NotebookRepository>();
 builder.Services.AddScoped<IAccessRepository, AccessRepository>();
+builder.Services.AddScoped<IOrganizationRepository, OrganizationRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 
 // Audit — fire-and-forget bounded channel writer
 builder.Services.AddSingleton<IAuditService, AuditService>();
@@ -66,6 +68,8 @@ app.MapBrowseEndpoints();
 app.MapSearchEndpoints();
 app.MapShareEndpoints();
 app.MapAuditEndpoints();
+app.MapOrganizationEndpoints();
+app.MapGroupEndpoints();
 
 app.Run();
 

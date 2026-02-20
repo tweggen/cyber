@@ -35,6 +35,7 @@
     <Content Include="..\..\..\notebook\migrations\007_claims_and_jobs.sql" Link="Migrations\007_claims_and_jobs.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\notebook\migrations\008_audit_log.sql" Link="Migrations\008_audit_log.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\notebook\migrations\009_next_sequence.sql" Link="Migrations\009_next_sequence.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\notebook\migrations\010_organizations.sql" Link="Migrations\010_organizations.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
