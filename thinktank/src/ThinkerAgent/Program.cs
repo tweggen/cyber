@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.SignalR;
 using Serilog;
 using ThinkerAgent;
+using ThinkerAgent.Auth;
 using ThinkerAgent.Configuration;
 using ThinkerAgent.Hubs;
 using ThinkerAgent.Services;
@@ -71,26 +72,26 @@ try
     {
         await helper.Save(newConfig);
         return Results.Ok(new { status = "saved", restart_required = false });
-    });
+    }).AddEndpointFilter<AgentSecretFilter>();
 
     app.MapPost("/start", (WorkerState ws) =>
     {
         // Workers are started via BackgroundService on host start.
         // This endpoint is a placeholder for Phase 2 dynamic start/stop.
         return Results.Ok(new { status = "running" });
-    });
+    }).AddEndpointFilter<AgentSecretFilter>();
 
     app.MapPost("/stop", (WorkerState ws) =>
     {
         // Placeholder for Phase 2 dynamic start/stop.
         return Results.Ok(new { status = "stop requested" });
-    });
+    }).AddEndpointFilter<AgentSecretFilter>();
 
     app.MapPost("/quit", (IHostApplicationLifetime lifetime) =>
     {
         lifetime.StopApplication();
         return Results.Ok(new { status = "shutting down" });
-    });
+    }).AddEndpointFilter<AgentSecretFilter>();
 
     app.MapGet("/models", async (ILlmClient llmClient, CancellationToken ct) =>
     {

@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Core.Types;
 using Notebook.Data.Repositories;
+using Notebook.Server.Auth;
 using Notebook.Server.Models;
 using Notebook.Server.Services;
 
@@ -12,7 +13,7 @@ public static class BatchEndpoints
     public static void MapBatchEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapPost("/notebooks/{notebookId}/batch", BatchWrite)
-            .RequireAuthorization();
+            .RequireAuthorization("CanWrite");
     }
 
     /// <summary>
@@ -23,11 +24,13 @@ public static class BatchEndpoints
     private static async Task<IResult> BatchWrite(
         Guid notebookId,
         [FromBody] BatchWriteRequest request,
+        IAccessControl acl,
         IEntryRepository entryRepo,
         IJobRepository jobRepo,
         IContentNormalizer normalizer,
         IContentFilterPipeline filterPipeline,
         IMarkdownFragmenter fragmenter,
+        IAuditService audit,
         HttpContext httpContext,
         CancellationToken ct)
     {
@@ -37,14 +40,14 @@ public static class BatchEndpoints
         if (request.Entries.Count > 100)
             return Results.BadRequest(new { error = "batch size exceeds limit of 100 entries" });
 
-        if (!await entryRepo.NotebookExistsAsync(notebookId, ct))
-            return Results.NotFound(new { error = $"Notebook {notebookId} not found" });
-
         // Resolve author from JWT sub claim
         var authorHex = httpContext.User.FindFirst("sub")?.Value;
         if (string.IsNullOrEmpty(authorHex))
             return Results.Unauthorized();
         var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireWriteAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
 
         var results = new List<BatchEntryResult>(request.Entries.Count);
         var jobsCreated = 0;
@@ -158,6 +161,10 @@ public static class BatchEndpoints
         }
 
         await transaction.CommitAsync(ct);
+
+        AuditHelper.LogAction(audit, httpContext, "entry.batch_write", notebookId,
+            targetType: "entries", targetId: null,
+            detail: new { count = results.Count, jobs_created = jobsCreated });
 
         return Results.Created("", new BatchWriteResponse
         {

@@ -24,4 +24,5 @@ public sealed class ThinkerOptions
     public string EmbeddingModel { get; set; } = "nomic-embed-text";
     public double PollIntervalSeconds { get; set; } = 5.0;
     public List<string>? JobTypes { get; set; }
+    public string AgentSecret { get; set; } = "";
 }

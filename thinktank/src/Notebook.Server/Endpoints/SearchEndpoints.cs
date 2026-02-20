@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Data.Repositories;
+using Notebook.Server.Auth;
 using Notebook.Server.Models;
 using Notebook.Server.Services;
 
@@ -10,22 +11,32 @@ public static class SearchEndpoints
     public static void MapSearchEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet("/notebooks/{notebookId}/search", Search)
-            .RequireAuthorization();
+            .RequireAuthorization("CanRead");
         routes.MapPost("/notebooks/{notebookId}/semantic-search", SemanticSearch)
-            .RequireAuthorization();
+            .RequireAuthorization("CanRead");
         routes.MapPost("/notebooks/{notebookId}/claims/batch", ClaimsBatch)
-            .RequireAuthorization();
+            .RequireAuthorization("CanRead");
     }
 
     private static async Task<IResult> Search(
         Guid notebookId,
         [FromQuery] string query,
+        IAccessControl acl,
+        HttpContext httpContext,
         [FromQuery(Name = "search_in")] string searchIn = "both",
         [FromQuery(Name = "topic_prefix")] string? topicPrefix = null,
         [FromQuery(Name = "max_results")] int maxResults = 20,
         IEntryRepository entryRepo = null!,
         CancellationToken ct = default)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         if (string.IsNullOrWhiteSpace(query))
             return Results.BadRequest(new { error = "query is required" });
 
@@ -40,10 +51,20 @@ public static class SearchEndpoints
     private static async Task<IResult> SemanticSearch(
         Guid notebookId,
         [FromBody] SemanticSearchRequest request,
+        IAccessControl acl,
         IEntryRepository entryRepo,
         IEmbeddingService embeddingService,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         if (string.IsNullOrWhiteSpace(request.Query))
             return Results.BadRequest(new { error = "query is required" });
 
@@ -71,9 +92,19 @@ public static class SearchEndpoints
     private static async Task<IResult> ClaimsBatch(
         Guid notebookId,
         [FromBody] ClaimsBatchRequest request,
+        IAccessControl acl,
         IEntryRepository entryRepo,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         if (request.EntryIds.Count == 0)
             return Results.BadRequest(new { error = "entry_ids is required" });
 

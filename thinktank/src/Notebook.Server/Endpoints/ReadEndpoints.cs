@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Notebook.Core.Types;
 using Notebook.Data;
 using Notebook.Data.Repositories;
+using Notebook.Server.Auth;
 
 namespace Notebook.Server.Endpoints;
 
@@ -12,16 +13,26 @@ public static class ReadEndpoints
     public static void MapReadEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet("/notebooks/{notebookId}/entries/{entryId}", ReadEntry)
-            .RequireAuthorization();
+            .RequireAuthorization("CanRead");
     }
 
     private static async Task<IResult> ReadEntry(
         Guid notebookId,
         Guid entryId,
+        IAccessControl acl,
         IEntryRepository entryRepo,
         NotebookDbContext db,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var entry = await entryRepo.GetEntryAsync(entryId, notebookId, ct);
         if (entry is null)
             return Results.NotFound(new { error = $"Entry {entryId} not found in notebook {notebookId}" });

@@ -49,7 +49,28 @@ builder.Services.AddAuthentication(EdDsaAuthenticationHandler.SchemeName)
 
             options.AllowDevIdentity = builder.Configuration.GetValue<bool>("AllowDevIdentity");
         });
-builder.Services.AddAuthorization();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("CanRead", policy =>
+        policy.RequireClaim("scope", "notebook:read"));
+    options.AddPolicy("CanWrite", policy =>
+        policy.RequireClaim("scope", "notebook:write"));
+    options.AddPolicy("CanShare", policy =>
+        policy.RequireClaim("scope", "notebook:share"));
+    options.AddPolicy("CanAdmin", policy =>
+        policy.RequireClaim("scope", "notebook:admin"));
+});
+
+// Access control
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<IAccessControl, AccessControl>();
+
+// Audit
+builder.Services.AddSingleton<AuditService>();
+builder.Services.AddSingleton<IAuditService>(sp => sp.GetRequiredService<AuditService>());
+builder.Services.AddHostedService<AuditConsumerService>();
+builder.Services.AddHostedService<AuditRecoveryService>();
 
 var app = builder.Build();
 
@@ -65,6 +86,8 @@ app.MapBrowseEndpoints();
 app.MapObserveEndpoints();
 app.MapSearchEndpoints();
 app.MapReadEndpoints();
+app.MapShareEndpoints();
+app.MapAuditEndpoints();
 
 app.Run();
 

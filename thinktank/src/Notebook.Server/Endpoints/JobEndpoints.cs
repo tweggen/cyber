@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Data.Repositories;
+using Notebook.Server.Auth;
 using Notebook.Server.Models;
 using Notebook.Server.Services;
 
@@ -10,7 +11,7 @@ public static class JobEndpoints
     public static void MapJobEndpoints(this IEndpointRouteBuilder routes)
     {
         var group = routes.MapGroup("/notebooks/{notebookId}/jobs")
-            .RequireAuthorization();
+            .RequireAuthorization("CanWrite");
 
         group.MapGet("/next", NextJob);
         group.MapPost("/{jobId}/complete", CompleteJob);
@@ -27,9 +28,19 @@ public static class JobEndpoints
         Guid notebookId,
         [FromQuery(Name = "worker_id")] string workerId,
         [FromQuery(Name = "type")] string? jobType,
+        IAccessControl acl,
         IJobRepository jobRepo,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireWriteAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         await jobRepo.ReclaimTimedOutJobsAsync(notebookId, ct);
 
         var job = await jobRepo.ClaimNextJobAsync(notebookId, jobType, workerId, ct);
@@ -59,10 +70,21 @@ public static class JobEndpoints
         Guid notebookId,
         Guid jobId,
         [FromBody] CompleteJobRequest request,
+        IAccessControl acl,
         IJobRepository jobRepo,
         IJobResultProcessor resultProcessor,
+        IAuditService audit,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireWriteAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var job = await jobRepo.GetJobAsync(jobId, ct);
         if (job is null)
             return Results.NotFound(new { error = $"Job {jobId} not found" });
@@ -74,6 +96,10 @@ public static class JobEndpoints
 
         await jobRepo.CompleteJobAsync(jobId, request.WorkerId, request.Result, ct);
 
+        AuditHelper.LogAction(audit, httpContext, "job.complete", notebookId,
+            targetType: "job", targetId: jobId.ToString(),
+            detail: new { job_type = job.JobType, follow_up_jobs = followUpJobs });
+
         return Results.Ok(new { status = "completed", follow_up_jobs = followUpJobs });
     }
 
@@ -84,9 +110,20 @@ public static class JobEndpoints
         Guid notebookId,
         Guid jobId,
         [FromBody] FailJobRequest request,
+        IAccessControl acl,
         IJobRepository jobRepo,
+        IAuditService audit,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireWriteAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var job = await jobRepo.GetJobAsync(jobId, ct);
         if (job is null)
             return Results.NotFound(new { error = $"Job {jobId} not found" });
@@ -97,11 +134,21 @@ public static class JobEndpoints
         if (job.RetryCount < job.MaxRetries)
         {
             await jobRepo.ReturnToPendingAsync(jobId, request.Error, ct);
+
+            AuditHelper.LogAction(audit, httpContext, "job.fail", notebookId,
+                targetType: "job", targetId: jobId.ToString(),
+                detail: new { job_type = job.JobType, error = request.Error, retrying = true });
+
             return Results.Ok(new { status = "pending", retry_count = job.RetryCount + 1 });
         }
         else
         {
             await jobRepo.MarkFailedAsync(jobId, request.Error, ct);
+
+            AuditHelper.LogAction(audit, httpContext, "job.fail", notebookId,
+                targetType: "job", targetId: jobId.ToString(),
+                detail: new { job_type = job.JobType, error = request.Error, retrying = false });
+
             return Results.Ok(new { status = "failed" });
         }
     }
@@ -111,10 +158,25 @@ public static class JobEndpoints
     /// </summary>
     private static async Task<IResult> RetryFailedJobs(
         Guid notebookId,
+        IAccessControl acl,
         IJobRepository jobRepo,
+        IAuditService audit,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireWriteAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var count = await jobRepo.RetryFailedJobsAsync(notebookId, ct);
+
+        AuditHelper.LogAction(audit, httpContext, "job.retry_all", notebookId,
+            detail: new { retried = count });
+
         return Results.Ok(new { retried = count });
     }
 
@@ -123,9 +185,19 @@ public static class JobEndpoints
     /// </summary>
     private static async Task<IResult> JobStats(
         Guid notebookId,
+        IAccessControl acl,
         IJobRepository jobRepo,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var rows = await jobRepo.GetStatsAsync(notebookId, ct);
 
         JobTypeStats BuildStats(string jobType) => new()

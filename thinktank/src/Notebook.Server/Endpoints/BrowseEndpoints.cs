@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Core.Types;
 using Notebook.Data.Repositories;
+using Notebook.Server.Auth;
 
 namespace Notebook.Server.Endpoints;
 
@@ -9,7 +10,7 @@ public static class BrowseEndpoints
     public static void MapBrowseEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet("/notebooks/{notebookId}/browse", Browse)
-            .RequireAuthorization();
+            .RequireAuthorization("CanRead");
     }
 
     private static async Task<IResult> Browse(
@@ -27,9 +28,19 @@ public static class BrowseEndpoints
         [FromQuery(Name = "integration_status")] string? integrationStatus,
         [FromQuery] int? limit,
         [FromQuery] int? offset,
+        IAccessControl acl,
         IEntryRepository entryRepo,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var filters = new BrowseFilter
         {
             Query = query,

@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Notebook.Core.Types;
 using Notebook.Data;
+using Notebook.Server.Auth;
 
 namespace Notebook.Server.Endpoints;
 
@@ -11,17 +12,27 @@ public static class ObserveEndpoints
     public static void MapObserveEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapGet("/notebooks/{notebookId}/observe", Observe)
-            .RequireAuthorization();
+            .RequireAuthorization("CanRead");
         routes.MapGet("/notebooks/{notebookId}/participants", ListParticipants)
-            .RequireAuthorization();
+            .RequireAuthorization("CanRead");
     }
 
     private static async Task<IResult> Observe(
         Guid notebookId,
         [FromQuery] long? since,
+        IAccessControl acl,
         NotebookDbContext db,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var query = db.Entries
             .Where(e => e.NotebookId == notebookId && e.FragmentOf == null);
 
@@ -74,9 +85,19 @@ public static class ObserveEndpoints
 
     private static async Task<IResult> ListParticipants(
         Guid notebookId,
+        IAccessControl acl,
         NotebookDbContext db,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireReadAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         var access = await db.NotebookAccess
             .Where(a => a.NotebookId == notebookId)
             .ToListAsync(ct);

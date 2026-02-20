@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Core.Types;
 using Notebook.Data.Repositories;
+using Notebook.Server.Auth;
 using Notebook.Server.Models;
 
 namespace Notebook.Server.Endpoints;
@@ -11,7 +12,7 @@ public static class ClaimsEndpoints
     public static void MapClaimsEndpoints(this IEndpointRouteBuilder routes)
     {
         routes.MapPost("/notebooks/{notebookId}/entries/{entryId}/claims", UpdateClaims)
-            .RequireAuthorization();
+            .RequireAuthorization("CanWrite");
     }
 
     /// <summary>
@@ -22,10 +23,20 @@ public static class ClaimsEndpoints
         Guid notebookId,
         Guid entryId,
         [FromBody] UpdateClaimsRequest request,
+        IAccessControl acl,
         IEntryRepository entryRepo,
         IJobRepository jobRepo,
+        HttpContext httpContext,
         CancellationToken ct)
     {
+        var authorHex = httpContext.User.FindFirst("sub")?.Value;
+        if (string.IsNullOrEmpty(authorHex))
+            return Results.Unauthorized();
+        var authorId = Convert.FromHexString(authorHex);
+
+        var deny = await acl.RequireWriteAsync(notebookId, authorId, ct);
+        if (deny is not null) return deny;
+
         if (request.Claims is not { Count: > 0 })
             return Results.BadRequest(new { error = "claims array is empty" });
 

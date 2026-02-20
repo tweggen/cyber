@@ -38,6 +38,7 @@
     <Content Include="..\..\..\postgres\migrations\010_job_priority.sql" Link="Migrations\010_job_priority.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\011_add_source_column.sql" Link="Migrations\011_add_source_column.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="..\..\..\postgres\migrations\012_integration_status.sql" Link="Migrations\012_integration_status.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\postgres\migrations\013_audit_log.sql" Link="Migrations\013_audit_log.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
