@@ -101,6 +101,46 @@ public class NotebookApiClient
     }
 
     /// <summary>
+    /// Browse a notebook's entries with optional filters.
+    /// </summary>
+    public async Task<BrowseFilteredResponse?> BrowseFilteredAsync(
+        string authorIdHex,
+        Guid notebookId,
+        string? topicPrefix = null,
+        string? claimsStatus = null,
+        string? author = null,
+        long? sequenceMin = null,
+        long? sequenceMax = null,
+        double? hasFrictionAbove = null,
+        bool? needsReview = null,
+        string? integrationStatus = null,
+        int? limit = null,
+        int? offset = null)
+    {
+        var url = $"/notebooks/{notebookId}/browse";
+        var queryParams = new List<string>();
+
+        if (topicPrefix != null) queryParams.Add($"topic_prefix={Uri.EscapeDataString(topicPrefix)}");
+        if (claimsStatus != null) queryParams.Add($"claims_status={claimsStatus}");
+        if (author != null) queryParams.Add($"author={author}");
+        if (sequenceMin.HasValue) queryParams.Add($"sequence_min={sequenceMin.Value}");
+        if (sequenceMax.HasValue) queryParams.Add($"sequence_max={sequenceMax.Value}");
+        if (hasFrictionAbove.HasValue) queryParams.Add($"has_friction_above={hasFrictionAbove.Value}");
+        if (needsReview.HasValue) queryParams.Add($"needs_review={needsReview.Value}");
+        if (integrationStatus != null) queryParams.Add($"integration_status={integrationStatus}");
+        if (limit.HasValue) queryParams.Add($"limit={limit.Value}");
+        if (offset.HasValue) queryParams.Add($"offset={offset.Value}");
+
+        if (queryParams.Count > 0) url += "?" + string.Join("&", queryParams);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<BrowseFilteredResponse>(JsonOptions);
+    }
+
+    /// <summary>
     /// Observe changes in a notebook since a given sequence.
     /// </summary>
     public async Task<ObserveResponse?> ObserveAsync(

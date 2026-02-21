@@ -162,6 +162,54 @@ public class ClusterSummary
 }
 
 /// <summary>
+/// DTO for filtered browse response from .NET API.
+/// </summary>
+public class BrowseFilteredResponse
+{
+    [JsonPropertyName("entries")]
+    public List<BrowseEntryDto> Entries { get; set; } = [];
+
+    [JsonPropertyName("count")]
+    public int Count { get; set; }
+}
+
+/// <summary>
+/// Single entry from filtered browse.
+/// </summary>
+public class BrowseEntryDto
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; set; }
+
+    [JsonPropertyName("claims_status")]
+    public string ClaimsStatus { get; set; } = "pending";
+
+    [JsonPropertyName("max_friction")]
+    public double? MaxFriction { get; set; }
+
+    [JsonPropertyName("needs_review")]
+    public bool NeedsReview { get; set; }
+
+    [JsonPropertyName("sequence")]
+    public long Sequence { get; set; }
+
+    [JsonPropertyName("created")]
+    public DateTime Created { get; set; }
+
+    [JsonPropertyName("author_id")]
+    public string AuthorId { get; set; } = string.Empty;
+
+    [JsonPropertyName("claim_count")]
+    public int ClaimCount { get; set; }
+
+    [JsonPropertyName("integration_status")]
+    public string IntegrationStatus { get; set; } = "probation";
+}
+
+/// <summary>
 /// DTO for observe response from Rust API.
 /// </summary>
 public class ObserveResponse

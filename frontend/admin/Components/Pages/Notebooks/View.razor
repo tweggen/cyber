@@ -377,6 +377,180 @@ else if (browseResult != null)
     }
 
     @* ================================================================== *@
+    @* Browse & Filter                                                     *@
+    @* ================================================================== *@
+
+    <h4 class="mt-4">Browse & Filter</h4>
+
+    @* Filter Panel *@
+    <div class="card mb-3">
+        <div class="card-header">
+            <button class="btn btn-sm btn-outline-secondary" @onclick="() => showFilterPanel = !showFilterPanel">
+                @(showFilterPanel ? "▼" : "▶") Filters
+            </button>
+        </div>
+        @if (showFilterPanel)
+        {
+            <div class="card-body">
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Topic Prefix</label>
+                        <input type="text" class="form-control form-control-sm" placeholder="e.g., confluence/ENG/"
+                               @bind="filterTopicPrefix" />
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Integration Status</label>
+                        <select class="form-select form-select-sm" @bind="filterIntegrationStatus">
+                            <option value="">All</option>
+                            <option value="probation">Probation</option>
+                            <option value="integrated">Integrated</option>
+                            <option value="contested">Contested</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">Claims Status</label>
+                        <select class="form-select form-select-sm" @bind="filterClaimsStatus">
+                            <option value="">All</option>
+                            <option value="pending">Pending</option>
+                            <option value="distilled">Distilled</option>
+                            <option value="verified">Verified</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label small fw-bold">
+                            <input type="checkbox" class="form-check-input" @bind="filterNeedsReview" />
+                            Needs Review
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn btn-sm btn-outline-secondary me-1"
+                        @onclick="() => showAdvancedFilters = !showAdvancedFilters">
+                    @(showAdvancedFilters ? "▼" : "▶") Advanced Filters
+                </button>
+
+                @if (showAdvancedFilters)
+                {
+                    <div class="row g-3 mt-3 pt-3 border-top">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Min Friction</label>
+                            <input type="number" step="0.1" min="0" max="1" class="form-control form-control-sm"
+                                   @bind="filterMinFriction" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Author ID (hex)</label>
+                            <input type="text" class="form-control form-control-sm" placeholder="hex string"
+                                   @bind="filterAuthor" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Min Sequence</label>
+                            <input type="number" class="form-control form-control-sm"
+                                   @bind="filterSequenceMin" />
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-bold">Max Sequence</label>
+                            <input type="number" class="form-control form-control-sm"
+                                   @bind="filterSequenceMax" />
+                        </div>
+                    </div>
+                }
+
+                <div class="mt-3 d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" @onclick="ApplyFilters" disabled="@isLoadingFiltered">
+                        @(isLoadingFiltered ? "Loading..." : "Apply Filters")
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="ResetFilters">Reset</button>
+                </div>
+            </div>
+        }
+    </div>
+
+    @* Filtered Results *@
+    @if (filteredBrowseResult != null)
+    {
+        <div class="mb-3">
+            <p class="text-muted small">@filteredBrowseResult.Count total entries matching filters</p>
+        </div>
+
+        @if (filteredBrowseResult.Entries.Count == 0)
+        {
+            <div class="alert alert-info">No entries match the selected filters.</div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th style="width: 100px;">Entry ID</th>
+                            <th>Topic</th>
+                            <th style="width: 100px;">Claims</th>
+                            <th style="width: 100px;">Integration</th>
+                            <th style="width: 80px;">Friction</th>
+                            <th style="width: 60px;">Review</th>
+                            <th style="width: 80px;">Sequence</th>
+                            <th style="width: 140px;">Created</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var entry in filteredBrowseResult.Entries.Skip(currentFilterOffset).Take(PageSize))
+                        {
+                            <tr>
+                                <td class="small font-monospace">
+                                    <a href="/notebooks/@NotebookId/entries/@entry.Id">@entry.Id.ToString()[..8]</a>
+                                </td>
+                                <td>@(entry.Topic ?? "—")</td>
+                                <td>
+                                    <span class="badge @ClaimsStatusBadgeClass(entry.ClaimsStatus)">
+                                        @entry.ClaimsStatus
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="badge @IntegrationStatusBadgeClass(entry.IntegrationStatus)">
+                                        @entry.IntegrationStatus
+                                    </span>
+                                </td>
+                                <td class="@FrictionColorClass(entry.MaxFriction)">
+                                    @(entry.MaxFriction?.ToString("F2") ?? "—")
+                                </td>
+                                <td>
+                                    @if (entry.NeedsReview)
+                                    {
+                                        <span class="badge bg-warning text-dark">⚠</span>
+                                    }
+                                </td>
+                                <td class="text-muted small">@entry.Sequence</td>
+                                <td class="text-muted small">@entry.Created.ToString("yyyy-MM-dd HH:mm")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            @* Pagination for filtered results *@
+            @if (filteredBrowseResult.Entries.Count > PageSize)
+            {
+                int filteredTotal = filteredBrowseResult.Entries.Count;
+                int filteredTotalPages = (int)Math.Ceiling((double)filteredTotal / PageSize);
+                <div class="d-flex justify-content-center gap-2 mt-3">
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="PrevFilteredPage" disabled="@(currentFilterOffset == 0)">Previous</button>
+                    <span class="align-self-center text-muted small">
+                        Page @((currentFilterOffset / PageSize) + 1) of @filteredTotalPages
+                    </span>
+                    <button class="btn btn-sm btn-outline-secondary"
+                            @onclick="NextFilteredPage"
+                            disabled="@((currentFilterOffset + PageSize) >= filteredTotal)">Next</button>
+                </div>
+            }
+        }
+
+        @if (filterErrorMessage != null)
+        {
+            <div class="alert alert-danger mt-3">@filterErrorMessage</div>
+        }
+    }
+
+    @* ================================================================== *@
     @* Catalog                                                             *@
     @* ================================================================== *@
 
@@ -816,6 +990,24 @@ else if (browseResult != null)
     private List<SearchResultDto>? serverSearchResults;
     private bool isServerSearching;
 
+    // Filtered browse state
+    private BrowseFilteredResponse? filteredBrowseResult;
+    private bool showFilterPanel = false;
+    private bool showAdvancedFilters = false;
+    private bool isLoadingFiltered = false;
+    private string? filterErrorMessage;
+    private int currentFilterOffset = 0;
+
+    // Filter input fields
+    private string filterTopicPrefix = string.Empty;
+    private string filterIntegrationStatus = string.Empty;
+    private string filterClaimsStatus = string.Empty;
+    private bool filterNeedsReview = false;
+    private double? filterMinFriction = null;
+    private string filterAuthor = string.Empty;
+    private long? filterSequenceMin = null;
+    private long? filterSequenceMax = null;
+
     private List<string> PathSegments =>
         pathFilter == "" ? [] : pathFilter.TrimEnd('/').Split('/').ToList();
 
@@ -1021,6 +1213,95 @@ else if (browseResult != null)
     private void ClearServerSearch()
     {
         serverSearchResults = null;
+    }
+
+    // ===== Filtered Browse =====
+
+    private async Task ApplyFilters()
+    {
+        if (authorIdHex == null)
+            return;
+
+        isLoadingFiltered = true;
+        filterErrorMessage = null;
+        currentFilterOffset = 0;
+
+        try
+        {
+            filteredBrowseResult = await ApiClient.BrowseFilteredAsync(
+                authorIdHex,
+                NotebookId,
+                topicPrefix: string.IsNullOrWhiteSpace(filterTopicPrefix) ? null : filterTopicPrefix,
+                claimsStatus: string.IsNullOrWhiteSpace(filterClaimsStatus) ? null : filterClaimsStatus,
+                author: string.IsNullOrWhiteSpace(filterAuthor) ? null : filterAuthor,
+                sequenceMin: filterSequenceMin,
+                sequenceMax: filterSequenceMax,
+                hasFrictionAbove: filterMinFriction,
+                needsReview: filterNeedsReview ? true : null,
+                integrationStatus: string.IsNullOrWhiteSpace(filterIntegrationStatus) ? null : filterIntegrationStatus,
+                limit: 500 // Load 500 entries for client-side pagination
+            );
+        }
+        catch (Exception ex)
+        {
+            filterErrorMessage = $"Failed to load filtered results: {ex.Message}";
+            filteredBrowseResult = null;
+        }
+        finally
+        {
+            isLoadingFiltered = false;
+        }
+    }
+
+    private void ResetFilters()
+    {
+        filterTopicPrefix = string.Empty;
+        filterIntegrationStatus = string.Empty;
+        filterClaimsStatus = string.Empty;
+        filterNeedsReview = false;
+        filterMinFriction = null;
+        filterAuthor = string.Empty;
+        filterSequenceMin = null;
+        filterSequenceMax = null;
+        filteredBrowseResult = null;
+        currentFilterOffset = 0;
+        filterErrorMessage = null;
+    }
+
+    private void NextFilteredPage()
+    {
+        if (filteredBrowseResult != null && (currentFilterOffset + PageSize) < filteredBrowseResult.Entries.Count)
+            currentFilterOffset += PageSize;
+    }
+
+    private void PrevFilteredPage()
+    {
+        if (currentFilterOffset >= PageSize)
+            currentFilterOffset -= PageSize;
+    }
+
+    private string ClaimsStatusBadgeClass(string status) => status switch
+    {
+        "pending" => "bg-secondary",
+        "distilled" => "bg-info",
+        "verified" => "bg-success",
+        _ => "bg-secondary"
+    };
+
+    private string IntegrationStatusBadgeClass(string status) => status switch
+    {
+        "probation" => "bg-warning text-dark",
+        "integrated" => "bg-success",
+        "contested" => "bg-danger",
+        _ => "bg-secondary"
+    };
+
+    private string FrictionColorClass(double? friction)
+    {
+        if (friction == null) return "";
+        return friction >= 0.7 ? "text-danger fw-bold" :
+               friction >= 0.4 ? "text-warning" :
+               "text-muted";
     }
 
     // ===== Rename =====
