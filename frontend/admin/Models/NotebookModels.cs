@@ -1075,3 +1075,94 @@ public class JobStatsResponse
     [JsonPropertyName("EMBED_CLAIMS")]
     public JobTypeStats EmbedClaims { get; set; } = new();
 }
+
+// ============================================================================
+// Batch Entry DTOs
+// ============================================================================
+
+/// <summary>
+/// Single entry in a batch write request.
+/// </summary>
+public class BatchEntryRequest
+{
+    [JsonPropertyName("content")]
+    public string Content { get; set; } = string.Empty;
+
+    [JsonPropertyName("content_type")]
+    public string ContentType { get; set; } = "text/plain";
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; set; }
+
+    [JsonPropertyName("references")]
+    public List<Guid> References { get; set; } = [];
+
+    [JsonPropertyName("fragment_of")]
+    public Guid? FragmentOf { get; set; }
+
+    [JsonPropertyName("fragment_index")]
+    public int? FragmentIndex { get; set; }
+
+    [JsonPropertyName("source")]
+    public string? Source { get; set; }
+
+    [JsonPropertyName("classification_assertion")]
+    public ClassificationAssertion? ClassificationAssertion { get; set; }
+}
+
+/// <summary>
+/// Request body for batch write endpoint.
+/// </summary>
+public class BatchWriteRequest
+{
+    [JsonPropertyName("entries")]
+    public List<BatchEntryRequest> Entries { get; set; } = [];
+
+    [JsonPropertyName("author")]
+    public string? Author { get; set; }
+}
+
+/// <summary>
+/// Result for a single entry in batch response.
+/// </summary>
+public class BatchEntryResult
+{
+    [JsonPropertyName("entry_id")]
+    public Guid EntryId { get; set; }
+
+    [JsonPropertyName("causal_position")]
+    public long CausalPosition { get; set; }
+
+    [JsonPropertyName("integration_cost")]
+    public double IntegrationCost { get; set; }
+
+    [JsonPropertyName("claims_status")]
+    public string ClaimsStatus { get; set; } = "pending";
+
+    [JsonPropertyName("review_status")]
+    public string? ReviewStatus { get; set; }
+}
+
+/// <summary>
+/// Response from batch write endpoint.
+/// </summary>
+public class BatchWriteResponse
+{
+    [JsonPropertyName("results")]
+    public List<BatchEntryResult> Results { get; set; } = [];
+
+    [JsonPropertyName("jobs_created")]
+    public int JobsCreated { get; set; }
+}
+
+/// <summary>
+/// Classification assertion for entry review routing.
+/// </summary>
+public class ClassificationAssertion
+{
+    [JsonPropertyName("max_level")]
+    public string MaxLevel { get; set; } = "INTERNAL";
+
+    [JsonPropertyName("compartments")]
+    public List<string> Compartments { get; set; } = [];
+}

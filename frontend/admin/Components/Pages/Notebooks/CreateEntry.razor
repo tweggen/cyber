@@ -3,6 +3,7 @@
 @attribute [Authorize]
 @using NotebookAdmin.Models
 @using NotebookAdmin.Services
+@using System.Text
 @inject NotebookApiClient ApiClient
 @inject CurrentUserService CurrentUser
 @inject QuotaService QuotaService
@@ -14,53 +15,273 @@
 
 <h3>Create Entry</h3>
 
-@if (errorMessage != null)
+<!-- Tab Switcher -->
+<ul class="nav nav-tabs mb-3">
+    <li class="nav-item">
+        <button class="nav-link @(isBatchMode ? "" : "active")"
+                @onclick="() => { isBatchMode = false; ResetBatch(); }">Single Entry</button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link @(isBatchMode ? "active" : "")"
+                @onclick="() => isBatchMode = true">Batch Upload</button>
+    </li>
+</ul>
+
+<!-- Single Entry Mode -->
+@if (!isBatchMode)
 {
-    <div class="alert alert-danger">@errorMessage</div>
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-danger">@errorMessage</div>
+    }
+
+    @if (createdEntry != null)
+    {
+        <div class="alert alert-success">
+            <p>Entry created successfully!</p>
+            <p>Entry ID: <code>@createdEntry.EntryId</code></p>
+            <p>Integration Cost: @createdEntry.IntegrationCost.CatalogShift.ToString("F4")</p>
+            <a href="/notebooks/@NotebookId/entries/@createdEntry.EntryId" class="btn btn-sm btn-primary">View Entry</a>
+            <a href="/notebooks/@NotebookId" class="btn btn-sm btn-outline-secondary ms-2">Back to Notebook</a>
+        </div>
+    }
+    else
+    {
+        <EditForm Model="formModel" OnValidSubmit="HandleSubmit" FormName="createEntry">
+            <div class="mb-3">
+                <label class="form-label">Content</label>
+                <InputTextArea class="form-control" @bind-Value="formModel.Content" rows="6" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Content Type</label>
+                <InputSelect class="form-select" @bind-Value="formModel.ContentType">
+                    <option value="text/plain">text/plain</option>
+                    <option value="text/markdown">text/markdown</option>
+                    <option value="application/json">application/json</option>
+                </InputSelect>
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">Topic (optional)</label>
+                <InputText class="form-control" @bind-Value="formModel.Topic" />
+            </div>
+
+            <div class="mb-3">
+                <label class="form-label">References (comma-separated UUIDs, optional)</label>
+                <InputText class="form-control" @bind-Value="formModel.ReferencesText" />
+            </div>
+
+            <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
+                @(isSubmitting ? "Creating..." : "Create Entry")
+            </button>
+            <a href="/notebooks/@NotebookId" class="btn btn-outline-secondary ms-2">Cancel</a>
+        </EditForm>
+    }
 }
 
-@if (createdEntry != null)
+<!-- Batch Upload Mode -->
+@if (isBatchMode)
 {
-    <div class="alert alert-success">
-        <p>Entry created successfully!</p>
-        <p>Entry ID: <code>@createdEntry.EntryId</code></p>
-        <p>Integration Cost: @createdEntry.IntegrationCost.CatalogShift.ToString("F4")</p>
-        <a href="/notebooks/@NotebookId/entries/@createdEntry.EntryId" class="btn btn-sm btn-primary">View Entry</a>
-        <a href="/notebooks/@NotebookId" class="btn btn-sm btn-outline-secondary ms-2">Back to Notebook</a>
-    </div>
-}
-else
-{
-    <EditForm Model="formModel" OnValidSubmit="HandleSubmit" FormName="createEntry">
-        <div class="mb-3">
-            <label class="form-label">Content</label>
-            <InputTextArea class="form-control" @bind-Value="formModel.Content" rows="6" />
+    @if (batchError != null)
+    {
+        <div class="alert alert-danger">@batchError</div>
+    }
+
+    @if (batchResult != null)
+    {
+        <!-- Results Display -->
+        <div class="alert alert-success">
+            <p><strong>Batch created successfully!</strong></p>
+            <p>@batchResult.Results.Count entries created (@batchResult.JobsCreated jobs created)</p>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Content Type</label>
-            <InputSelect class="form-select" @bind-Value="formModel.ContentType">
-                <option value="text/plain">text/plain</option>
-                <option value="text/markdown">text/markdown</option>
-                <option value="application/json">application/json</option>
-            </InputSelect>
+        @if (batchResult.Results.Count > 0)
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Created Entries (showing first 10)</h5>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th>Entry ID</th>
+                                <th>Position</th>
+                                <th>Integration Cost</th>
+                                <th>Claims Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var result in batchResult.Results.Take(10))
+                            {
+                                <tr>
+                                    <td>
+                                        <a href="/notebooks/@NotebookId/entries/@result.EntryId"
+                                           class="text-truncate" style="max-width: 200px; display: inline-block;">
+                                            @result.EntryId.ToString().Substring(0, 8)...
+                                        </a>
+                                    </td>
+                                    <td>@result.CausalPosition</td>
+                                    <td>@result.IntegrationCost.ToString("F4")</td>
+                                    <td><span class="badge bg-info">@result.ClaimsStatus</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        }
+
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-primary" @onclick="ResetBatch">Create More</button>
+            <a href="/notebooks/@NotebookId" class="btn btn-outline-secondary">Back to Notebook</a>
+        </div>
+    }
+    else
+    {
+        <!-- Input Stage -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Input Format</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Format</label>
+                    <div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="format" id="formatText"
+                                   value="text" @onchange="@((ChangeEventArgs e) => batchFormat = (string)e.Value!)"
+                                   checked="@(batchFormat == "text")" />
+                            <label class="form-check-label" for="formatText">Line-separated text</label>
+                        </div>
+                        <div class="form-check form-check-inline">
+                            <input class="form-check-input" type="radio" name="format" id="formatCsv"
+                                   value="csv" @onchange="@((ChangeEventArgs e) => batchFormat = (string)e.Value!)"
+                                   checked="@(batchFormat == "csv")" />
+                            <label class="form-check-label" for="formatCsv">CSV</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">File Upload</label>
+                    <InputFile OnChange="HandleFileUpload" accept=".txt,.csv" class="form-control" />
+                    <small class="text-muted d-block mt-1">Or paste content below</small>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Paste Content</label>
+                    <textarea class="form-control" rows="10" @bind="batchInput"
+                              placeholder="@GetPlaceholder()"></textarea>
+                </div>
+
+                @if (batchFormat == "csv")
+                {
+                    <div class="alert alert-info small">
+                        <strong>CSV Format:</strong> First line should be header: <code>content,content_type,topic,source</code>
+                    </div>
+                }
+            </div>
         </div>
 
-        <div class="mb-3">
-            <label class="form-label">Topic (optional)</label>
-            <InputText class="form-control" @bind-Value="formModel.Topic" />
+        <!-- Common Fields -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">Common Fields (Optional)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Default Content Type</label>
+                        <select class="form-select" @bind="batchContentType">
+                            <option value="text/plain">text/plain</option>
+                            <option value="text/markdown">text/markdown</option>
+                            <option value="application/json">application/json</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Topic Prefix (optional)</label>
+                        <input type="text" class="form-control" @bind="batchTopicPrefix"
+                               placeholder="e.g., docs/import" />
+                        <small class="text-muted">Topics will be auto-numbered: prefix/entry-1, prefix/entry-2, etc.</small>
+                    </div>
+                </div>
+            </div>
         </div>
 
+        <!-- Parse Button -->
         <div class="mb-3">
-            <label class="form-label">References (comma-separated UUIDs, optional)</label>
-            <InputText class="form-control" @bind-Value="formModel.ReferencesText" />
+            <button type="button" class="btn btn-info" @onclick="ParseBatchInput">
+                Parse Input
+            </button>
         </div>
 
-        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">
-            @(isSubmitting ? "Creating..." : "Create Entry")
-        </button>
-        <a href="/notebooks/@NotebookId" class="btn btn-outline-secondary ms-2">Cancel</a>
-    </EditForm>
+        <!-- Preview Stage -->
+        @if (parsedEntries.Count > 0)
+        {
+            <div class="card mb-3">
+                <div class="card-header">
+                    <h5 class="mb-0">Preview</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>@parsedEntries.Count entries parsed</strong></p>
+
+                    @if (parsedEntries.Count > 100)
+                    {
+                        <div class="alert alert-warning">
+                            <strong>Warning:</strong> Maximum 100 entries per batch. You have @parsedEntries.Count entries.
+                        </div>
+                    }
+
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 40%;">Content Preview</th>
+                                    <th style="width: 20%;">Type</th>
+                                    <th style="width: 30%;">Topic</th>
+                                    <th style="width: 10%;">Source</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in parsedEntries.Take(50))
+                                {
+                                    <tr>
+                                        <td class="text-truncate" style="max-width: 300px;">
+                                            @(entry.Content.Length > 100 ? entry.Content.Substring(0, 100) + "..." : entry.Content)
+                                        </td>
+                                        <td>@entry.ContentType</td>
+                                        <td>@(entry.Topic ?? "(none)")</td>
+                                        <td>@(entry.Source ?? "")</td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                    @if (parsedEntries.Count > 50)
+                    {
+                        <p class="text-muted small mt-2">Showing first 50 of @parsedEntries.Count entries</p>
+                    }
+                </div>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="button" class="btn btn-primary"
+                    disabled="@(isSubmittingBatch || parsedEntries.Count > 100 || parsedEntries.Count == 0)"
+                    @onclick="SubmitBatch">
+                @if (isSubmittingBatch)
+                {
+                    <span>Creating @parsedEntries.Count entries...</span>
+                }
+                else
+                {
+                    <span>Create @parsedEntries.Count Entries</span>
+                }
+            </button>
+            <button type="button" class="btn btn-outline-secondary ms-2" @onclick="ResetBatch">Clear</button>
+        }
+    }
 }
 
 @code {
@@ -70,12 +291,24 @@ else
     [CascadingParameter]
     private Task<AuthenticationState>? AuthState { get; set; }
 
+    // Single entry fields
     private EntryFormModel formModel = new();
     private string? authorIdHex;
     private string? userId;
     private string? errorMessage;
     private bool isSubmitting;
     private CreateEntryResponse? createdEntry;
+
+    // Batch entry fields
+    private bool isBatchMode = false;
+    private string batchFormat = "text"; // "csv" or "text"
+    private string batchInput = string.Empty;
+    private string batchContentType = "text/plain";
+    private string? batchTopicPrefix;
+    private List<BatchEntryRequest> parsedEntries = [];
+    private bool isSubmittingBatch = false;
+    private BatchWriteResponse? batchResult;
+    private string? batchError;
 
     public class EntryFormModel
     {
@@ -145,5 +378,171 @@ else
         {
             isSubmitting = false;
         }
+    }
+
+    // =========================================================================
+    // Batch Entry Methods
+    // =========================================================================
+
+    private string GetPlaceholder()
+    {
+        return batchFormat == "csv"
+            ? "content,content_type,topic,source\n\"Entry 1\",text/plain,docs,\n\"Entry 2\",text/markdown,api,"
+            : "Entry 1 content here\nEntry 2 content here\nEntry 3 content here";
+    }
+
+    private async Task HandleFileUpload(InputFileChangeEventArgs e)
+    {
+        if (e.File == null) return;
+
+        try
+        {
+            using var reader = new StreamReader(e.File.OpenReadStream());
+            batchInput = await reader.ReadToEndAsync();
+        }
+        catch (Exception ex)
+        {
+            batchError = $"Failed to read file: {ex.Message}";
+        }
+    }
+
+    private void ParseBatchInput()
+    {
+        parsedEntries.Clear();
+        batchError = null;
+
+        if (string.IsNullOrWhiteSpace(batchInput))
+        {
+            batchError = "No input provided";
+            return;
+        }
+
+        if (batchFormat == "csv")
+            ParseCsvInput();
+        else
+            ParseTextInput();
+
+        if (parsedEntries.Count == 0)
+            batchError = "No entries parsed from input";
+        else if (parsedEntries.Count > 100)
+            batchError = $"Too many entries: {parsedEntries.Count} (max 100)";
+    }
+
+    private void ParseTextInput()
+    {
+        var lines = batchInput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        int entryIndex = 1;
+
+        foreach (var line in lines)
+        {
+            var content = line.Trim();
+            if (string.IsNullOrEmpty(content)) continue;
+
+            parsedEntries.Add(new BatchEntryRequest
+            {
+                Content = content,
+                ContentType = batchContentType,
+                Topic = !string.IsNullOrEmpty(batchTopicPrefix) ? $"{batchTopicPrefix}/entry-{entryIndex}" : null
+            });
+            entryIndex++;
+        }
+    }
+
+    private void ParseCsvInput()
+    {
+        var lines = batchInput.Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        if (lines.Length < 2)
+            return;
+
+        int entryIndex = 1;
+        for (int i = 1; i < lines.Length; i++)
+        {
+            var parts = ParseCsvLine(lines[i]);
+            if (parts.Length == 0 || string.IsNullOrEmpty(parts[0])) continue;
+
+            var topic = parts.Length > 2 && !string.IsNullOrEmpty(parts[2])
+                ? parts[2]
+                : (!string.IsNullOrEmpty(batchTopicPrefix) ? $"{batchTopicPrefix}/entry-{entryIndex}" : null);
+
+            parsedEntries.Add(new BatchEntryRequest
+            {
+                Content = parts[0],
+                ContentType = parts.Length > 1 && !string.IsNullOrEmpty(parts[1]) ? parts[1] : batchContentType,
+                Topic = topic,
+                Source = parts.Length > 3 && !string.IsNullOrEmpty(parts[3]) ? parts[3] : null
+            });
+            entryIndex++;
+        }
+    }
+
+    private string[] ParseCsvLine(string line)
+    {
+        var result = new List<string>();
+        var current = new StringBuilder();
+        bool inQuotes = false;
+
+        foreach (char c in line)
+        {
+            if (c == '"')
+            {
+                inQuotes = !inQuotes;
+            }
+            else if (c == ',' && !inQuotes)
+            {
+                result.Add(current.ToString().Trim(' ', '"'));
+                current.Clear();
+            }
+            else
+            {
+                current.Append(c);
+            }
+        }
+        result.Add(current.ToString().Trim(' ', '"'));
+        return result.ToArray();
+    }
+
+    private async Task SubmitBatch()
+    {
+        if (parsedEntries.Count == 0 || parsedEntries.Count > 100 || authorIdHex == null || userId == null)
+            return;
+
+        isSubmittingBatch = true;
+        batchError = null;
+
+        try
+        {
+            // Quota check for batch
+            long totalBytes = parsedEntries.Sum(e => Encoding.UTF8.GetByteCount(e.Content));
+            var canCreate = await QuotaService.CanCreateEntryAsync(
+                userId, authorIdHex, NotebookId, (int)totalBytes, ApiClient);
+            if (!canCreate)
+            {
+                batchError = "Quota exceeded. The batch size exceeds your remaining quota.";
+                isSubmittingBatch = false;
+                return;
+            }
+
+            var request = new BatchWriteRequest { Entries = parsedEntries };
+            batchResult = await ApiClient.BatchWriteAsync(authorIdHex, NotebookId, request);
+        }
+        catch (Exception ex)
+        {
+            batchError = $"Failed to create batch: {ex.Message}";
+        }
+        finally
+        {
+            isSubmittingBatch = false;
+        }
+    }
+
+    private void ResetBatch()
+    {
+        batchInput = string.Empty;
+        parsedEntries.Clear();
+        batchResult = null;
+        batchError = null;
+        batchFormat = "text";
+        batchContentType = "text/plain";
+        batchTopicPrefix = null;
     }
 }

@@ -605,6 +605,25 @@ public class NotebookApiClient
         return await response.Content.ReadFromJsonAsync<JobStatsResponse>(JsonOptions);
     }
 
+    // =========================================================================
+    // Batch Operations
+    // =========================================================================
+
+    /// <summary>
+    /// Create multiple entries in a single batch (max 100).
+    /// </summary>
+    public async Task<BatchWriteResponse?> BatchWriteAsync(
+        string authorIdHex, Guid notebookId, BatchWriteRequest batchRequest)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/notebooks/{notebookId}/batch");
+        AddAuthHeader(request, authorIdHex);
+        request.Content = JsonContent.Create(batchRequest, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<BatchWriteResponse>(JsonOptions);
+    }
+
     /// <summary>
     /// Add JWT Bearer token to the request for the given author.
     /// </summary>
