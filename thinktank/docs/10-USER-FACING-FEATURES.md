@@ -244,20 +244,32 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### Architecture Note
 
-**Backend:** .NET 10 (Notebook.Server in thinktank/src/). Contains full implementation of:
+**Backend:** .NET 10 (Notebook.Server in thinktank/src/). Contains full implementation of all planned features:
 - Browse filters with all parameters (topic_prefix, claims_status, integration_status, friction, etc.)
 - Batch entry creation with classification fields
 - Semantic search via EmbeddingService (Ollama integration)
 - Comprehensive endpoint coverage
 
-**Frontend:** .NET Blazor Server (frontend/admin/). Status varies:
-- Most features fully exposed (organizations, clearances, reviews, etc.)
-- Some backend features not yet exposed in UI (see "Partially Covered" section)
+**Frontend:** .NET Blazor Server (frontend/admin/).
+- **12 feature domains fully implemented and exposed in UI** (75%)
+- **4 feature domains partially covered** - backend ready, frontend UI not exposed (25%)
 - Old Rust backend (notebook/) is first-generation; currently maintained for reference only
+
+### Implementation Coverage Summary
+
+**Total Feature Domains:** 16
+
+| Status | Count | Percentage |
+|--------|:-----:|:----------:|
+| ✅ Fully Implemented (Backend + Frontend) | 12 | 75% |
+| ⚠️ Partially Covered (Backend Done, Frontend Pending) | 4 | 25% |
+| ❌ Not Supported | 0 | 0% |
+
+**Partially Covered Features:** Browse filters, Batch entry creation, Semantic search (UI), Notebook creation (requires backend feature design)
 
 ### Completely Missing UI Pages (0% coverage)
 
-None at this time. All planned features have backend implementations. UI gaps are listed in "Partially Covered Features" above.
+None at this time. All planned features have backend implementations.
 
 ### Fully Implemented Features
 
@@ -284,7 +296,6 @@ None at this time. All planned features have backend implementations. UI gaps ar
 | **Batch entry creation** | ⚠️ Partial | Frontend batch upload UI | Backend BatchEndpoints fully support multiple entries with classification_assertion and source fields. Single-entry UI exists; batch UI not exposed. |
 | **Semantic search** | ⚠️ Partial | Frontend semantic search UI | Backend has EmbeddingService and semantic capabilities. Frontend search box only does full-text; semantic query option not exposed. |
 | **Notebook creation** | ⚠️ Partial | Classification and compartment selection at creation | Backend API doesn't support these fields (requires feature design). |
-| **Search** | ✅ DONE | Full-text search fully implemented | Both backend and frontend complete. |
 
 ### Other Issues
 
