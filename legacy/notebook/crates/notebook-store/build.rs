@@ -14,9 +14,11 @@ fn main() {
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
 
     // Candidate directories where migrations might live:
-    // 1. Local dev: repo-root/postgres/migrations/
-    // 2. Docker build: workspace-root/migrations/ (COPY'd by Dockerfile)
+    // 1. Local dev: repo-root/infrastructure/postgres/migrations/ (after reorganization)
+    // 2. Legacy: repo-root/postgres/migrations/ (old location, for backward compat)
+    // 3. Docker build: workspace-root/migrations/ (COPY'd by Dockerfile)
     let candidates: Vec<PathBuf> = vec![
+        manifest_dir.join("../../../../infrastructure/postgres/migrations"),
         manifest_dir.join("../../../postgres/migrations"),
         manifest_dir.join("../../migrations"),
     ];
