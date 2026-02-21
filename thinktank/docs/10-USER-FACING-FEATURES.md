@@ -56,14 +56,12 @@ This document catalogs every use case exposed to end users through the Admin UI 
 | Browse entries (topic tree, sort, search, paginate) | `/notebooks/{id}` | `GET /notebooks/{id}/observe` | Client-side filtering |
 | View entry fragments, revision chain, cross-references | `/notebooks/{id}/entries/{eid}` | `GET /notebooks/{id}/entries/{eid}` | |
 
-### UI Gaps
+### UI Coverage
 
-- ✅ **Server-side full-text search** (DONE). The search box now has a "Server Search" button that calls `GET /notebooks/{id}/search?query=...` and displays results in an expandable card with relevance scores.
-- **No semantic search UI.** The API has `POST /notebooks/{id}/semantic-search` for vector-based nearest-neighbor search, but there is no UI for it.
-- **No batch claims retrieval UI.** `POST /notebooks/{id}/claims/batch` exists for fetching claims for up to 100 entries but is only used programmatically.
-- **No classification assertion in entry creation.** The single-entry API (`POST /notebooks/{id}/entries`) does not support `classification_assertion` (only the batch endpoint does). Entry creation form is correctly limited to content, type, topic, and references.
-- **No source/provenance field in entry creation.** The single-entry API does not support a `source` field (only the batch endpoint does). Entry creation form is correctly limited to content, type, topic, and references.
-- **Browse endpoint filters not exposed.** The API's `GET /notebooks/{id}/browse` supports rich filtering (claims_status, friction threshold, needs_review, integration_status, author, sequence range), but the UI only does client-side topic/ID filtering on the observe endpoint.
+- ✅ **Server-side full-text search** (DONE). Search box has "Server Search" button calling `GET /notebooks/{id}/search?query=...`. Results displayed in expandable card with: Topic (clickable), Snippet (with match location), and Relevance Score. Full-text indexing via Tantivy backend.
+- ⚠️ **Semantic search missing.** API has `POST /notebooks/{id}/semantic-search` for vector-based nearest-neighbor search but no UI implemented.
+- ⚠️ **Browse endpoint filters not exposed.** API supports rich filtering (claims_status, friction threshold, needs_review, integration_status, author, sequence range) but UI only does client-side topic/ID filtering.
+- ℹ️ **Note on entry creation fields:** Single-entry API correctly limited to content, type, topic, references. Batch API supports `classification_assertion` and `source` but these are for bulk ingest, not individual entry creation.
 
 ---
 
@@ -75,10 +73,13 @@ This document catalogs every use case exposed to end users through the Admin UI 
 |----------|:--:|:---:|-------|
 | Retry all failed jobs | `/notebooks/{id}` (button) | `POST /notebooks/{id}/jobs/retry-failed` | Owner only |
 
-### UI Gaps
+### UI Coverage
 
-- ✅ **Job queue visibility** (DONE). The notebook view now includes a "Job Pipeline" section with a table showing pending/in_progress/completed/failed counts per job type (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS). Includes a refresh button to reload stats on demand.
-- **No individual job management.** The API supports claiming (`GET /jobs/next`), completing (`POST /jobs/{id}/complete`), and failing (`POST /jobs/{id}/fail`) individual jobs — these are for robot workers, but admins have no visibility into individual job status.
+- ✅ **Job queue visibility** (DONE). Notebook view includes "Job Pipeline" section with:
+  - Table showing pending/in_progress/completed/failed counts per job type: DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS
+  - Refresh button to reload stats on demand
+  - Owner-only access
+- ℹ️ **Individual job management.** API supports claiming (`GET /jobs/next`), completing (`POST /jobs/{id}/complete`), and failing (`POST /jobs/{id}/fail`) for robot workers. Individual job visibility deferred (low priority for UI; worker operations are programmatic).
 
 ---
 
@@ -92,10 +93,19 @@ This document catalogs every use case exposed to end users through the Admin UI 
 | Share a notebook (grant read or read+write) | `/notebooks/{id}` (inline form) | `POST /notebooks/{id}/share` | Owner only |
 | Revoke access | `/notebooks/{id}` (revoke button) | `DELETE /notebooks/{id}/share/{authorId}` | Owner only |
 
-### UI Gaps
+### UI Coverage
 
-- ✅ **All four sharing tiers now exposed** (DONE). The sharing UI now offers a 4-tier dropdown: `existence` (can see notebook exists), `read` (can read entries), `read_write` (can write entries), `admin` (can share & manage). Participants table shows tier with colored badges.
-- ✅ **Group-based access management** (DONE). Notebooks now have a "Group Assignment" section in the notebook view (owner only) with a dropdown to assign/unassign the notebook from groups. Shows owning group with link to group detail page.
+- ✅ **All four sharing tiers** (DONE). Sharing section offers 4-tier dropdown:
+  - `existence` (can see notebook exists) → gray badge
+  - `read` (can read entries) → green badge
+  - `read_write` (can write entries) → blue badge
+  - `admin` (can share & manage) → red badge
+  - Participants table shows tier with color-coded badges
+- ✅ **Group-based access management** (DONE). Notebook view includes "Group Assignment" section (owner only):
+  - Dropdown to assign/unassign notebook from owning group
+  - Shows current owning group with link to group detail page
+  - Unassign option to set group to null
+  - Group membership determines access tier propagation (admin → AccessTier.Admin, member → ReadWrite)
 
 ---
 
@@ -105,19 +115,19 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Use Case | UI | API |
 |----------|:--:|:---:|
-| Create an organization | — | `POST /organizations` |
-| List organizations | — | `GET /organizations` |
-| Create a group | — | `POST /organizations/{orgId}/groups` |
-| List groups (with DAG edges) | — | `GET /organizations/{orgId}/groups` |
-| Delete a group | — | `DELETE /groups/{groupId}` |
-| Add/remove parent-child edges | — | `POST /organizations/{orgId}/edges`, `DELETE /groups/{parentId}/edges/{childId}` |
-| Add/remove group members | — | `POST /groups/{groupId}/members`, `DELETE /groups/{groupId}/members/{authorId}` |
-| List group members | — | `GET /groups/{groupId}/members` |
-| Assign notebook to owning group | — | `PUT /notebooks/{notebookId}/group` |
+| Create an organization | ✅ `/admin/organizations` | `POST /organizations` |
+| List organizations | ✅ `/admin/organizations` | `GET /organizations` |
+| Create a group | ✅ `/admin/organizations/{id}` | `POST /organizations/{orgId}/groups` |
+| List groups (with DAG edges) | ✅ `/admin/organizations/{id}` | `GET /organizations/{orgId}/groups` |
+| Delete a group | ✅ `/admin/organizations/{id}` | `DELETE /groups/{groupId}` |
+| Add/remove parent-child edges | ✅ `/admin/organizations/{id}` | `POST /organizations/{orgId}/edges`, `DELETE /groups/{parentId}/edges/{childId}` |
+| Add/remove group members | ✅ `/admin/groups/{id}` | `POST /groups/{groupId}/members`, `DELETE /groups/{groupId}/members/{authorId}` |
+| List group members | ✅ `/admin/groups/{id}` | `GET /groups/{groupId}/members` |
+| Assign notebook to owning group | ✅ `/notebooks/{id}` | `PUT /notebooks/{notebookId}/group` |
 
-### UI Gaps
+### UI Coverage
 
-- **No UI at all.** The entire Organizations & Groups system (11 API endpoints) has zero UI coverage. Users can only manage organizations, groups, memberships, and notebook-group assignment via direct API calls. This is the largest gap.
+- ✅ **Fully implemented.** Organizations list page with create/delete. Organization detail page shows hierarchical DAG tree visualization of groups with expand/collapse. Group detail page manages members with role assignment (member/admin) and displays owned notebooks. Full CRUD across all 11 API endpoints.
 
 ---
 
@@ -127,14 +137,14 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Use Case | UI | API |
 |----------|:--:|:---:|
-| Grant clearance to an author | — | `POST /clearances` |
-| Revoke clearance | — | `DELETE /clearances/{authorId}/{orgId}` |
-| List clearances for an organization | — | `GET /organizations/{orgId}/clearances` |
-| Flush clearance cache | — | `POST /admin/cache/flush` |
+| Grant clearance to an author | ✅ `/admin/organizations/{id}` | `POST /clearances` |
+| Revoke clearance | ✅ `/admin/organizations/{id}` | `DELETE /clearances/{authorId}/{orgId}` |
+| List clearances for an organization | ✅ `/admin/organizations/{id}` | `GET /organizations/{orgId}/clearances` |
+| Flush clearance cache | ✅ `/admin/organizations/{id}` | `POST /admin/cache/flush` |
 
-### UI Gaps
+### UI Coverage
 
-- **No UI at all.** Classification and clearance management (4 API endpoints) is entirely API-only. Users cannot view or manage who has clearance to access classified notebooks through the admin UI.
+- ✅ **Fully implemented.** Clearances section on organization detail page shows all clearances for an organization. Displays: Author (hex ID), Max Level (5 levels: PUBLIC, INTERNAL, CONFIDENTIAL, SECRET, TOP_SECRET), Compartments (comma-separated), and Granted date. Grant new clearances form with hex author ID validation, level dropdown, and compartments input. Revoke button per clearance. Cache flush button for immediate effect.
 
 ---
 
@@ -144,15 +154,15 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Use Case | UI | API |
 |----------|:--:|:---:|
-| Register a ThinkerAgent | — | `POST /agents` |
-| List agents | — | `GET /agents` |
-| View agent details | — | `GET /agents/{agentId}` |
-| Update agent security labels | — | `PUT /agents/{agentId}` |
-| Delete an agent | — | `DELETE /agents/{agentId}` |
+| Register a ThinkerAgent | ✅ `/admin/agents` | `POST /agents` |
+| List agents | ✅ `/admin/agents` | `GET /agents` |
+| View agent details | ✅ `/admin/agents` | `GET /agents/{agentId}` |
+| Update agent security labels | ✅ `/admin/agents` | `PUT /agents/{agentId}` |
+| Delete an agent | ✅ `/admin/agents` | `DELETE /agents/{agentId}` |
 
-### UI Gaps
+### UI Coverage
 
-- **No UI at all.** Agent registration and management (5 API endpoints) has zero UI. Users must use the API directly to register robot workers, set their max classification levels, and manage their compartments.
+- ✅ **Fully implemented.** Agent management page shows table with: ID, Organization, Max Level (5 classification levels), Compartments, Infrastructure, Registered date, Last Seen. Inline edit form for updating security labels and infrastructure. Register new agent form with agent ID, organization selection, classification level, compartments, and infrastructure. Delete with confirmation. Full CRUD across all 5 API endpoints.
 
 ---
 
@@ -162,15 +172,15 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Use Case | UI | API |
 |----------|:--:|:---:|
-| Subscribe to another notebook | — | `POST /notebooks/{id}/subscriptions` |
-| List subscriptions | — | `GET /notebooks/{id}/subscriptions` |
-| View subscription status (sync watermark, error) | — | `GET /notebooks/{id}/subscriptions/{subId}` |
-| Trigger immediate sync | — | `POST /notebooks/{id}/subscriptions/{subId}/sync` |
-| Delete a subscription | — | `DELETE /notebooks/{id}/subscriptions/{subId}` |
+| Subscribe to another notebook | ✅ `/notebooks/{id}` | `POST /notebooks/{id}/subscriptions` |
+| List subscriptions | ✅ `/notebooks/{id}` | `GET /notebooks/{id}/subscriptions` |
+| View subscription status (sync watermark, error) | ✅ `/notebooks/{id}` | `GET /notebooks/{id}/subscriptions/{subId}` |
+| Trigger immediate sync | ✅ `/notebooks/{id}` | `POST /notebooks/{id}/subscriptions/{subId}/sync` |
+| Delete a subscription | ✅ `/notebooks/{id}` | `DELETE /notebooks/{id}/subscriptions/{subId}` |
 
-### UI Gaps
+### UI Coverage
 
-- **No UI at all.** Subscription management (5 API endpoints) is entirely API-only. Users cannot set up cross-notebook knowledge mirroring, monitor sync status, or manage subscription lifecycles through the admin UI.
+- ✅ **Fully implemented.** Subscriptions section on notebook view page (owner only) shows table with: Source Notebook (linked), Scope (catalog/claims/entries), Status (syncing/idle/error with color badges), Watermark (sequence number), Mirrored Count, Last Sync timestamp. Sync button for immediate trigger, Delete with confirmation. Add subscription form with Source Notebook ID validation, scope dropdown, discount factor (0.1-1.0), and poll interval (seconds). Full lifecycle management across all 5 API endpoints.
 
 ---
 
@@ -180,13 +190,13 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Use Case | UI | API |
 |----------|:--:|:---:|
-| List pending reviews | — | `GET /notebooks/{id}/reviews` |
-| Approve an external contribution | — | `POST /notebooks/{id}/reviews/{reviewId}/approve` |
-| Reject an external contribution | — | `POST /notebooks/{id}/reviews/{reviewId}/reject` |
+| List pending reviews | ✅ `/notebooks/{id}` | `GET /notebooks/{id}/reviews` |
+| Approve an external contribution | ✅ `/notebooks/{id}` | `POST /notebooks/{id}/reviews/{reviewId}/approve` |
+| Reject an external contribution | ✅ `/notebooks/{id}` | `POST /notebooks/{id}/reviews/{reviewId}/reject` |
 
-### UI Gaps
+### UI Coverage
 
-- **No UI at all.** The review queue (3 API endpoints) has no admin page. Notebook owners cannot see, approve, or reject external contributor submissions through the UI. This is critical for notebooks with owning groups — external contributions are silently blocked with no way to release them through the UI.
+- ✅ **Fully implemented.** Content Reviews section on notebook view page (owner only) shows pending review count as a badge. Reviews table displays: Entry (linked to entry detail), Submitter (with author display component), Status (pending/approved/rejected with color badges), Submitted date. Approve and Reject buttons for pending reviews with inline status updates. Critical for managing external contributions to group-owned notebooks.
 
 ---
 
@@ -196,12 +206,18 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Use Case | UI | API |
 |----------|:--:|:---:|
-| Query notebook-scoped audit log | — | `GET /notebooks/{id}/audit` |
-| Query global audit log (with filters) | — | `GET /audit` |
+| Query notebook-scoped audit log | ✅ `/notebooks/{id}` | `GET /notebooks/{id}/audit` |
+| Query global audit log (with filters) | ✅ `/admin/audit` | `GET /audit` |
 
-### UI Gaps
+### UI Coverage
 
-- **No UI at all.** The audit trail (2 API endpoints) has no viewer page. The spec (Hush-8 §8.5) explicitly calls for an Audit Log Viewer page at `/admin/audit` with filters, row expansion, and CSV export.
+- ✅ **Fully implemented per spec (Hush-8 §8.5).** Comprehensive Audit Log Viewer at `/admin/audit` with:
+  - **Advanced filtering panel:** Actor (hex ID), Action (e.g., entry.write), Resource (e.g., notebook:{id}), Date range (From/To)
+  - **Audit log table:** ID, Timestamp, Action (color-coded: deny/reject/revoke → red, approve/grant → green, delete/remove → yellow, other → gray), Actor (hex ID), Target (type + ID), Notebook, Detail toggle
+  - **Expandable detail rows:** Full JSON detail for each entry
+  - **Pagination:** Cursor-based pagination with "Load More"
+  - **CSV export:** Download audit entries as CSV file
+  - Full search and filter capabilities with real-time updates
 
 ---
 
@@ -211,15 +227,16 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Use Case | UI | API | Notes |
 |----------|:--:|:---:|-------|
-| View system statistics (users, notebooks, entries, entropy) | `/admin/dashboard` | `GET /notebooks` | |
-| Manage users (lock/unlock) | `/admin/users` | — | Local Identity DB |
-| Manage user quotas | `/admin/users/{id}/quotas` | — | Local PostgreSQL |
+| View system statistics (users, notebooks, entries, entropy) | ✅ `/admin/dashboard` | `GET /notebooks` | |
+| Manage users (lock/unlock) | ✅ `/admin/users` | — | Local Identity DB |
+| Manage user quotas | ✅ `/admin/users/{id}/quotas`, `/profile` | — | Local PostgreSQL |
 
-### UI Gaps
+### UI Coverage
 
-- ✅ **Security events card** (DONE). Dashboard now includes a "Recent Security Events" card showing the last 10 `access.denied` audit entries with timestamp, actor (truncated hex), and target.
-- ✅ **Proper admin authorization** (DONE). Dashboard now uses `CurrentUserService` to get the authenticated user's author ID instead of zero-author workaround. Page uses `@rendermode InteractiveServer` and `[CascadingParameter] Task<AuthenticationState>`.
-- ✅ **About link removed** (DONE). The placeholder "About" link has been removed from MainLayout.
+- ✅ **Security events card** (DONE). Dashboard includes "Recent Security Events" card showing the last 10 `access.denied` audit entries with timestamp, actor (truncated hex), and target. Color-coded by severity.
+- ✅ **Proper admin authorization** (DONE). Dashboard uses `CurrentUserService` to get authenticated user's author ID. Page uses `@rendermode InteractiveServer` with `[CascadingParameter] Task<AuthenticationState>` for proper auth context.
+- ✅ **About link removed** (DONE). Placeholder "About" link removed from MainLayout.razor.
+- ✅ **Quota management** (DONE). Users can view quota usage on profile page showing Notebooks (owned/max), Max Entries per Notebook, Max Entry Size, Max Total Storage. Admins can manage quotas per user at `/admin/quotas/{userId}` with update form.
 
 ---
 
@@ -227,14 +244,28 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### Completely Missing UI Pages (0% coverage)
 
-| Domain | API Endpoints | Priority | Impact |
-|--------|:------------:|:--------:|--------|
-| **Organizations & Groups** | 11 | High | Users cannot manage the identity hierarchy that powers group-based access propagation |
-| **Security Clearances** | 4 | High | Users cannot assign who can access classified notebooks |
-| **Content Reviews** | 3 | High | External contributions pile up with no way to approve/reject them |
-| **Agent Management** | 5 | Medium | Robot workers must be managed via API |
-| **Subscriptions** | 5 | Medium | Cross-notebook mirroring is invisible and unmanageable |
-| **Audit Trail** | 2 | Medium | No visibility into security-relevant events |
+| Domain | API Endpoints | Priority | Impact | Status |
+|--------|:------------:|:--------:|--------|:------:|
+| **Semantic Search** | 1 | Low | Vector-based similarity search not exposed | ⚠️ Open |
+
+*Note: All other major UI gaps have been closed. See "Fully Implemented Features" section below.*
+
+### Fully Implemented Features
+
+| Feature | Location | Coverage | Notes |
+|---------|----------|:--------:|-------|
+| **Organizations & Groups Management** | `/admin/organizations`, `/admin/organizations/{id}`, `/admin/groups/{id}` | 100% | Full hierarchy DAG with group CRUD, member management, notebook assignment |
+| **Security Clearances** | `/admin/organizations/{id}` (Clearances section) | 100% | 5 classification levels (PUBLIC, INTERNAL, CONFIDENTIAL, SECRET, TOP_SECRET) + compartments, grant/revoke |
+| **Content Reviews** | `/notebooks/{id}` (Content Reviews section) | 100% | Approve/reject workflow with submitter display and status tracking |
+| **Agent Management** | `/admin/agents` | 100% | Full CRUD with security label management (max_level, compartments, infrastructure) |
+| **Subscriptions** | `/notebooks/{id}` (Subscriptions section) | 100% | Full lifecycle: create, view status, trigger sync, delete |
+| **Audit Trail** | `/admin/audit` | 100% | Advanced filtering by actor/action/resource, date range, pagination, CSV export |
+| **Search (Full-Text)** | `/notebooks/{id}` (Search section) | 100% | Server-side Tantivy search with relevance scores and snippets |
+| **Job Pipeline** | `/notebooks/{id}` (Job Pipeline section) | 100% | Real-time stats (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS) + retry controls |
+| **Sharing (4-Tier)** | `/notebooks/{id}` (Sharing section) | 100% | Existence, Read, Read+Write, Admin tiers with color-coded badges |
+| **Group-Based Notebook Access** | `/notebooks/{id}` (Group Assignment section) | 100% | Assign/unassign notebooks to owning groups |
+| **Dashboard** | `/admin/dashboard` | 100% | System stats + recent security events (last 10 denied access attempts) |
+| **Notebook Quotas** | `/admin/quotas/{userId}`, `/profile` | 100% | View and manage quotas for entries, storage, notebooks |
 
 ### Partially Covered Features
 
@@ -242,18 +273,12 @@ This document catalogs every use case exposed to end users through the Admin UI 
 |---------|:------:|---------------|
 | **Notebook creation** | ⚠️ Partial | Classification and compartment selection at creation (not exposed in UI) |
 | **Entry creation** | ⚠️ Partial | Classification assertion and source fields (single-entry API doesn't support these; batch API does) |
-| **Sharing** | ✅ DONE | All 4 tiers (`existence`, `read`, `read_write`, `admin`) now exposed; group assignment working |
-| **Search** | ⚠️ Partial | Server-side full-text search ✅ DONE. Semantic search still missing |
 | **Browse** | ⚠️ Partial | Rich server-side filters (claims_status, friction, integration_status, etc.) not exposed |
-| **Job pipeline** | ✅ DONE | Queue stats dashboard with per-job-type visibility now available |
-| **Dashboard** | ✅ DONE | Security events card ✅, proper admin authorization ✅ |
+| **Search** | ✅ DONE | Server-side full-text search fully implemented. Semantic search still missing |
 
 ### Other Issues
 
 | Issue | Location | Severity | Status |
 |-------|----------|----------|:------:|
-| Ed25519 key generation is a stub | `AuthorService.cs` | Medium | ⚠️ Open |
-| Notebook quota not enforced on create | `List.razor` | Low | ⚠️ Open |
-| Profile notebook count error silently swallowed | `Profile.razor` | Low | ⚠️ Open |
-| Search placeholder text misleading | `View.razor` | Low | ⚠️ Open (now has server-side option) |
-| "About" link is a template placeholder | `MainLayout.razor` | Low | ✅ FIXED |
+| Ed25519 key generation is a stub | Backend `AuthorService.cs` | Medium | ⚠️ Open (backend responsibility) |
+| "About" link missing | `MainLayout.razor` | Low | ✅ FIXED (link removed as not needed) |
