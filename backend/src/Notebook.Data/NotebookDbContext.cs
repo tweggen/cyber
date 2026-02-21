@@ -25,6 +25,9 @@ public class NotebookDbContext : DbContext
     public DbSet<MirroredClaimEntity> MirroredClaims => Set<MirroredClaimEntity>();
     public DbSet<MirroredEntryEntity> MirroredEntries => Set<MirroredEntryEntity>();
     public DbSet<EntryReviewEntity> EntryReviews => Set<EntryReviewEntity>();
+    public DbSet<CrawlerEntity> Crawlers => Set<CrawlerEntity>();
+    public DbSet<CrawlerRunEntity> CrawlerRuns => Set<CrawlerRunEntity>();
+    public DbSet<ConfluenceCrawlerStateEntity> ConfluenceCrawlerStates => Set<ConfluenceCrawlerStateEntity>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
