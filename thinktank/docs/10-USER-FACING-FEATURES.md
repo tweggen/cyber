@@ -58,10 +58,10 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ### UI Coverage
 
-- ✅ **Server-side full-text search** (DONE). Search box has "Server Search" button calling `GET /notebooks/{id}/search?query=...`. Results displayed in expandable card with: Topic (clickable), Snippet (with match location), and Relevance Score. Full-text indexing via Tantivy backend.
-- ⚠️ **Browse filters planned** (NOT YET IMPLEMENTED). API roadmap calls for rich filtering (topic_prefix, claims_status, integration_status, friction_threshold, author, sequence range, needs_review) via enhanced BROWSE endpoint. Currently Rust backend only supports `query` and `max_tokens` parameters. UI implementation waiting for backend.
-- ⚠️ **Semantic search planned** (NOT YET IMPLEMENTED). Planned capability for vector-based similarity search using claims embeddings, but no backend implementation yet.
-- ℹ️ **Note on entry creation fields:** Single-entry API correctly limited to content, type, topic, references. Batch entry API (with `classification_assertion` and `source` fields) is planned but not yet implemented in Rust backend.
+- ✅ **Server-side full-text search** (DONE). Search box has "Server Search" button calling `GET /notebooks/{id}/search?query=...`. Results displayed in expandable card with: Topic (clickable), Snippet (with match location), and Relevance Score. Full-text indexing via backend search endpoint.
+- ⚠️ **Browse filters backend complete** (FRONTEND NOT YET IMPLEMENTED). Backend API fully supports rich filtering: topic_prefix, claims_status, integration_status, has_friction_above, author, sequence range (min/max), fragment_of, needs_review, limit, offset. Endpoint: `GET /notebooks/{id}/browse?topic_prefix=...&claims_status=...`. Frontend API client methods and filter UI not yet added.
+- ⚠️ **Semantic search** (NOT YET FULLY IMPLEMENTED). Backend has EmbeddingService configured (Ollama integration). ClaimsEndpoints use embeddings for claim similarity, but semantic search UI not exposed. Backend endpoint exists but frontend search UI for semantic queries not implemented.
+- ✅ **Batch entry creation** (BACKEND DONE). Backend BatchEndpoints support creating multiple entries with classification_assertion and source fields. Single-entry API correctly limited to content, type, topic, references. Frontend batch UI not exposed yet.
 
 ---
 
@@ -242,13 +242,22 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ## Gap Summary
 
+### Architecture Note
+
+**Backend:** .NET 10 (Notebook.Server in thinktank/src/). Contains full implementation of:
+- Browse filters with all parameters (topic_prefix, claims_status, integration_status, friction, etc.)
+- Batch entry creation with classification fields
+- Semantic search via EmbeddingService (Ollama integration)
+- Comprehensive endpoint coverage
+
+**Frontend:** .NET Blazor Server (frontend/admin/). Status varies:
+- Most features fully exposed (organizations, clearances, reviews, etc.)
+- Some backend features not yet exposed in UI (see "Partially Covered" section)
+- Old Rust backend (notebook/) is first-generation; currently maintained for reference only
+
 ### Completely Missing UI Pages (0% coverage)
 
-| Domain | API Endpoints | Priority | Impact | Status |
-|--------|:------------:|:--------:|--------|:------:|
-| **Semantic Search** | 1 | Low | Vector-based similarity search not exposed | ⚠️ Planned |
-
-*Note: The "Planned" features below require backend implementation first (currently Rust codebase; plan document refers to .NET). All other major UI gaps have been closed. See "Fully Implemented Features" section below.*
+None at this time. All planned features have backend implementations. UI gaps are listed in "Partially Covered Features" above.
 
 ### Fully Implemented Features
 
@@ -267,14 +276,15 @@ This document catalogs every use case exposed to end users through the Admin UI 
 | **Dashboard** | `/admin/dashboard` | 100% | System stats + recent security events (last 10 denied access attempts) |
 | **Notebook Quotas** | `/admin/quotas/{userId}`, `/profile` | 100% | View and manage quotas for entries, storage, notebooks |
 
-### Partially Covered Features (Backend Implementation Needed)
+### Partially Covered Features (Frontend Implementation Needed)
 
 | Feature | Status | What's Missing | Notes |
 |---------|:------:|---------------|-------|
-| **Notebook creation** | ⚠️ Planned | Classification and compartment selection | Backend API doesn't support these fields yet |
-| **Entry creation** | ⚠️ Planned | Classification assertion and source fields (batch API) | Batch entry creation not implemented in Rust backend |
-| **Browse filters** | ⚠️ Planned | Rich server-side filters (topic_prefix, claims_status, integration_status, friction, author, sequence range, needs_review) | Planned in Step 4 of roadmap; requires Rust backend implementation |
-| **Search** | ✅ DONE | Full-text search fully implemented | Semantic search is also planned but not implemented |
+| **Browse filters** | ⚠️ Partial | Frontend filter UI and filter panel | Backend fully implements all filter parameters (topic_prefix, claims_status, integration_status, friction, author, sequence range, needs_review). Frontend needs filter panel component and API calls. |
+| **Batch entry creation** | ⚠️ Partial | Frontend batch upload UI | Backend BatchEndpoints fully support multiple entries with classification_assertion and source fields. Single-entry UI exists; batch UI not exposed. |
+| **Semantic search** | ⚠️ Partial | Frontend semantic search UI | Backend has EmbeddingService and semantic capabilities. Frontend search box only does full-text; semantic query option not exposed. |
+| **Notebook creation** | ⚠️ Partial | Classification and compartment selection at creation | Backend API doesn't support these fields (requires feature design). |
+| **Search** | ✅ DONE | Full-text search fully implemented | Both backend and frontend complete. |
 
 ### Other Issues
 
