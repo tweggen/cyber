@@ -72,14 +72,13 @@ nav:
       - Chapter 2 - Security Model: chapters/02-security-model.md
       - Chapter 3 - Getting Started: chapters/03-getting-started.md
   - Part II - Persona Guides:
-      - Overview: part-ii-overview.md
       - Chapter 4 - Knowledge Contributor: chapters/04-knowledge-contributor.md
       - Chapter 5 - Organization Administrator: chapters/05-org-administrator.md
       - Chapter 6 - Notebook Owner: chapters/06-notebook-owner.md
-      - Chapter 7 - Auditor/Compliance Officer: chapters/07-auditor.md
-      - Chapter 8 - System Administrator: chapters/08-system-administrator.md
-      - Chapter 9 - ThinkerAgent Operator: chapters/09-thinker-operator.md
-      - Chapter 10 - Cross-Org Coordinator: chapters/10-cross-org-coordinator.md
+      - Chapter 7 - Auditor/Compliance Officer: chapters/07-auditor.md (coming soon)
+      - Chapter 8 - System Administrator: chapters/08-system-administrator.md (coming soon)
+      - Chapter 9 - ThinkerAgent Operator: chapters/09-thinker-operator.md (coming soon)
+      - Chapter 10 - Cross-Org Coordinator: chapters/10-cross-org-coordinator.md (coming soon)
   - Part III - Reference:
       - Chapter 11 - MCP Reference: chapters/11-mcp-reference.md
       - Chapter 12 - UI Reference: chapters/12-ui-reference.md
