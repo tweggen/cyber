@@ -46,7 +46,7 @@ jobs:
         run: echo "short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Sync notebook MCP script into admin wwwroot
-        run: cp notebook/mcp/notebook_mcp.py frontend/admin/wwwroot/scripts/notebook_mcp.py
+        run: cp legacy/notebook/mcp/notebook_mcp.py frontend/admin/wwwroot/scripts/notebook_mcp.py
 
       - name: Build and push
         uses: docker/build-push-action@v6
