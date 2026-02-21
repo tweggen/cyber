@@ -11,13 +11,16 @@ namespace Notebook.Server.Services.Crawlers;
 public sealed class ConfluenceCrawler
 {
     private readonly ILogger<ConfluenceCrawler> _logger;
+    private readonly ILoggerFactory _loggerFactory;
     private readonly IContentFilterPipeline _contentFilterPipeline;
 
     public ConfluenceCrawler(
         ILogger<ConfluenceCrawler> logger,
+        ILoggerFactory loggerFactory,
         IContentFilterPipeline contentFilterPipeline)
     {
         _logger = logger;
+        _loggerFactory = loggerFactory;
         _contentFilterPipeline = contentFilterPipeline;
     }
 
@@ -34,8 +37,8 @@ public sealed class ConfluenceCrawler
 
         try
         {
-            // Create a logger for the API client (cast the generic logger)
-            var apiClientLogger = (ILogger<ConfluenceApiClient>)(object)_logger;
+            // Create a logger for the API client using the logger factory
+            var apiClientLogger = _loggerFactory.CreateLogger<ConfluenceApiClient>();
 
             await using var apiClient = new ConfluenceApiClient(
                 config.BaseUrl, config.Username, config.ApiToken, apiClientLogger);

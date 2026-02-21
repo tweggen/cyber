@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using Notebook.Server.Services;
 
@@ -30,8 +31,10 @@ public static class CrawlerEndpoints
     private static async Task<IResult> ConfigureConfluenceCrawler(
         Guid notebookId,
         [FromBody] ConfluenceCrawlerConfigRequest request,
+        [FromQuery] string? orgId,
         CrawlerService crawlerService,
         HttpContext httpContext,
+        IConfiguration config,
         CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(request.ConfigJson))
@@ -39,6 +42,17 @@ public static class CrawlerEndpoints
 
         var userId = httpContext.User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         var organizationId = httpContext.User.FindFirst("organization_id")?.Value;
+
+        // In dev/test mode without auth, use query parameter
+        if (string.IsNullOrEmpty(userId) || string.IsNullOrEmpty(organizationId))
+        {
+            if (!config.GetValue<bool>("AllowDevIdentity"))
+                return Results.Unauthorized();
+
+            // Use placeholder GUIDs for testing unless orgId is provided via query param
+            userId = Guid.Empty.ToString();
+            organizationId = orgId ?? Guid.Empty.ToString();
+        }
 
         if (!Guid.TryParse(userId, out var userGuid) || !Guid.TryParse(organizationId, out var orgGuid))
             return Results.Unauthorized();
@@ -110,5 +124,6 @@ public static class CrawlerEndpoints
 
 public class ConfluenceCrawlerConfigRequest
 {
+    [JsonPropertyName("config_json")]
     public required string ConfigJson { get; set; }
 }

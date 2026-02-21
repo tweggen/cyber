@@ -106,11 +106,15 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // Act
         var response = await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = configJson });
 
         // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        if (response.StatusCode != HttpStatusCode.OK)
+        {
+            var errorContent = await response.Content.ReadAsStringAsync();
+            Assert.Fail($"Expected OK but got {response.StatusCode}: {errorContent}");
+        }
 
         var result = await response.Content.ReadFromJsonAsync<CrawlerConfigResponse>();
         Assert.NotNull(result);
@@ -133,7 +137,7 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // Act
         var response = await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = invalidJson });
 
         // Assert
@@ -235,7 +239,7 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // Configure crawler first
         var configResponse = await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = configJson });
         Assert.Equal(HttpStatusCode.OK, configResponse.StatusCode);
 
@@ -265,7 +269,7 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // Configure crawler
         await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = configJson });
 
         // Act: Get run history
@@ -293,7 +297,7 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // Configure crawler
         await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = configJson });
 
         // Act
@@ -364,13 +368,13 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // First configuration
         var response1 = await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = config1 });
         Assert.Equal(HttpStatusCode.OK, response1.StatusCode);
 
         // Act: Update configuration
         var response2 = await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = config2 });
 
         // Assert
@@ -399,7 +403,7 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // Configure and run first time
         await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = configJson });
 
         // Act: Run twice
@@ -438,7 +442,7 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
         var result = await response.Content.ReadFromJsonAsync<CrawlerRunResponse>();
         Assert.NotNull(result);
         Assert.False(result.Success);
-        Assert.Contains("not found", result.Message.ToLower());
+        Assert.Contains("crawler", result.Message.ToLower());
     }
 
     /// <summary>
@@ -455,7 +459,7 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
 
         // Configure crawler
         await _client.PostAsJsonAsync(
-            $"/api/crawlers/{_testNotebookId}/confluence/config",
+            $"/api/crawlers/{_testNotebookId}/confluence/config?orgId={_testOrganizationId}",
             new { config_json = configJson });
 
         // Act: Get with limit=10

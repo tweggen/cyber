@@ -16,17 +16,20 @@ public sealed class CrawlerService
     private readonly ConfluenceCrawler _confluenceCrawler;
     private readonly CrawlerConfigValidator _configValidator;
     private readonly ILogger<CrawlerService> _logger;
+    private readonly ILoggerFactory _loggerFactory;
 
     public CrawlerService(
         NotebookDbContext context,
         ConfluenceCrawler confluenceCrawler,
         CrawlerConfigValidator configValidator,
-        ILogger<CrawlerService> logger)
+        ILogger<CrawlerService> logger,
+        ILoggerFactory loggerFactory)
     {
         _context = context;
         _confluenceCrawler = confluenceCrawler;
         _configValidator = configValidator;
         _logger = logger;
+        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -136,9 +139,9 @@ public sealed class CrawlerService
             var config = ConfluenceConfig.FromJson(configJson, _configValidator);
 
             // Try to connect and fetch space info
-            var logger = (ILogger<ConfluenceApiClient>)(object)_logger;
+            var apiClientLogger = _loggerFactory.CreateLogger<ConfluenceApiClient>();
             await using var apiClient = new ConfluenceApiClient(
-                config.BaseUrl, config.Username, config.ApiToken, logger);
+                config.BaseUrl, config.Username, config.ApiToken, apiClientLogger);
 
             var space = await apiClient.GetSpaceAsync(config.SpaceKey);
 
