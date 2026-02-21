@@ -24,7 +24,7 @@ jobs:
             context: ./frontend/admin
             dockerfile: ./frontend/admin/Dockerfile
           - image: thinktank-server
-            context: ./thinktank
+            context: ./backend
             dockerfile: infrastructure/Dockerfile.backend
 
     steps:

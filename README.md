@@ -16,7 +16,7 @@ A platform for building externalized memory substrates that enable persistent, e
 | ⚠️ Partially Covered | 3 | Batch Entry Creation, Semantic Search UI, Notebook Classification |
 | ❌ Not Supported | 0 | — |
 
-For detailed feature documentation, see [USER-FACING-FEATURES.md](thinktank/docs/10-USER-FACING-FEATURES.md)
+For detailed feature documentation, see [USER-FACING-FEATURES.md](docs/architecture/10-USER-FACING-FEATURES.md)
 
 ---
 
@@ -178,19 +178,19 @@ cyber/
 ## 📚 Key Documentation
 
 ### Architecture & Design
-- **[00-OVERVIEW.md](thinktank/docs/00-OVERVIEW.md)** — System architecture, design principles, layer breakdown
-- **[02-ENTROPY-AND-FRICTION.md](thinktank/docs/02-ENTROPY-AND-FRICTION.md)** — Semantic comparison model, integration cost
-- **[08-SECURITY-MODEL.md](thinktank/docs/08-SECURITY-MODEL.md)** — Authorization, clearances, compartments
+- **[00-OVERVIEW.md](docs/architecture/00-OVERVIEW.md)** — System architecture, design principles, layer breakdown
+- **[02-ENTROPY-AND-FRICTION.md](docs/architecture/02-ENTROPY-AND-FRICTION.md)** — Semantic comparison model, integration cost
+- **[08-SECURITY-MODEL.md](docs/architecture/08-SECURITY-MODEL.md)** — Authorization, clearances, compartments
 
 ### Implementation & Development
-- **[10-USER-FACING-FEATURES.md](thinktank/docs/10-USER-FACING-FEATURES.md)** — Complete feature inventory with implementation status
+- **[10-USER-FACING-FEATURES.md](docs/architecture/10-USER-FACING-FEATURES.md)** — Complete feature inventory with implementation status
 - **[CLAUDE.md](CLAUDE.md)** — Developer setup, commands, architectural decisions
-- **[03-SERVER-ENHANCEMENTS.md](thinktank/docs/03-SERVER-ENHANCEMENTS.md)** — Server APIs: batch write, filtered browse, search
-- **[05-INGEST-PIPELINE.md](thinktank/docs/05-INGEST-PIPELINE.md)** — Bulk content ingest workflows
+- **[03-SERVER-ENHANCEMENTS.md](docs/architecture/03-SERVER-ENHANCEMENTS.md)** — Server APIs: batch write, filtered browse, search
+- **[05-INGEST-PIPELINE.md](docs/architecture/05-INGEST-PIPELINE.md)** — Bulk content ingest workflows
 
 ### Operations & Scaling
-- **[04-ROBOT-WORKERS.md](thinktank/docs/04-ROBOT-WORKERS.md)** — Job queue, worker types, scaling strategies
-- **[12-SUBSCRIPTION-ARCHITECTURE.md](thinktank/docs/12-SUBSCRIPTION-ARCHITECTURE.md)** — Cross-notebook mirroring
+- **[04-ROBOT-WORKERS.md](docs/architecture/04-ROBOT-WORKERS.md)** — Job queue, worker types, scaling strategies
+- **[12-SUBSCRIPTION-ARCHITECTURE.md](docs/architecture/12-SUBSCRIPTION-ARCHITECTURE.md)** — Cross-notebook mirroring
 
 ---
 
@@ -280,7 +280,7 @@ cd backend && dotnet format
 ## 📖 Common Tasks
 
 ### Add a New Feature
-1. Verify backend API support in [10-USER-FACING-FEATURES.md](thinktank/docs/10-USER-FACING-FEATURES.md)
+1. Verify backend API support in [10-USER-FACING-FEATURES.md](docs/architecture/10-USER-FACING-FEATURES.md)
 2. Add frontend UI components to `frontend/admin/Components/`
 3. Add API models to `frontend/admin/Models/NotebookModels.cs`
 4. Add API methods to `frontend/admin/Services/NotebookApiClient.cs`
@@ -288,10 +288,10 @@ cd backend && dotnet format
 6. Test and commit
 
 ### Check Feature Status
-→ See [10-USER-FACING-FEATURES.md](thinktank/docs/10-USER-FACING-FEATURES.md) for complete feature matrix
+→ See [10-USER-FACING-FEATURES.md](docs/architecture/10-USER-FACING-FEATURES.md) for complete feature matrix
 
 ### Deploy
-- Docker Compose: `docker compose -f notebook/deploy/docker-compose.yml up`
+- Docker Compose: `docker compose -f infrastructure/docker-compose.yml up`
 - See deployment docs for production configuration
 
 ---
@@ -299,7 +299,7 @@ cd backend && dotnet format
 ## 🤝 Contributing
 
 1. Read [CLAUDE.md](CLAUDE.md) for development guidance
-2. Refer to [10-USER-FACING-FEATURES.md](thinktank/docs/10-USER-FACING-FEATURES.md) for feature status
+2. Refer to [10-USER-FACING-FEATURES.md](docs/architecture/10-USER-FACING-FEATURES.md) for feature status
 3. Follow the architecture patterns in existing code
 4. Test thoroughly before committing
 5. Update documentation for new features
@@ -314,10 +314,10 @@ cd backend && dotnet format
 
 ## 🔗 Related Resources
 
-- **Philosophy:** See `notebook/docs/discussion.md` for conceptual foundations
-- **Project Plan:** See `notebook/docs/project-plan.md` (legacy Rust architecture)
-- **Implementation Plan:** See `thinktank/plan/` for current feature roadmaps
-- **Architecture Deep-Dives:** See `thinktank/docs/` for detailed design documents
+- **Philosophy:** See `legacy/notebook/docs/discussion.md` for conceptual foundations
+- **Project Plan:** See `legacy/notebook/docs/project-plan.md` (legacy Rust architecture)
+- **Implementation Plan:** See `docs/roadmap/` for current feature roadmaps
+- **Architecture Deep-Dives:** See `docs/architecture/` for detailed design documents
 
 ---
 
