@@ -17,7 +17,7 @@ As an **Organization Administrator**, you shape your organization's structure an
 - Top-secret or SECRET clearance (minimum)
 - Understanding of security model fundamentals
 
-**Typical Workflows:** 4 core workflows in this chapter
+**Typical Workflows:** 5 core workflows in this chapter
 
 ---
 
@@ -1007,9 +1007,323 @@ After registering agents:
 
 ---
 
+## Workflow 5: Configuring Confluence Crawlers
+
+### Overview
+
+Confluence crawlers automatically mirror Confluence space content into a Cyber notebook. This enables:
+- **Knowledge preservation:** Capture institutional knowledge from Confluence
+- **Search across sources:** Query Confluence content alongside internal notes
+- **Incremental sync:** Only fetch changed pages on subsequent runs
+- **Label filtering:** Include/exclude pages based on Confluence labels
+
+**Use Cases:**
+- Engineering teams mirroring technical documentation
+- Product teams syncing roadmaps and PRDs
+- Support teams archiving runbooks and troubleshooting guides
+
+**Related Workflows:**
+- [Workflow 1: Creating Organizational Structure](#workflow-1-creating-organizational-structure) — Establish groups that will use crawled content
+- [Workflow 2: Managing Group Memberships](#workflow-2-managing-group-memberships) — Add users who need access to crawled content
+- [Workflow 4: Configuring ThinkerAgents](#workflow-4-configuring-thinkerargents) — Set up agents to analyze crawled content
+
+### Prerequisites
+
+Before configuring a crawler, ensure you have:
+
+- [ ] **Organization Admin** role for your organization
+- [ ] **Notebook ownership** for the target notebook
+- [ ] **Confluence API credentials:**
+  - Confluence instance URL (e.g., `https://company.atlassian.net/wiki`)
+  - Confluence username/email
+  - Confluence API token ([generate here](https://id.atlassian.com/manage-profile/security/api-tokens))
+- [ ] **Confluence space key** (found in Confluence space settings, format: `ENG`, `HR`, `PROD`, etc.)
+- [ ] **Permissions** to read the target Confluence space
+
+### Step-by-Step Instructions
+
+#### Step 1: Access Crawler Management
+
+Navigate to the Crawlers configuration page:
+
+```
+Cyber Admin Panel → Crawlers → Select Notebook
+```
+
+You'll see the crawler configuration interface.
+
+#### Step 2: Select Target Notebook
+
+From the **Select Notebook** dropdown:
+
+1. Choose the notebook where Confluence content should be synced
+2. Click the **Load** button to check for existing crawler configuration
+
+If a crawler is already configured, the configuration JSON will load in the editor.
+
+#### Step 3: Configure Crawler JSON
+
+Paste or edit the configuration in the JSON editor:
+
+**Minimal Configuration Example:**
+```json
+{
+  "base_url": "https://company.atlassian.net/wiki",
+  "username": "sarah@company.com",
+  "api_token": "ATATT3xFfGF0m2WxYzE1N...",
+  "space_key": "ENG"
+}
+```
+
+**Advanced Configuration Example:**
+```json
+{
+  "base_url": "https://company.atlassian.net/wiki",
+  "username": "sarah@company.com",
+  "api_token": "ATATT3xFfGF0m2WxYzE1N...",
+  "space_key": "ENG",
+  "include_labels": ["published", "approved"],
+  "exclude_labels": ["draft", "archive"],
+  "max_pages": 500,
+  "include_attachments": false
+}
+```
+
+**Configuration Fields Reference:**
+
+| Field | Required | Type | Description | Example |
+|-------|----------|------|-------------|---------|
+| `base_url` | ✅ | string | Confluence instance URL (must include `/wiki`) | `https://company.atlassian.net/wiki` |
+| `username` | ✅ | string | Confluence username or email | `user@company.com` |
+| `api_token` | ✅ | string | Confluence API token (never share!) | `ATATT3xFfGF0...` |
+| `space_key` | ✅ | string | Space key in UPPERCASE | `ENG`, `PROD`, `HR` |
+| `include_labels` | ❌ | array | Only sync pages with these labels (AND-combined) | `["published"]` |
+| `exclude_labels` | ❌ | array | Skip pages with these labels | `["draft", "wip"]` |
+| `max_pages` | ❌ | integer | Max pages per sync (0=unlimited) | `1000` |
+| `include_attachments` | ❌ | boolean | Sync attachments as entries | `false` |
+
+#### Step 4: Test Connection
+
+Before saving, verify your credentials work:
+
+1. Click **Test Connection** button
+2. Wait for the test result (typically 2-5 seconds)
+
+**Success:** You'll see Confluence space information:
+```
+✅ Connection successful!
+Space: Engineering Documentation (ENG)
+Total Pages: 247
+```
+
+**Failure:** Common errors and fixes:
+
+| Error | Cause | Solution |
+|-------|-------|----------|
+| `401 Unauthorized` | Invalid credentials | Check username/email and API token. Regenerate token if needed. |
+| `404 Not Found` | Invalid space key or base URL | Verify space key in Confluence settings. Ensure URL includes `/wiki`. |
+| `Network error` | Invalid base URL or network issue | Check URL format. Test ping to Confluence server. |
+| `Connection timeout` | Confluence server slow | Check if server is responsive. Try again later. |
+
+#### Step 5: Save Configuration
+
+Once the test succeeds:
+
+1. Click **Save Configuration** button
+2. Confirmation message: "Configuration saved successfully!"
+
+The crawler is now configured but not yet running. The status shows "Never synced" until the first run.
+
+#### Step 6: Run Initial Sync
+
+Execute the first crawler run:
+
+1. Click **Run Now** button
+2. Monitor progress (may take 1-10 minutes depending on space size and page count)
+
+**Run Progress Display:**
+```
+⏳ Crawler running...
+Status: Fetching pages from ENG space
+Pages processed: 42 / 247
+Estimated time: ~3 minutes
+```
+
+**Run Result Success:**
+```
+✅ Crawler completed successfully!
+Entries Created: 247
+Duration: 3.42 seconds
+Run ID: a8f3b2c1
+```
+
+**Run Result Failure:**
+```
+❌ Crawler failed
+Error: Connection timeout after 30 seconds
+Check your network connection and try again
+```
+
+Each Confluence page becomes one entry in the notebook with:
+- Page title as Markdown heading
+- Content converted from HTML to Markdown
+- Full metadata: source URL, page ID, version, labels, modification timestamp, author
+
+#### Step 7: View Run History
+
+Monitor past crawler executions:
+
+1. Click **View Run History** (appears after first run)
+2. Or navigate to: `Admin → Crawlers → {Notebook Name} → Runs`
+
+**Run History Table:**
+
+| Started At | Duration | Status | Entries Created | Error Message |
+|------------|----------|--------|-----------------|---------------|
+| 2026-02-21 14:23 | 3.42s | ✅ success | 247 | — |
+| 2026-02-20 10:15 | 2.91s | ✅ success | 5 | — |
+| 2026-02-19 09:00 | — | ❌ failed | 0 | Connection timeout |
+
+Each row shows:
+- **Started At:** When the sync began
+- **Duration:** How long it took (empty if still running)
+- **Status:** success, failed, or running
+- **Entries Created:** Number of new/updated entries
+- **Error Message:** Reason for failure, if any
+
+### Verification
+
+After configuration, verify the crawler is working correctly:
+
+- [ ] **Test connection** shows green checkmark ✅
+- [ ] **Initial run** completes successfully
+- [ ] **Entries created** count is reasonable for your space
+- [ ] **Notebook browser** shows new entries with `source_type: confluence`
+- [ ] **Entry content** is readable Markdown (not raw HTML)
+- [ ] **Entry metadata** includes `source_url` linking back to Confluence
+- [ ] **Last sync time** updates after each run
+- [ ] **No error messages** in run history
+
+### Tips & Tricks
+
+#### Best Practice: Label Filtering
+
+Use labels to control what gets synced:
+
+**Publish Only Approved Content:**
+```json
+{
+  "include_labels": ["approved"],
+  "exclude_labels": ["draft", "wip"]
+}
+```
+
+Now only finalized pages sync—work-in-progress stays in Confluence.
+
+**Multiple Include Labels (AND Logic):**
+```json
+{
+  "include_labels": ["published", "security-approved"]
+}
+```
+
+Only syncs pages tagged with BOTH labels. Use this to sync only multiply-vetted content.
+
+#### Large Spaces: Use Limit
+
+For spaces with thousands of pages, start with a limit:
+
+```json
+{
+  "space_key": "ENGINEERING",
+  "max_pages": 500
+}
+```
+
+First sync gets 500 pages, then you can increase or schedule multiple crawlers for different spaces.
+
+#### Incremental Sync
+
+Subsequent runs only fetch pages modified since last sync:
+
+1. First run: Fetches all pages
+2. Second run: Only fetches pages changed since step 1
+3. Third run: Only fetches pages changed since step 2
+
+This saves bandwidth and time. Pages use content hashing to detect changes.
+
+#### Automating Crawlers (Future)
+
+*(Not yet available—planned for Phase 6)*
+
+In the future, you'll be able to schedule crawlers with cron expressions:
+
+```json
+{
+  "space_key": "ENG",
+  "schedule": "0 2 * * *"  // Daily at 2 AM UTC
+}
+```
+
+For now, run manually or use external cron jobs to call the API:
+
+```bash
+# Bash cron job to run crawler daily at 2 AM
+0 2 * * * curl -X POST https://cyber.company.com/api/crawlers/{notebook_id}/confluence/run
+```
+
+#### Troubleshooting: Missing Content
+
+**Problem:** Pages don't appear in notebook after sync.
+
+**Causes & Solutions:**
+1. **Pages excluded by labels** — Check `include_labels` / `exclude_labels`
+2. **Permissions issue** — Verify your API token can read those pages
+3. **Pages marked as draft** — Confluence API skips draft pages by default
+4. **Content filter removed everything** — Some exotic Confluence macros don't convert cleanly
+
+**Debug steps:**
+1. Lower `max_pages` to 10 for testing
+2. Remove label filters temporarily
+3. Check run history for error messages
+4. Manually verify page is readable in Confluence
+
+#### Security Best Practices
+
+**Protect Your API Token:**
+- Treat it like a password—never share or commit to git
+- Store in secure password manager
+- Set expiration date in Confluence settings
+- Regenerate every 6-12 months
+- Revoke immediately if compromised
+
+**Confluence Access Control:**
+- Crawled entries inherit notebook access control
+- Only users who can read the notebook see crawled content
+- Confluence permissions are NOT enforced in Cyber
+  - If a page is public in Confluence but notebook is SECRET, users need SECRET clearance to see it in Cyber
+- All entries tagged with `source_url` for attribution
+
+**Data Classification:**
+- Classify the target notebook according to the most sensitive content being crawled
+- Set `max_classification` to prevent accidental oversharing
+- Use compartments to limit distribution if needed
+
+### Next Steps
+
+After configuring your crawler:
+
+1. **Monitor run history** to track sync health
+2. **Query crawled content** via notebook search (use `source_type:confluence` filter)
+3. **Configure ThinkerAgents** ([Workflow 4](#workflow-4-configuring-thinkerargents)) to analyze Confluence content
+4. **Set up additional crawlers** for other Confluence spaces
+5. **Share notebook** with your team ([see Notebook Owner guide](06-notebook-owner.md))
+
+---
+
 ## Summary: Quick Reference
 
-### The 4 Workflows at a Glance
+### The 5 Workflows at a Glance
 
 | Workflow | Purpose | Time | Frequency |
 |----------|---------|------|-----------|
@@ -1017,6 +1331,7 @@ After registering agents:
 | **2. Group Membership** | Add users to groups | 5-10 min | As needed |
 | **3. Clearances** | Grant security access | 5-15 min | As needed |
 | **4. ThinkerAgents** | Register workers | 20-30 min | Quarterly |
+| **5. Confluence Crawlers** | Mirror Confluence spaces | 10-20 min | Setup + maintenance |
 
 ### Your Workflow Loop
 
@@ -1029,7 +1344,9 @@ After registering agents:
    ↓
 4. Register Agents (quarterly)
    ↓
-5. Monitor & Update (continuous)
+5. Configure Crawlers (as needed)
+   ↓
+6. Monitor & Update (continuous)
 ```
 
 ### Key Principles

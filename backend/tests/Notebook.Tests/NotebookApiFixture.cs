@@ -40,7 +40,9 @@ public class NotebookApiFixture : WebApplicationFactory<Program>, IAsyncLifetime
         "016_access_tiers.sql",
         "017_agent_registry.sql",
         "018_subscriptions.sql",
+        "018_crawlers.sql",
         "019_mirrored_content.sql",
+        "019_confluence_crawler_state.sql",
         "020_embed_mirrored_job_type.sql",
         "021_review_queue.sql",
     ];

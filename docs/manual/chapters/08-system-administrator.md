@@ -729,9 +729,348 @@ Confirm agent management is working:
 
 ---
 
+## Workflow 5: Managing Crawler Infrastructure
+
+### Overview
+
+As systems scale, Confluence crawlers run at volume—hundreds per day across your organization. Your role is to ensure crawler reliability, monitor performance, troubleshoot failures, and optimize resource usage.
+
+**Key Responsibilities:**
+- Monitor crawler run success rates
+- Investigate failed crawlers and identify root causes
+- Optimize crawler performance (duration, resource usage)
+- Set organization-level crawler limits and quotas
+- Review crawler audit trails for security issues
+- Manage crawler state and database growth
+
+**Use Cases:**
+- Daily monitoring of crawler fleet health
+- Investigating spike in failures (API changes, network issues)
+- Optimizing slow-running crawlers
+- Capacity planning for crawler database storage
+- Compliance auditing of what was crawled and when
+
+### Prerequisites
+
+- [ ] System Administrator role
+- [ ] Database access (read-only for troubleshooting)
+- [ ] Access to application logs
+- [ ] Understanding of Confluence API rate limits
+- [ ] Basic SQL knowledge for queries
+
+### Step-by-Step Instructions
+
+#### Step 1: Monitor Crawler Health Dashboard
+
+Access the system-wide crawler health:
+
+```
+Admin Panel → System Monitoring → Crawlers
+```
+
+You'll see summary statistics:
+
+```
+Crawler Health Dashboard
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Last 24 Hours:
+  Total Crawlers: 127
+  Runs Executed: 342
+  Success Rate: 94.7%
+  Failed Runs: 18
+  Total Entries Created: 18,542
+  Total Bytes Processed: 2.3 GB
+  Avg Duration: 8.4 seconds
+
+Crawler Run Distribution:
+  ✅ success: 323 (94.4%)
+  ⚠️  partial: 14 (4.1%)
+  ❌ failed: 5 (1.5%)
+
+Top Failures (last 24h):
+  1. Confluence API timeout (6 instances)
+  2. Invalid API credentials (4 instances)
+  3. Network connectivity (3 instances)
+  4. Space not found (2 instances)
+```
+
+#### Step 2: Query Recent Failures
+
+Get detailed information about failures:
+
+```sql
+-- Recent failed crawlers
+SELECT
+    c.id,
+    c.name,
+    c.source_type,
+    cr.started_at,
+    cr.status,
+    cr.error_message,
+    cr.entries_created,
+    ROUND((cr.stats->>'duration_ms')::int / 1000.0, 2) as duration_seconds
+FROM crawler_runs cr
+JOIN crawlers c ON cr.crawler_id = c.id
+WHERE cr.status = 'failed'
+ORDER BY cr.started_at DESC
+LIMIT 20;
+```
+
+**Sample Output:**
+```
+ID  | Name              | Type      | Started At           | Status | Error              | Entries | Duration
+----|-------------------|-----------|----------------------|--------|--------------------|---------|---------
+a1  | Confluence:ENG    | confluence| 2026-02-21 14:22:01 | failed | 401 Unauthorized   | 0       | 2.1
+a2  | Confluence:PROD   | confluence| 2026-02-21 14:00:15 | failed | Connection timeout | 0       | 30.0
+a3  | Confluence:HR     | confluence| 2026-02-20 23:45:00 | failed | Space not found    | 0       | 1.5
+```
+
+**Analysis:**
+- **401 Unauthorized:** API token expired or invalid
+- **Connection timeout:** Confluence server unresponsive (network/firewall issue)
+- **Space not found (404):** Space was deleted or space_key is incorrect
+
+#### Step 3: Review Crawler Statistics
+
+Analyze performance trends:
+
+```sql
+-- Crawler performance over time
+SELECT
+    DATE(cr.started_at) AS run_date,
+    COUNT(*) AS total_runs,
+    SUM(CASE WHEN cr.status = 'success' THEN 1 ELSE 0 END) AS successful_runs,
+    ROUND(100.0 * SUM(CASE WHEN cr.status = 'success' THEN 1 ELSE 0 END) / COUNT(*), 1) AS success_rate_pct,
+    SUM(cr.entries_created) AS total_entries_created,
+    ROUND(AVG((cr.stats->>'duration_ms')::int) / 1000.0, 2) AS avg_duration_sec,
+    MAX((cr.stats->>'duration_ms')::int) / 1000.0 AS max_duration_sec
+FROM crawler_runs cr
+WHERE cr.started_at > NOW() - INTERVAL '30 days'
+GROUP BY DATE(cr.started_at)
+ORDER BY run_date DESC;
+```
+
+**Sample Output:**
+```
+run_date   | total_runs | success | success_rate | entries | avg_duration | max_duration
+-----------|------------|---------|--------------|---------|--------------|-------------
+2026-02-21 | 45         | 43      | 95.6%        | 2341    | 7.8 sec      | 45.2 sec
+2026-02-20 | 52         | 49      | 94.2%        | 2891    | 8.1 sec      | 52.1 sec
+2026-02-19 | 48         | 45      | 93.8%        | 2156    | 7.4 sec      | 39.8 sec
+2026-02-18 | 51         | 50      | 98.0%        | 3012    | 7.9 sec      | 43.5 sec
+```
+
+**Key Metrics:**
+- **Success Rate:** Should stay > 95%. Below 90% indicates systemic issues.
+- **Average Duration:** Typical 5-15 seconds. > 30 seconds suggests large spaces or network issues.
+- **Max Duration:** Occasional spikes normal, but consistent > 60 seconds means optimization needed.
+
+#### Step 4: Identify Long-Running Crawlers
+
+Find slow crawlers:
+
+```sql
+-- Crawlers taking longest on average
+SELECT
+    c.id,
+    c.name,
+    c.source_type,
+    COUNT(*) AS runs,
+    ROUND(AVG((cr.stats->>'duration_ms')::int) / 1000.0, 2) AS avg_duration_sec,
+    MAX((cr.stats->>'duration_ms')::int) / 1000.0 AS max_duration_sec,
+    ROUND(AVG(cr.entries_created), 0) AS avg_entries,
+    ROUND(MAX(cr.entries_created), 0) AS max_entries
+FROM crawlers c
+JOIN crawler_runs cr ON c.id = cr.crawler_id
+WHERE cr.completed_at IS NOT NULL
+  AND cr.started_at > NOW() - INTERVAL '7 days'
+GROUP BY c.id, c.name, c.source_type
+HAVING AVG((cr.stats->>'duration_ms')::int) > 20000  -- > 20 seconds
+ORDER BY avg_duration_sec DESC;
+```
+
+**Optimization Recommendations:**
+
+| Symptom | Cause | Solution |
+|---------|-------|----------|
+| Avg duration > 30 sec | Large space (1000+ pages) | Recommend `max_pages` limit in config |
+| Increasing duration over time | Confluence space growing | Implement label filters to reduce scope |
+| Sporadic timeouts | Rate limiting by Confluence | Add backoff/retry logic, reduce frequency |
+| Memory spike during crawl | Large page content | Fragment large pages (future feature) |
+
+#### Step 5: Monitor Database Growth
+
+Track crawler state table size:
+
+```sql
+-- Crawler-related table sizes
+SELECT
+    schemaname,
+    tablename,
+    ROUND(pg_total_relation_size(schemaname||'.'||tablename) / 1024.0 / 1024.0, 2) AS size_mb,
+    (SELECT COUNT(*) FROM pg_class WHERE relname = tablename) AS row_count
+FROM pg_tables
+WHERE tablename LIKE '%crawler%' OR tablename LIKE '%confluence%'
+ORDER BY pg_total_relation_size(schemaname||'.'||tablename) DESC;
+```
+
+**Sample Output:**
+```
+Schema | Table                      | Size (MB) | Rows
+--------|----------------------------|-----------|-------
+public | crawler_runs               | 245.3     | 125,000
+public | confluence_crawler_state   | 12.5      | 1,200
+public | crawlers                   | 0.5       | 1,200
+```
+
+**Retention Policy Recommendations:**
+- **Keep crawler_runs:** 1+ year (needed for audit trail)
+- **Archive old runs:** After 1 year, export to cold storage
+- **Monitor growth rate:** If growing > 100 MB/month, plan archival
+
+#### Step 6: Check for Orphaned Records
+
+Ensure data integrity:
+
+```sql
+-- Crawlers without valid state references
+SELECT
+    c.id,
+    c.name,
+    c.state_provider,
+    c.state_ref_id,
+    CASE
+        WHEN c.state_provider = 'confluence_state'
+            AND NOT EXISTS (SELECT 1 FROM confluence_crawler_state WHERE id = c.state_ref_id)
+        THEN '⚠️  STATE MISSING'
+        ELSE '✓ OK'
+    END AS status
+FROM crawlers c
+ORDER BY status DESC;
+```
+
+**Result:** Should return all "✓ OK". Any "⚠️  STATE MISSING" needs investigation.
+
+#### Step 7: Review Audit Trail
+
+Check who configured what crawlers and when:
+
+```sql
+-- Recent crawler configuration changes
+SELECT
+    c.id,
+    c.name,
+    c.organization_id,
+    c.created_by,
+    c.created_at,
+    c.updated_at,
+    c.is_enabled,
+    c.last_sync_at,
+    c.last_sync_status
+FROM crawlers c
+WHERE c.created_at > NOW() - INTERVAL '30 days'
+  OR c.updated_at > NOW() - INTERVAL '7 days'
+ORDER BY c.updated_at DESC;
+```
+
+### Verification
+
+Confirm crawler infrastructure is healthy:
+
+- [ ] Success rate > 95% (over 7-day average)
+- [ ] No crawlers stuck in "failed" state for > 7 days
+- [ ] Average crawler duration < 30 seconds
+- [ ] No orphaned crawler state records
+- [ ] Database growth rate stable (< 100 MB/month)
+- [ ] All crawler configurations have valid state references
+- [ ] Audit trail shows expected changes only
+
+### Tips & Tricks
+
+#### Set Alert Thresholds
+
+Configure alerts in your monitoring system:
+
+| Metric | Warning | Critical | Action |
+|--------|---------|----------|--------|
+| Success rate | < 90% | < 80% | Page on-call, investigate failures |
+| Avg duration | > 45 sec | > 60 sec | Alert team, recommend optimization |
+| Failed run spike | 5+ consecutive | 10+ consecutive | Escalate, may be API issue |
+| DB growth/day | > 50 MB | > 100 MB | Plan archival strategy |
+
+#### Clean Up Failed Runs (Archival)
+
+Archive old run history to reduce database size:
+
+```sql
+-- Archive runs older than 1 year
+WITH archived AS (
+    DELETE FROM crawler_runs
+    WHERE started_at < NOW() - INTERVAL '1 year'
+    RETURNING *
+)
+INSERT INTO crawler_runs_archive
+SELECT * FROM archived;
+```
+
+#### Diagnose Common Issues
+
+**Scenario: All Confluence crawlers suddenly failing at 2 PM**
+
+```sql
+SELECT
+    cr.started_at,
+    cr.status,
+    cr.error_message,
+    COUNT(*) AS count
+FROM crawler_runs cr
+WHERE cr.started_at > NOW() - INTERVAL '1 hour'
+GROUP BY cr.started_at, cr.status, cr.error_message
+ORDER BY cr.started_at DESC;
+```
+
+**Likely causes:**
+1. Confluence server maintenance window
+2. Network connectivity issue
+3. API rate limit reached (Confluence throttling)
+4. Organization firewall change
+
+**Resolution:**
+1. Check Confluence status page
+2. Test connectivity: `curl -u user:token https://instance.atlassian.net/wiki/rest/api/v3/spaces`
+3. Check network logs for connectivity issues
+4. If rate-limited, implement backoff or stagger crawler schedules
+
+#### Monitor Confluence API Rate Limits
+
+Confluence Cloud has rate limits (10 req/sec). Monitor for violations:
+
+```bash
+# Check crawler logs for rate limit errors
+grep -i "429\|rate.limit\|too.many" /var/log/cyber/crawler.log
+
+# If found, recommend:
+# - Reduce frequency (don't run too many crawlers simultaneously)
+# - Add delays between requests
+# - Request rate limit increase from Atlassian
+```
+
+### Next Steps
+
+After monitoring crawlers:
+
+1. **Set up automated alerts** for failure rate and duration
+2. **Establish archival policy** for old run history
+3. **Document escalation path** for crawler failures
+4. **Schedule weekly health review** (5 minutes)
+5. **Monitor API quota usage** from Confluence
+
+---
+
 ## Summary: Quick Reference
 
-### The 4 Workflows at a Glance
+### The 5 Workflows at a Glance
 
 | Workflow | Purpose | Time | Frequency |
 |----------|---------|------|-----------|
@@ -739,6 +1078,7 @@ Confirm agent management is working:
 | **2. Quota Management** | Set usage limits | 10-15 min | Quarterly |
 | **3. System Monitoring** | Health & performance | 5-10 min | Daily |
 | **4. Agent Management** | Deploy/manage agents | 20-30 min | Quarterly |
+| **5. Crawler Infrastructure** | Monitor/optimize crawlers | 5-10 min | Daily |
 
 ---
 
