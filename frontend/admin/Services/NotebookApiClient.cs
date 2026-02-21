@@ -624,6 +624,84 @@ public class NotebookApiClient
         return await response.Content.ReadFromJsonAsync<BatchWriteResponse>(JsonOptions);
     }
 
+    // =========================================================================
+    // Crawlers
+    // =========================================================================
+
+    /// <summary>
+    /// Configure or update a Confluence crawler for a notebook.
+    /// </summary>
+    public async Task<CrawlerConfigResponse?> ConfigureConfluenceCrawlerAsync(
+        string authorIdHex, Guid notebookId, string configJson)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/api/crawlers/{notebookId}/confluence/config");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        request.Content = JsonContent.Create(new { config_json = configJson }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CrawlerConfigResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Test a Confluence crawler connection with the given configuration.
+    /// </summary>
+    public async Task<CrawlerTestResponse?> TestConfluenceCrawlerAsync(
+        string authorIdHex, string configJson)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            "/api/crawlers/confluence/test");
+        AddAuthHeader(request, authorIdHex);
+        request.Content = JsonContent.Create(new { config_json = configJson }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CrawlerTestResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Execute a crawler run for a notebook.
+    /// </summary>
+    public async Task<CrawlerRunResponse?> RunConfluenceCrawlerAsync(
+        string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/api/crawlers/{notebookId}/confluence/run");
+        AddAuthHeader(request, authorIdHex, admin: true);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CrawlerRunResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Get the current crawler configuration for a notebook.
+    /// </summary>
+    public async Task<CrawlerConfigResponse?> GetCrawlerConfigAsync(
+        string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"/api/crawlers/{notebookId}/confluence/config");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            return null;
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<CrawlerConfigResponse>(JsonOptions);
+    }
+
+    /// <summary>
+    /// Get the run history for a crawler.
+    /// </summary>
+    public async Task<List<CrawlerRunHistory>?> GetCrawlerRunsAsync(
+        string authorIdHex, Guid notebookId)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get,
+            $"/api/crawlers/{notebookId}/runs");
+        AddAuthHeader(request, authorIdHex);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<List<CrawlerRunHistory>>(JsonOptions);
+    }
+
     /// <summary>
     /// Add JWT Bearer token to the request for the given author.
     /// </summary>

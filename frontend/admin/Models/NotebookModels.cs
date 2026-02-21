@@ -1166,3 +1166,112 @@ public class ClassificationAssertion
     [JsonPropertyName("compartments")]
     public List<string> Compartments { get; set; } = [];
 }
+
+// ============================================================================
+// Crawler DTOs
+// ============================================================================
+
+/// <summary>
+/// Response from crawler configuration endpoint.
+/// </summary>
+public class CrawlerConfigResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = "";
+
+    [JsonPropertyName("config_json")]
+    public string? ConfigJson { get; set; }
+
+    [JsonPropertyName("crawler_state_id")]
+    public Guid? CrawlerStateId { get; set; }
+
+    [JsonPropertyName("last_sync_at")]
+    public DateTime? LastSyncAt { get; set; }
+
+    [JsonPropertyName("last_sync_status")]
+    public string? LastSyncStatus { get; set; }
+
+    [JsonPropertyName("is_enabled")]
+    public bool IsEnabled { get; set; } = true;
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+/// <summary>
+/// Response from crawler test connection endpoint.
+/// </summary>
+public class CrawlerTestResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = "";
+
+    [JsonPropertyName("space_info")]
+    public object? SpaceInfo { get; set; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+/// <summary>
+/// Response from crawler run endpoint.
+/// </summary>
+public class CrawlerRunResponse
+{
+    [JsonPropertyName("success")]
+    public bool Success { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "";
+
+    [JsonPropertyName("entries_created")]
+    public int EntriesCreated { get; set; }
+
+    [JsonPropertyName("duration")]
+    public double Duration { get; set; }
+
+    [JsonPropertyName("message")]
+    public string Message { get; set; } = "";
+
+    [JsonPropertyName("run_id")]
+    public Guid? RunId { get; set; }
+
+    [JsonPropertyName("error")]
+    public string? Error { get; set; }
+}
+
+/// <summary>
+/// Single run record from crawler run history.
+/// </summary>
+public class CrawlerRunHistory
+{
+    [JsonPropertyName("id")]
+    public Guid Id { get; set; }
+
+    [JsonPropertyName("started_at")]
+    public DateTime StartedAt { get; set; }
+
+    [JsonPropertyName("completed_at")]
+    public DateTime? CompletedAt { get; set; }
+
+    [JsonPropertyName("status")]
+    public string Status { get; set; } = "";
+
+    [JsonPropertyName("entries_created")]
+    public int EntriesCreated { get; set; }
+
+    [JsonPropertyName("duration")]
+    public double? Duration { get; set; }
+
+    [JsonPropertyName("error_message")]
+    public string? ErrorMessage { get; set; }
+
+    [JsonPropertyName("stats")]
+    public object? Stats { get; set; }
+}
