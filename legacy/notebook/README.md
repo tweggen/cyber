@@ -1,29 +1,15 @@
-# Notebook Server v1 — Legacy Backend (Reference Only)
+# Notebook Server v1 — Production Backend (Rust)
 
-This is the **original, first-generation backend** for the notebook system, written in Rust. It is **no longer actively developed** and is maintained here for **reference and historical purposes only**.
+This is the **current production backend** for the notebook system, written in Rust using the Axum web framework.
 
-## ⚠️ Status: Legacy / Not Maintained
+## ✅ Status: Production
 
 - **Technology:** Rust (Axum web framework)
-- **Database:** PostgreSQL
-- **Version:** v1 (original implementation)
-- **Status:** Reference only — not used in production
-- **Maintenance:** Minimal; kept for code archaeology and reference
-
-## Why It's Here
-
-The Rust v1 backend served as the original proof-of-concept implementation. It includes:
-- Core domain types and cryptography
-- Integration cost calculation engine
-- Original six REST operations (WRITE, REVISE, READ, BROWSE, OBSERVE, SHARE)
-- Python HTTP client
-- Claude MCP server integration
-
-The system has since been re-implemented in .NET v2 (see `../../backend/`) with:
-- Enhanced scalability
-- New features (batch operations, job queue, claims management)
-- Better integration with the admin UI
-- Production-grade infrastructure
+- **Database:** PostgreSQL with Apache AGE
+- **Version:** v1 (production implementation)
+- **Status:** Active production system
+- **MCP:** `notebook_mcp.py` — The official Claude Desktop MCP integration
+- **Maintenance:** Actively maintained for stability and bug fixes
 
 ## What's Inside
 
@@ -31,14 +17,16 @@ The system has since been re-implemented in .NET v2 (see `../../backend/`) with:
 legacy/notebook/
 ├── crates/                          # Rust workspace crates
 │   ├── notebook-core/               # Domain types, Ed25519 crypto
-│   ├── notebook-entropy/            # Integration cost engine
-│   ├── notebook-store/              # PostgreSQL persistence
-│   ├── notebook-server/             # Axum HTTP API
+│   ├── notebook-entropy/            # Integration cost calculation engine
+│   ├── notebook-store/              # PostgreSQL persistence with Apache AGE
+│   ├── notebook-server/             # Axum HTTP API (production)
 │   └── cli/                         # Command-line tool
 ├── python/                          # Python HTTP client
-├── mcp/                             # MCP server (Claude Desktop)
+├── mcp/                             # MCP server for Claude Desktop (PRODUCTION)
+│   └── notebook_mcp.py              # Current Claude Desktop integration
 ├── docs/                            # Architecture documentation
 ├── bootstrap/                       # Data initialization scripts
+├── deploy/                          # Docker compose & deployment configs
 ├── Cargo.toml                       # Rust workspace manifest
 └── README.md                        # This file
 ```
@@ -46,16 +34,13 @@ legacy/notebook/
 ## When to Use This
 
 ✅ **Use for:**
-- Understanding the original architecture
-- Reference implementation of domain types
-- Learning from the entropy calculation algorithm
-- Historical context for design decisions
+- Production deployments (primary backend)
+- Running the notebook server
+- Claude Desktop MCP integration via `notebook_mcp.py`
+- Understanding the core architecture and entropy algorithm
+- Bug fixes and production maintenance
 
-❌ **Don't use for:**
-- Active development
-- Production deployments
-- New feature implementation
-- Bug fixes or updates
+ℹ️ **Note:** A .NET v2 backend is in development (see `../../backend/`) as a future replacement, but this Rust v1 backend remains the active production system.
 
 ## Building (If Needed)
 

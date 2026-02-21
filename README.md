@@ -43,37 +43,39 @@ dotnet run
 # Open http://localhost:5000
 ```
 
-### Backend Setup (.NET v2 - Current)
+### Backend Setup (Rust v1 - Production)
 
 ```bash
-# Navigate to backend
-cd thinktank/src/Notebook.Server
-
-# Build and run
-dotnet build
-dotnet run
-# Listens on http://localhost:5201 by default
-```
-
-### Legacy Backend (Rust v1 - Reference Only)
-
-```bash
-# Navigate to legacy workspace
-cd notebook
+# Navigate to Rust backend workspace
+cd legacy/notebook
 
 # Build all crates
 cargo build
 
 # Run HTTP server
 cargo run --bin notebook-server
-# Listens on http://localhost:3000
+# Listens on http://localhost:8723 by default
 ```
+
+### MCP Servers for Claude Desktop
+
+**Current Production MCP:**
+```bash
+# Rust-based MCP (production use)
+cd legacy/notebook/mcp
+python3 notebook_mcp.py
+# Configure in Claude Desktop's claude_desktop_config.json
+```
+
+**Future MCP Servers (not yet in production):**
+- `backend/mcp/thinktank_mcp.py` — MCP for .NET v2 backend (in development)
+- `backend/mcp/wild_mcp.py` — Claims-aware retrieval MCP (in development)
 
 ### Database & Infrastructure
 
 ```bash
 # Start PostgreSQL and Apache AGE
-cd notebook
+cd legacy/notebook
 docker compose -f deploy/docker-compose.yml up -d
 
 # Bootstrap notebook server with sample data
@@ -110,14 +112,16 @@ cyber/
 │       ├── Services/                # API client, auth, token service
 │       └── Pages/                   # Routable pages
 │
-├── backend/                         # .NET Backend v2 (current, active)
+├── backend/                         # .NET Backend v2 (in development)
 │   ├── src/
-│   │   ├── Notebook.Server/         # HTTP API
+│   │   ├── Notebook.Server/         # HTTP API (future replacement)
 │   │   ├── Notebook.Domain/         # Core domain models
 │   │   ├── Notebook.Data/           # PostgreSQL persistence
 │   │   └── Notebook.Services/       # Business logic
 │   ├── tests/                       # Integration & unit tests
-│   ├── mcp/                         # MCP server integration
+│   ├── mcp/                         # MCP servers for .NET backend (future)
+│   │   ├── thinktank_mcp.py         # Notebook interface (not in production)
+│   │   └── wild_mcp.py              # Semantic search interface (not in production)
 │   ├── robots/                      # Worker scripts
 │   ├── README.md                    # Backend documentation
 │   └── Notebook.sln                 # Solution file
@@ -151,20 +155,22 @@ cyber/
 │           ├── 03-JOB-QUEUE.md
 │           └── 04-FILTERED-BROWSE-AND-SEARCH.md
 │
-└── legacy/                          # Legacy & reference code
-    └── notebook/                    # Rust v1 backend (reference only)
+└── legacy/                          # Production backend & reference code
+    └── notebook/                    # Rust v1 backend (PRODUCTION)
         ├── crates/                  # Workspace crates
         │   ├── notebook-core/       # Domain types & crypto
         │   ├── notebook-entropy/    # Integration cost engine
         │   ├── notebook-store/      # PostgreSQL persistence
-        │   ├── notebook-server/     # Axum HTTP API
+        │   ├── notebook-server/     # Axum HTTP API (production)
         │   └── cli/                 # Command-line tool
         ├── python/                  # Python HTTP client
-        ├── mcp/                     # Claude MCP integration
+        ├── mcp/                     # Claude MCP integration (PRODUCTION)
+        │   └── notebook_mcp.py      # Current production MCP for Claude Desktop
         ├── docs/                    # Architecture documentation
         ├── bootstrap/               # Data initialization
         ├── Cargo.toml               # Rust workspace manifest
-        └── README.md                # Legacy backend explanation
+        ├── deploy/                  # Docker & deployment configs
+        └── README.md                # Rust backend documentation
 ```
 
 ---
@@ -198,17 +204,20 @@ cyber/
 │  - Access control, audit trails                  │
 │  - Agent & security management                   │
 ├──────────────────────────────────────────────────┤
-│  .NET Backend Server (Notebook.Server)           │
-│  - RESTful API (entries, notebooks, sharing)     │
+│  Backend (Production: Rust v1)                   │
+│  - Axum HTTP API (entries, notebooks, sharing)   │
+│  - Integration cost engine (entropy metrics)     │
 │  - Full-text search via Tantivy                  │
-│  - Batch operations, filtered browse             │
-│  - Job queue for workers                         │
+│  - MCP: notebook_mcp.py for Claude Desktop       │
 ├──────────────────────────────────────────────────┤
 │  PostgreSQL + Apache AGE Graph DB                │
 │  - Entry storage with metadata                   │
-│  - Graph for cross-references                    │
+│  - Graph for cross-references & causal history   │
 │  - Job queue, audit log                          │
 └──────────────────────────────────────────────────┘
+
+Note: .NET v2 backend (backend/src/Notebook.Server) is in development
+as a future replacement for the Rust backend.
 ```
 
 **Key Features:**
@@ -231,38 +240,39 @@ cyber/
 # Frontend
 cd frontend/admin && dotnet build
 
-# Backend
-cd thinktank/src/Notebook.Server && dotnet build
+# Production Backend (Rust)
+cd legacy/notebook && cargo build
 
-# Legacy (Rust)
-cd notebook && cargo build
+# Development Backend (.NET v2)
+cd backend && dotnet build
 ```
 
 ### Testing
 
 ```bash
-# .NET tests
-cd thinktank && dotnet test
-
-# Rust tests
-cd notebook && cargo test
+# Rust backend tests
+cd legacy/notebook && cargo test
 
 # Python client tests
-cd notebook/python && pytest
+cd legacy/notebook/python && pytest
+
+# .NET backend tests (development)
+cd backend && dotnet test
 ```
 
 ### Code Quality
 
 ```bash
-# .NET linting & formatting
-dotnet format
-
-# Rust linting
-cd notebook && cargo clippy -- -D warnings
+# Rust backend linting & formatting
+cd legacy/notebook
+cargo clippy -- -D warnings
 cargo fmt --check
 
-# Python
-cd notebook/python && ruff check && black --check .
+# Python client
+cd legacy/notebook/python && ruff check && black --check .
+
+# .NET backend linting & formatting (development)
+cd backend && dotnet format
 ```
 
 ---

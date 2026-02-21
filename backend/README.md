@@ -1,12 +1,14 @@
-# Notebook Server v2 — Current Backend
+# Notebook Server v2 — Development Backend
 
-This is the **current, production backend** for the Cyber knowledge exchange platform. It's built with .NET 10 and provides a comprehensive REST API for notebook operations, batch processing, search, and job management.
+This is the **next-generation backend** for the Cyber knowledge exchange platform, currently in development. It's built with .NET 10 and provides a comprehensive REST API for notebook operations, batch processing, search, and job management.
+
+**Note:** The current production backend is the Rust v1 backend at `../legacy/notebook/`. This .NET v2 backend is being developed as a future replacement.
 
 ## Overview
 
 - **Technology:** .NET 10, ASP.NET Core, Entity Framework Core
 - **Database:** PostgreSQL with Apache AGE for graph queries
-- **Status:** Active development and deployment
+- **Status:** Active development (not yet in production)
 - **Version:** v2 (evolved from Rust v1)
 
 ## Directory Structure
@@ -201,10 +203,10 @@ The frontend (Blazor at `../frontend/admin/`) connects to this backend via:
 
 Frontend feature coverage: **13/16 domains (81%)**
 
-## Legacy Backend
+## Production Backend
 
-For reference, the original Rust v1 backend is at `../legacy/notebook/`.
-This is kept for reference only and is not actively maintained.
+The current production backend is the original Rust v1 backend at `../legacy/notebook/`.
+This .NET v2 backend is being developed as its eventual replacement, but Rust v1 remains the active, production system.
 
 ## Troubleshooting
 
