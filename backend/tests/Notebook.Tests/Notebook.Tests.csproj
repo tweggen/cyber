@@ -29,24 +29,24 @@
 
   <!-- Link real SQL migration files so the test DB matches production schema -->
   <ItemGroup>
-    <Content Include="..\..\..\postgres\migrations\002_schema.sql" Link="Migrations\002_schema.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\004_coherence_links.sql" Link="Migrations\004_coherence_links.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\006_notebook_sequence.sql" Link="Migrations\006_notebook_sequence.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\007_claims_and_jobs.sql" Link="Migrations\007_claims_and_jobs.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\008_original_content_type.sql" Link="Migrations\008_original_content_type.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\009_embeddings.sql" Link="Migrations\009_embeddings.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\010_job_priority.sql" Link="Migrations\010_job_priority.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\011_add_source_column.sql" Link="Migrations\011_add_source_column.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\012_integration_status.sql" Link="Migrations\012_integration_status.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\013_audit_log.sql" Link="Migrations\013_audit_log.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\014_organizations_and_groups.sql" Link="Migrations\014_organizations_and_groups.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\015_security_labels.sql" Link="Migrations\015_security_labels.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\016_access_tiers.sql" Link="Migrations\016_access_tiers.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\017_agent_registry.sql" Link="Migrations\017_agent_registry.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\018_subscriptions.sql" Link="Migrations\018_subscriptions.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\019_mirrored_content.sql" Link="Migrations\019_mirrored_content.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\020_embed_mirrored_job_type.sql" Link="Migrations\020_embed_mirrored_job_type.sql" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="..\..\..\postgres\migrations\021_review_queue.sql" Link="Migrations\021_review_queue.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\002_schema.sql" Link="Migrations\002_schema.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\004_coherence_links.sql" Link="Migrations\004_coherence_links.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\006_notebook_sequence.sql" Link="Migrations\006_notebook_sequence.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\007_claims_and_jobs.sql" Link="Migrations\007_claims_and_jobs.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\008_original_content_type.sql" Link="Migrations\008_original_content_type.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\009_embeddings.sql" Link="Migrations\009_embeddings.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\010_job_priority.sql" Link="Migrations\010_job_priority.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\011_add_source_column.sql" Link="Migrations\011_add_source_column.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\012_integration_status.sql" Link="Migrations\012_integration_status.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\013_audit_log.sql" Link="Migrations\013_audit_log.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\014_organizations_and_groups.sql" Link="Migrations\014_organizations_and_groups.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\015_security_labels.sql" Link="Migrations\015_security_labels.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\016_access_tiers.sql" Link="Migrations\016_access_tiers.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\017_agent_registry.sql" Link="Migrations\017_agent_registry.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\018_subscriptions.sql" Link="Migrations\018_subscriptions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\019_mirrored_content.sql" Link="Migrations\019_mirrored_content.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\020_embed_mirrored_job_type.sql" Link="Migrations\020_embed_mirrored_job_type.sql" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\..\infrastructure\postgres\migrations\021_review_queue.sql" Link="Migrations\021_review_queue.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
 </Project>
