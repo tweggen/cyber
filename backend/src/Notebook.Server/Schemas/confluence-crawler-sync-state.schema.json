@@ -1,0 +1,130 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyber.company.internal/schemas/confluence-crawler-sync-state.schema.json",
+  "title": "Confluence Crawler Sync State",
+  "description": "Internal state maintained by Confluence crawler for incremental syncs",
+  "type": "object",
+  "properties": {
+    "space_key": {
+      "type": "string",
+      "title": "Space Key",
+      "description": "Confluence space key being crawled",
+      "examples": [
+        "ENG"
+      ]
+    },
+    "space_id": {
+      "type": "integer",
+      "title": "Space ID",
+      "description": "Confluence space ID from REST API",
+      "examples": [
+        12345
+      ]
+    },
+    "last_sync_timestamp": {
+      "type": "string",
+      "title": "Last Sync Timestamp",
+      "description": "ISO8601 timestamp when last sync completed",
+      "format": "date-time",
+      "examples": [
+        "2026-02-21T10:00:00Z",
+        "2026-02-21T10:00:00+00:00"
+      ]
+    },
+    "pages_synced": {
+      "type": "integer",
+      "title": "Pages Synced",
+      "description": "Number of pages fetched in the last sync",
+      "minimum": 0,
+      "examples": [
+        42,
+        1000
+      ]
+    },
+    "page_metadata": {
+      "type": "object",
+      "title": "Page Metadata",
+      "description": "Map of page_id to page metadata (used for incremental sync detection)",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "description": "Page title"
+          },
+          "version": {
+            "type": "integer",
+            "description": "Confluence page version number"
+          },
+          "last_modified": {
+            "type": "string",
+            "format": "date-time",
+            "description": "ISO8601 timestamp of last modification"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "current",
+              "draft"
+            ],
+            "description": "Page status in Confluence"
+          },
+          "content_hash": {
+            "type": "string",
+            "description": "SHA256 hash of page content (for duplicate detection)",
+            "pattern": "^[a-f0-9]{64}$"
+          }
+        },
+        "required": [
+          "title",
+          "version",
+          "last_modified",
+          "status",
+          "content_hash"
+        ]
+      },
+      "examples": [
+        {
+          "123": {
+            "title": "API Documentation",
+            "version": 5,
+            "last_modified": "2026-02-20T15:30:00Z",
+            "status": "current",
+            "content_hash": "abc123def456..."
+          },
+          "456": {
+            "title": "Architecture Guide",
+            "version": 3,
+            "last_modified": "2026-02-19T10:00:00Z",
+            "status": "current",
+            "content_hash": "xyz789..."
+          }
+        }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "space_key": "ENG",
+      "space_id": 12345,
+      "last_sync_timestamp": "2026-02-21T10:00:00Z",
+      "pages_synced": 42,
+      "page_metadata": {
+        "123": {
+          "title": "API Documentation",
+          "version": 5,
+          "last_modified": "2026-02-20T15:30:00Z",
+          "status": "current",
+          "content_hash": "abc123def456abcdef123456abcdef123456abcdef123456abcdef123456abcd"
+        },
+        "456": {
+          "title": "Architecture Guide",
+          "version": 3,
+          "last_modified": "2026-02-19T10:00:00Z",
+          "status": "current",
+          "content_hash": "xyz789xyz789xyz789xyz789xyz789xyz789xyz789xyz789xyz789xyz789xyz789"
+        }
+      }
+    }
+  ]
+}

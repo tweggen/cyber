@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cyber.company.internal/schemas/confluence-crawler-config.schema.json",
+  "title": "Confluence Crawler Configuration",
+  "description": "Configuration schema for Confluence space crawler",
+  "type": "object",
+  "required": [
+    "base_url",
+    "username",
+    "api_token",
+    "space_key"
+  ],
+  "properties": {
+    "base_url": {
+      "type": "string",
+      "title": "Confluence Base URL",
+      "description": "Confluence instance URL (e.g., https://company.atlassian.net/wiki)",
+      "format": "uri",
+      "examples": [
+        "https://company.atlassian.net/wiki",
+        "https://confluence.internal.company.com"
+      ]
+    },
+    "username": {
+      "type": "string",
+      "title": "Username or Email",
+      "description": "Confluence username or email address",
+      "examples": [
+        "user@company.com",
+        "john.doe"
+      ]
+    },
+    "api_token": {
+      "type": "string",
+      "title": "API Token",
+      "description": "Confluence API token (generated in user settings). STORE SECURELY!",
+      "minLength": 1,
+      "examples": [
+        "ATATT3xFfGF0..."
+      ]
+    },
+    "space_key": {
+      "type": "string",
+      "title": "Space Key",
+      "description": "Confluence space key (e.g., ENG, DOCS, ARCH)",
+      "pattern": "^[A-Z][A-Z0-9]*$",
+      "minLength": 1,
+      "maxLength": 20,
+      "examples": [
+        "ENG",
+        "DOCS",
+        "ARCH",
+        "RESEARCH"
+      ]
+    },
+    "include_labels": {
+      "type": "array",
+      "title": "Include Labels",
+      "description": "If provided, only crawl pages with ALL of these labels. Empty array means all pages.",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "examples": [
+        [
+          "published",
+          "current"
+        ],
+        []
+      ]
+    },
+    "exclude_labels": {
+      "type": "array",
+      "title": "Exclude Labels",
+      "description": "Exclude pages with ANY of these labels",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "examples": [
+        [
+          "draft",
+          "deprecated",
+          "archived"
+        ],
+        []
+      ]
+    },
+    "max_pages": {
+      "type": "integer",
+      "title": "Maximum Pages",
+      "description": "Maximum number of pages to fetch per sync. 0 = unlimited.",
+      "minimum": 0,
+      "default": 0,
+      "examples": [
+        1000,
+        500,
+        0
+      ]
+    },
+    "include_attachments": {
+      "type": "boolean",
+      "title": "Include Attachments",
+      "description": "If true, download page attachments and create separate entries",
+      "default": false,
+      "examples": [
+        true,
+        false
+      ]
+    }
+  },
+  "additionalProperties": false,
+  "examples": [
+    {
+      "base_url": "https://company.atlassian.net/wiki",
+      "username": "sarah@company.com",
+      "api_token": "ATATT3xFfGF0...",
+      "space_key": "ENG",
+      "include_labels": [
+        "published"
+      ],
+      "exclude_labels": [
+        "draft",
+        "deprecated"
+      ],
+      "max_pages": 1000,
+      "include_attachments": false
+    },
+    {
+      "base_url": "https://confluence.internal.company.com",
+      "username": "bot@company.com",
+      "api_token": "ATATT...",
+      "space_key": "DOCS",
+      "max_pages": 0,
+      "include_attachments": true
+    }
+  ]
+}
