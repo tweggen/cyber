@@ -5,6 +5,7 @@ using Notebook.Server.Auth;
 using Notebook.Server.Configuration;
 using Notebook.Server.Endpoints;
 using Notebook.Server.Services;
+using Notebook.Server.Services.Crawlers;
 using Org.BouncyCastle.Crypto.Parameters;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -73,6 +74,11 @@ builder.Services.AddMemoryCache();
 builder.Services.AddSingleton<IClearanceService, ClearanceService>();
 builder.Services.AddScoped<IAccessControl, AccessControl>();
 
+// Crawlers
+builder.Services.AddScoped<CrawlerConfigValidator>();
+builder.Services.AddScoped<ConfluenceCrawler>();
+builder.Services.AddScoped<CrawlerService>();
+
 // Audit
 builder.Services.AddSingleton<AuditService>();
 builder.Services.AddSingleton<IAuditService>(sp => sp.GetRequiredService<AuditService>());
@@ -101,6 +107,7 @@ app.MapClearanceEndpoints();
 app.MapAgentEndpoints();
 app.MapSubscriptionEndpoints();
 app.MapReviewEndpoints();
+app.MapCrawlerEndpoints();
 
 app.Run();
 

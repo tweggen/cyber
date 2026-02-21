@@ -13,22 +13,27 @@ public class ConfluenceCrawlerStateConfiguration : IEntityTypeConfiguration<Conf
         builder.HasKey(s => s.Id);
 
         builder.Property(s => s.Id)
+            .HasColumnName("id")
             .HasDefaultValueSql("gen_random_uuid()");
 
         builder.Property(s => s.Config)
+            .HasColumnName("config")
             .IsRequired()
             .HasColumnType("jsonb")
             .HasDefaultValue("{}");
 
         builder.Property(s => s.SyncState)
+            .HasColumnName("sync_state")
             .IsRequired()
             .HasColumnType("jsonb")
             .HasDefaultValue("{}");
 
         builder.Property(s => s.CreatedAt)
+            .HasColumnName("created_at")
             .HasDefaultValueSql("now()");
 
         builder.Property(s => s.UpdatedAt)
+            .HasColumnName("updated_at")
             .HasDefaultValueSql("now()");
 
         // Indexes for JSONB queries
