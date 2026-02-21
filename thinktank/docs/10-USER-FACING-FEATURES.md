@@ -59,9 +59,9 @@ This document catalogs every use case exposed to end users through the Admin UI 
 ### UI Coverage
 
 - ✅ **Server-side full-text search** (DONE). Search box has "Server Search" button calling `GET /notebooks/{id}/search?query=...`. Results displayed in expandable card with: Topic (clickable), Snippet (with match location), and Relevance Score. Full-text indexing via backend search endpoint.
-- ⚠️ **Browse filters backend complete** (FRONTEND NOT YET IMPLEMENTED). Backend API fully supports rich filtering: topic_prefix, claims_status, integration_status, has_friction_above, author, sequence range (min/max), fragment_of, needs_review, limit, offset. Endpoint: `GET /notebooks/{id}/browse?topic_prefix=...&claims_status=...`. Frontend API client methods and filter UI not yet added.
+- ✅ **Browse filters** (DONE). Collapsible filter panel on notebook view with basic filters (Topic Prefix, Integration Status, Claims Status, Needs Review) and advanced filters (Min Friction, Author ID, Sequence range). Filtered results table displays entries with status badges, color-coded friction levels, and pagination. Backend API fully supports all 11 filter parameters.
 - ⚠️ **Semantic search** (NOT YET FULLY IMPLEMENTED). Backend has EmbeddingService configured (Ollama integration). ClaimsEndpoints use embeddings for claim similarity, but semantic search UI not exposed. Backend endpoint exists but frontend search UI for semantic queries not implemented.
-- ✅ **Batch entry creation** (BACKEND DONE). Backend BatchEndpoints support creating multiple entries with classification_assertion and source fields. Single-entry API correctly limited to content, type, topic, references. Frontend batch UI not exposed yet.
+- ⚠️ **Batch entry creation** (BACKEND DONE). Backend BatchEndpoints support creating multiple entries with classification_assertion and source fields. Single-entry API correctly limited to content, type, topic, references. Frontend batch UI not exposed yet.
 
 ---
 
@@ -251,8 +251,8 @@ This document catalogs every use case exposed to end users through the Admin UI 
 - Comprehensive endpoint coverage
 
 **Frontend:** .NET Blazor Server (frontend/admin/).
-- **12 feature domains fully implemented and exposed in UI** (75%)
-- **4 feature domains partially covered** - backend ready, frontend UI not exposed (25%)
+- **13 feature domains fully implemented and exposed in UI** (81%)
+- **3 feature domains partially covered** - backend ready, frontend UI not exposed (19%)
 - Old Rust backend (notebook/) is first-generation; currently maintained for reference only
 
 ### Implementation Coverage Summary
@@ -261,11 +261,11 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Status | Count | Percentage |
 |--------|:-----:|:----------:|
-| ✅ Fully Implemented (Backend + Frontend) | 12 | 75% |
-| ⚠️ Partially Covered (Backend Done, Frontend Pending) | 4 | 25% |
+| ✅ Fully Implemented (Backend + Frontend) | 13 | 81% |
+| ⚠️ Partially Covered (Backend Done, Frontend Pending) | 3 | 19% |
 | ❌ Not Supported | 0 | 0% |
 
-**Partially Covered Features:** Browse filters, Batch entry creation, Semantic search (UI), Notebook creation (requires backend feature design)
+**Partially Covered Features:** Batch entry creation, Semantic search (UI), Notebook creation (requires backend feature design)
 
 ### Completely Missing UI Pages (0% coverage)
 
@@ -285,6 +285,7 @@ None at this time. All planned features have backend implementations.
 | **Job Pipeline** | `/notebooks/{id}` (Job Pipeline section) | 100% | Real-time stats (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS) + retry controls |
 | **Sharing (4-Tier)** | `/notebooks/{id}` (Sharing section) | 100% | Existence, Read, Read+Write, Admin tiers with color-coded badges |
 | **Group-Based Notebook Access** | `/notebooks/{id}` (Group Assignment section) | 100% | Assign/unassign notebooks to owning groups |
+| **Browse Filters** | `/notebooks/{id}` (Browse & Filter section) | 100% | Collapsible filter panel with basic and advanced filters, color-coded status badges, friction levels, and pagination |
 | **Dashboard** | `/admin/dashboard` | 100% | System stats + recent security events (last 10 denied access attempts) |
 | **Notebook Quotas** | `/admin/quotas/{userId}`, `/profile` | 100% | View and manage quotas for entries, storage, notebooks |
 
@@ -292,7 +293,6 @@ None at this time. All planned features have backend implementations.
 
 | Feature | Status | What's Missing | Notes |
 |---------|:------:|---------------|-------|
-| **Browse filters** | ⚠️ Partial | Frontend filter UI and filter panel | Backend fully implements all filter parameters (topic_prefix, claims_status, integration_status, friction, author, sequence range, needs_review). Frontend needs filter panel component and API calls. |
 | **Batch entry creation** | ⚠️ Partial | Frontend batch upload UI | Backend BatchEndpoints fully support multiple entries with classification_assertion and source fields. Single-entry UI exists; batch UI not exposed. |
 | **Semantic search** | ⚠️ Partial | Frontend semantic search UI | Backend has EmbeddingService and semantic capabilities. Frontend search box only does full-text; semantic query option not exposed. |
 | **Notebook creation** | ⚠️ Partial | Classification and compartment selection at creation | Backend API doesn't support these fields (requires feature design). |
