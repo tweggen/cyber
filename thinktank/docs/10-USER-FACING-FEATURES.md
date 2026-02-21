@@ -59,9 +59,9 @@ This document catalogs every use case exposed to end users through the Admin UI 
 ### UI Coverage
 
 - ✅ **Server-side full-text search** (DONE). Search box has "Server Search" button calling `GET /notebooks/{id}/search?query=...`. Results displayed in expandable card with: Topic (clickable), Snippet (with match location), and Relevance Score. Full-text indexing via Tantivy backend.
-- ⚠️ **Semantic search missing.** API has `POST /notebooks/{id}/semantic-search` for vector-based nearest-neighbor search but no UI implemented.
-- ⚠️ **Browse endpoint filters not exposed.** API supports rich filtering (claims_status, friction threshold, needs_review, integration_status, author, sequence range) but UI only does client-side topic/ID filtering.
-- ℹ️ **Note on entry creation fields:** Single-entry API correctly limited to content, type, topic, references. Batch API supports `classification_assertion` and `source` but these are for bulk ingest, not individual entry creation.
+- ⚠️ **Browse filters planned** (NOT YET IMPLEMENTED). API roadmap calls for rich filtering (topic_prefix, claims_status, integration_status, friction_threshold, author, sequence range, needs_review) via enhanced BROWSE endpoint. Currently Rust backend only supports `query` and `max_tokens` parameters. UI implementation waiting for backend.
+- ⚠️ **Semantic search planned** (NOT YET IMPLEMENTED). Planned capability for vector-based similarity search using claims embeddings, but no backend implementation yet.
+- ℹ️ **Note on entry creation fields:** Single-entry API correctly limited to content, type, topic, references. Batch entry API (with `classification_assertion` and `source` fields) is planned but not yet implemented in Rust backend.
 
 ---
 
@@ -246,9 +246,9 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Domain | API Endpoints | Priority | Impact | Status |
 |--------|:------------:|:--------:|--------|:------:|
-| **Semantic Search** | 1 | Low | Vector-based similarity search not exposed | ⚠️ Open |
+| **Semantic Search** | 1 | Low | Vector-based similarity search not exposed | ⚠️ Planned |
 
-*Note: All other major UI gaps have been closed. See "Fully Implemented Features" section below.*
+*Note: The "Planned" features below require backend implementation first (currently Rust codebase; plan document refers to .NET). All other major UI gaps have been closed. See "Fully Implemented Features" section below.*
 
 ### Fully Implemented Features
 
@@ -267,14 +267,14 @@ This document catalogs every use case exposed to end users through the Admin UI 
 | **Dashboard** | `/admin/dashboard` | 100% | System stats + recent security events (last 10 denied access attempts) |
 | **Notebook Quotas** | `/admin/quotas/{userId}`, `/profile` | 100% | View and manage quotas for entries, storage, notebooks |
 
-### Partially Covered Features
+### Partially Covered Features (Backend Implementation Needed)
 
-| Feature | Status | What's Missing |
-|---------|:------:|---------------|
-| **Notebook creation** | ⚠️ Partial | Classification and compartment selection at creation (not exposed in UI) |
-| **Entry creation** | ⚠️ Partial | Classification assertion and source fields (single-entry API doesn't support these; batch API does) |
-| **Browse** | ⚠️ Partial | Rich server-side filters (claims_status, friction, integration_status, etc.) not exposed |
-| **Search** | ✅ DONE | Server-side full-text search fully implemented. Semantic search still missing |
+| Feature | Status | What's Missing | Notes |
+|---------|:------:|---------------|-------|
+| **Notebook creation** | ⚠️ Planned | Classification and compartment selection | Backend API doesn't support these fields yet |
+| **Entry creation** | ⚠️ Planned | Classification assertion and source fields (batch API) | Batch entry creation not implemented in Rust backend |
+| **Browse filters** | ⚠️ Planned | Rich server-side filters (topic_prefix, claims_status, integration_status, friction, author, sequence range, needs_review) | Planned in Step 4 of roadmap; requires Rust backend implementation |
+| **Search** | ✅ DONE | Full-text search fully implemented | Semantic search is also planned but not implemented |
 
 ### Other Issues
 
