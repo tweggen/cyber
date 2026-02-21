@@ -1,0 +1,27 @@
+{
+  "id": "1e76bfde-c281-41fd-96f1-2ab3eb97b4f3",
+  "content": "TASK: Implement retroactive cost propagation as background job.\n\nCONTEXT: When a WRITE causes existing entries to shift clusters, those entries cumulative_cost metadata should update. This is async to avoid unbounded write latency.\n\nIMPLEMENTATION:\n\nPropagationJob:\n- Triggered after each write that causes entries_revised > 0\n- Updates cumulative_cost on affected entries\n- Runs asynchronously (tokio spawn or job queue)\n\nCUMULATIVE COST:\n- Each entry tracks total integration cost it has caused over lifetime\n- cumulative_cost = sum of (entries_revised + references_broken + catalog_shift) from all writes that affected this entry\n- Stored in entries table or separate metrics table\n\nJOB QUEUE:\n- Simple in-memory queue for MVP\n- Each job: { notebook_id, affected_entry_ids: Vec<EntryId>, cost_delta: f64 }\n- Process jobs in order, batch updates\n\nIDEMPOTENCY:\n- Jobs should be idempotent (safe to replay)\n- Track job completion to avoid double-counting\n\nMONITORING:\n- Log job completion times\n- Track queue depth\n- Alert if queue grows unboundedly\n\nACCEPTANCE:\n- Background job runs after high-cost writes\n- Cumulative costs update correctly\n- Job queue doesnt block writes\n- Tests for propagation correctness\n\nDEPENDENCY: Requires Task 2.2 (needs integration cost computation).\n\nREFERENCES: See entropy model entry.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 2-4",
+  "references": [
+    "509be5e4-b5e7-4f16-845e-b17e63b44605",
+    "bb322ced-1f15-44ba-a975-5b46c56e306c"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 50,
+    "activity_context": {
+      "entries_since_last_by_author": 22,
+      "total_notebook_entries": 49,
+      "recent_entropy": 20.1
+    }
+  },
+  "created": "2026-02-05T10:56:39.405907+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

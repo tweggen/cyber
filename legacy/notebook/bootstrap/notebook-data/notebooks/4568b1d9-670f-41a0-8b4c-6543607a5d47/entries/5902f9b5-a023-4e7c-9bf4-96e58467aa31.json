@@ -1,0 +1,26 @@
+{
+  "id": "5902f9b5-a023-4e7c-9bf4-96e58467aa31",
+  "content": "TASK: Implement real-time event streaming (optional enhancement).\n\nCONTEXT: Instead of polling OBSERVE, agents can subscribe to real-time changes via WebSocket or SSE.\n\nENDPOINT (SSE preferred for simplicity):\nGET /notebooks/{notebook_id}/events\nAuth: Requires read permission\nResponse: text/event-stream\n\nEVENT FORMAT:\n```\nevent: entry\ndata: {\"entry_id\": \"...\", \"operation\": \"write\", \"integration_cost\": {...}}\n\nevent: entropy\ndata: {\"notebook_entropy\": 15.5, \"period_start\": 100, \"period_end\": 150}\n```\n\nIMPLEMENTATION:\n1. Use tokio broadcast channel for pub/sub\n2. WRITE/REVISE publish events to channel\n3. SSE endpoint subscribes and streams\n4. Heartbeat every 30s to keep connection alive\n\nCONNECTION MANAGEMENT:\n- Track active connections per notebook\n- Clean up on disconnect\n- Limit max connections per notebook (configurable)\n\nBACKPRESSURE:\n- If client falls behind, skip intermediate events\n- Send catch-up marker with current sequence\n\nACCEPTANCE:\n- SSE endpoint streams events\n- Events fire on WRITE/REVISE\n- Heartbeat keeps connection alive\n- Graceful handling of slow clients\n\nDEPENDENCY: Phase 1 complete. Nice-to-have, not critical path.\n\nREFERENCES: See coordination entry.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 4-3",
+  "references": [
+    "b781db4b-0128-4f93-b497-ccdde423f84b"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 72,
+    "activity_context": {
+      "entries_since_last_by_author": 34,
+      "total_notebook_entries": 71,
+      "recent_entropy": 37.3
+    }
+  },
+  "created": "2026-02-05T14:38:53.039149+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

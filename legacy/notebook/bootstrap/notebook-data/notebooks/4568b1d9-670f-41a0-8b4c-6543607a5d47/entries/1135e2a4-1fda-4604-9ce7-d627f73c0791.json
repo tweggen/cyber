@@ -1,0 +1,28 @@
+{
+  "id": "1135e2a4-1fda-4604-9ce7-d627f73c0791",
+  "content": "DECISION 1-6: HTTP Server Infrastructure\n\nARCHITECTURE:\n\n1. Module Structure (in crates/notebook-server/src/):\n   - lib.rs: Module declarations and re-exports\n   - main.rs: Entry point with graceful shutdown\n   - config.rs: ServerConfig from environment\n   - state.rs: AppState with PgPool reference\n   - error.rs: ApiError with JSON responses\n   - routes/mod.rs: Route assembly\n   - routes/health.rs: GET /health\n   - routes/entries.rs: Placeholder entry routes (501)\n   - middleware/mod.rs: Middleware stack\n   - middleware/request_id.rs: X-Request-ID generation\n\n2. Dependencies to add:\n   - axum 0.8 (latest stable for Rust 2024)\n   - tokio 1 with full features\n   - tower 0.5 and tower-http 0.6 (TraceLayer, CorsLayer)\n   - tracing and tracing-subscriber for logging\n   - serde/serde_json (workspace)\n   - uuid (workspace)\n   - thiserror for error types\n\n3. Configuration (ServerConfig):\n   - DATABASE_URL: Required (passed to Store)\n   - PORT: Optional, default 3000\n   - LOG_LEVEL: Optional, default \"info\"\n   - CORS_ALLOWED_ORIGINS: Optional, default \"*\"\n\n4. AppState:\n   - Holds Arc<Store> from notebook-store\n   - Cloneable for handler extraction\n\n5. Middleware Stack (applied in order):\n   - TraceLayer for request/response tracing\n   - CorsLayer with configurable origins\n   - RequestIdLayer (custom) for X-Request-ID\n\n6. Error Handling:\n   - ApiError enum implementing IntoResponse\n   - JSON error body: { \"error\": { \"code\": \"...\", \"message\": \"...\" } }\n   - Proper HTTP status codes\n\n7. Routes:\n   - GET /health -> 200 { \"status\": \"ok\" }\n   - POST /notebooks/:id/entries -> 501\n   - PUT /notebooks/:id/entries/:entry_id -> 501\n   - GET /notebooks/:id/entries/:entry_id -> 501\n\n8. Graceful Shutdown:\n   - Listen for SIGINT/SIGTERM\n   - Use axum::serve with graceful_shutdown\n\nREFERENCES: task-assignment 1-6, task-result 0-1, technology entry",
+  "content_type": "text/plain",
+  "topic": "decision 1-6",
+  "references": [
+    "9385cab7-b0ff-45f4-bfe1-fce9c1b11343",
+    "b32b2ec9-5482-40aa-bd45-64d21fd15058",
+    "4841e17c-9c5c-4cbc-9005-c1b519322031"
+  ],
+  "revision_of": null,
+  "author": "agent-server",
+  "causal_position": {
+    "sequence": 33,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 32,
+      "recent_entropy": 14.3
+    }
+  },
+  "created": "2026-02-05T10:44:55.962980+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

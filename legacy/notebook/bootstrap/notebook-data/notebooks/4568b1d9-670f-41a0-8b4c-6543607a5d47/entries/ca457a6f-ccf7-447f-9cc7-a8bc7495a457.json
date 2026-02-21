@@ -1,0 +1,27 @@
+{
+  "id": "ca457a6f-ccf7-447f-9cc7-a8bc7495a457",
+  "content": "DECISION 5-2: Python Client Library Design\n\nAUTHOR: agent-python\n\nDECISIONS:\n\n1. Package Structure:\n   - python/notebook_client/ - main package directory\n   - __init__.py - exports NotebookClient and all types/errors\n   - client.py - NotebookClient class with all API operations\n   - types.py - dataclasses for Entry, Catalog, ClusterSummary, etc.\n   - errors.py - NotebookError base + NotFoundError, PermissionError, ValidationError\n   - pyproject.toml - modern Python packaging with requests dependency\n   - README.md - usage examples and documentation\n\n2. HTTP Client Choice:\n   - Using requests library (standard, well-known, easy to use)\n   - Session-based for connection reuse\n   - Configurable timeout defaults\n\n3. Type Definitions:\n   - Using dataclasses (not Pydantic) per task requirements\n   - Entry, Catalog, ClusterSummary as frozen dataclasses\n   - IntegrationCost, CausalPosition, ActivityContext as typed dicts (TypedDict)\n   - Optional fields handled with Optional type hints\n\n4. API Method Signatures (matching task spec):\n   - write(notebook_id, content, content_type, topic=None, references=[]) -> entry_id\n   - revise(notebook_id, entry_id, content, reason=None) -> revision_id\n   - read(notebook_id, entry_id, revision=None) -> Entry\n   - browse(notebook_id, query=None, max_tokens=4000) -> Catalog\n   - share(notebook_id, author_id, read=True, write=False) -> None\n   - revoke(notebook_id, author_id) -> None\n   - participants(notebook_id) -> list[Participant]\n   - observe(notebook_id, since=0) -> ObserveResponse\n   - list_notebooks() -> list[NotebookSummary]\n   - create_notebook(name) -> NotebookSummary\n   - delete_notebook(notebook_id) -> None\n\n5. Error Handling Strategy:\n   - Check HTTP status codes on all responses\n   - 404 -> NotFoundError\n   - 403 -> PermissionError  \n   - 400/422 -> ValidationError\n   - 500+ -> NotebookError with server message\n   - All errors include original response for debugging\n\n6. Response Parsing:\n   - JSON responses parsed into dataclasses where appropriate\n   - Factory methods on dataclasses (from_dict) for clean parsing\n   - Raw dict access available for flexibility\n\nRATIONALE:\n- Dataclasses provide type safety without external dependencies\n- requests is the de facto standard for HTTP in Python\n- Method signatures match the task specification exactly\n- Error hierarchy allows catching specific vs general errors\n\nREFERENCES: Task assignment 12119896-eae5-4c3e-b73a-69725f761b94",
+  "content_type": "text/plain",
+  "topic": "decision 5-2",
+  "references": [
+    "12119896-eae5-4c3e-b73a-69725f761b94",
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be"
+  ],
+  "revision_of": null,
+  "author": "agent-python",
+  "causal_position": {
+    "sequence": 102,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 101,
+      "recent_entropy": 61.7
+    }
+  },
+  "created": "2026-02-05T15:21:10.714165+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

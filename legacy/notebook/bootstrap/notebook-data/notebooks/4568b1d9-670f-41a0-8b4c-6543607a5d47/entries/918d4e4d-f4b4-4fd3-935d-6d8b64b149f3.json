@@ -1,0 +1,27 @@
+{
+  "id": "918d4e4d-f4b4-4fd3-935d-6d8b64b149f3",
+  "content": "DECISION 3-2: Tantivy Full-Text Search Implementation\n\nAfter reviewing the task assignment and existing codebase:\n\n1. INDEX SCHEMA:\n   - entry_id: STORED (for retrieval)\n   - notebook_id: STRING (for filtering, not tokenized)\n   - content: TEXT (tokenized + stored for snippets)\n   - topic: TEXT (tokenized)\n   - author_id: STRING (for filtering)\n   - content_type: STRING (for filtering)\n\n2. DESIGN DECISIONS:\n   - Single index for all notebooks (filter by notebook_id field)\n   - Use Tantivy SimpleTokenizer for content/topic tokenization\n   - Generate snippets via Tantivy snippet generator\n   - Index path configurable, default ./data/search_index\n   - Writer thread-safety via Arc<Mutex<IndexWriter>>\n   - Reader via IndexReader with auto-reload\n\n3. API:\n   - SearchIndex::new(path) - creates/opens index\n   - SearchIndex::index_entry(notebook_id, entry) - adds/updates entry\n   - SearchIndex::search(query, notebook_id, limit) - returns SearchHit vec\n   - SearchIndex::delete_entry(entry_id) - removes by entry_id term\n\n4. SNIPPET GENERATION:\n   - Use Tantivy SnippetGenerator for match highlighting\n   - Max snippet length: 200 chars\n   - Fallback to first 200 chars of content if no matches\n\n5. DEPENDENCIES:\n   - tantivy = \"0.22\" added to Cargo.toml\n   - No changes to other crates required",
+  "content_type": "text/plain",
+  "topic": "decision 3-2",
+  "references": [
+    "923bd754-9ef0-4176-8b6d-ccbac87e4fb9",
+    "4841e17c-9c5c-4cbc-9005-c1b519322031"
+  ],
+  "revision_of": null,
+  "author": "agent-search",
+  "causal_position": {
+    "sequence": 74,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 73,
+      "recent_entropy": 38.3
+    }
+  },
+  "created": "2026-02-05T14:40:04.743531+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "id": "d85f2a25-885e-46c0-912e-c814329c663f",
+  "content": "PHASE 3 COORDINATION\n\nBROWSE and Catalog - dense summaries with entropy annotations.\n\nModule ownership:\n- Agent catalog: owns notebook-server/src/catalog/* (new directory)\n- Agent search: owns Tantivy indexing in notebook-entropy or new crate\n- Agent browse: owns BROWSE endpoint in notebook-server/src/routes/browse.rs\n\nDEPENDENCY GRAPH:\n```\nTask 3.1 (catalog generation) --+\n                                +--> Task 3.3 (BROWSE endpoint) --> Task 3.4 (cache)\nTask 3.2 (Tantivy indexing) ----+\n```\n\nWAVE 1: Tasks 3.1, 3.2 in parallel\nWAVE 2: Task 3.3 (needs catalog + search)\nWAVE 3: Task 3.4 (cache layer)\n\nNOTE: Phase 4 runs in parallel with Phase 3.",
+  "content_type": "text/plain",
+  "topic": "coordination phase-3",
+  "references": [
+    "209d0bf5-2f6f-45db-84a5-2a48f2448c1f"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 64,
+    "activity_context": {
+      "entries_since_last_by_author": 26,
+      "total_notebook_entries": 63,
+      "recent_entropy": 33.3
+    }
+  },
+  "created": "2026-02-05T14:36:13.236281+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

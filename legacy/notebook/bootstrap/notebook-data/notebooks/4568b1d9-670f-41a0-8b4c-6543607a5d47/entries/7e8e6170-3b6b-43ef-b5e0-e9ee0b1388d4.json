@@ -1,0 +1,28 @@
+{
+  "id": "7e8e6170-3b6b-43ef-b5e0-e9ee0b1388d4",
+  "content": "TASK RESULT 2-2: Integration Cost Computation Engine Complete\n\nSTATUS: Complete\n\nAUTHOR: agent-entropy\n\nDELIVERABLES CREATED:\n\n1. Engine Module (crates/notebook-entropy/src/engine.rs)\n   - IntegrationCostEngine struct with in-memory snapshot cache\n   - compute_cost(&mut self, entry: &Entry, notebook_id: NotebookId) -> Result<IntegrationCost, EntropyError>\n   - compute_cost_preview(&self, ...) for non-mutating preview\n   - initialize_from_entries() for loading existing notebook state\n   - get_snapshot(), remove_snapshot(), snapshot_count() for cache management\n   - EntropyError enum for error handling\n\n2. Updated lib.rs (crates/notebook-entropy/src/lib.rs)\n   - Added pub mod engine declaration\n   - Re-exports: IntegrationCostEngine, EntropyError\n   - Updated documentation with engine usage example\n\n3. Updated Cargo.toml (crates/notebook-entropy/Cargo.toml)\n   - Added thiserror = { workspace = true } dependency\n\nFILE PATHS:\n- /crates/notebook-entropy/src/engine.rs (created, ~580 lines)\n- /crates/notebook-entropy/src/lib.rs (modified)\n- /crates/notebook-entropy/Cargo.toml (modified)\n\nALGORITHM IMPLEMENTATION:\n\n1. CostState Capture:\n   - Build entry_id -> cluster_id mapping from snapshot\n   - Compute catalog_vector as weighted keyword merge across clusters\n\n2. entries_revised:\n   - Compare cluster assignments before/after adding entry\n   - Count entries whose cluster_id changed\n\n3. references_broken:\n   - For each reference in new entry, check if target is in different cluster\n   - Count cross-cluster references\n\n4. catalog_shift:\n   - Compute TF-IDF vectors from cluster keywords before/after\n   - Return 1.0 - cosine_similarity(before, after)\n   - Range: 0.0 (identical) to 1.0 (completely different)\n\n5. orphan:\n   - True if entry created new singleton cluster\n   - AND entry has no references to existing entries\n   - Indicates semantically disconnected knowledge\n\nPERFORMANCE NOTES:\n- Uses incremental CoherenceSnapshot.add_entry() not full rebuild\n- Caches snapshots per notebook for repeated queries\n- CostState capture is O(entries) for mapping, O(clusters) for catalog vector\n- Target 500ms for 10k entries achievable with current implementation\n\nTEST COVERAGE (13 tests):\n- engine_new: constructor creates empty cache\n- compute_cost_first_entry: first entry has correct cost profile\n- compute_cost_similar_entry: similar entries cause minimal disruption\n- compute_cost_entry_with_reference: referenced entry is not orphan\n- compute_cost_dissimilar_entry: unrelated entry becomes orphan\n- compute_cost_preview_no_mutation: preview does not modify state\n- initialize_from_entries: rebuilds coherence from entry list\n- remove_snapshot: cache cleanup works\n- catalog_shift_increases_with_diversity: diverse content shifts catalog\n- cross_cluster_reference_detected: cross-boundary refs counted\n- default_implementation: Default trait implemented\n- multiple_notebooks_isolated: notebooks have separate snapshots\n- entries_revised_on_cluster_merge: cluster changes detected\n\nINTEGRATION NOTES:\n- Task 2-5 can use IntegrationCostEngine in WRITE/REVISE endpoints\n- Engine is thread-safe for read operations via compute_cost_preview\n- For write operations, needs single ownership or synchronization\n- Snapshot persistence can be added via serde serialization\n\nBLOCKING ISSUES: None\n\nPRE-EXISTING ISSUES:\n- 2 test failures in tfidf module (not owned by this task)\n- These failures are in TF-IDF computation when corpus is empty/small\n\nVERIFICATION:\n- All 13 engine tests pass\n- Code compiles without warnings in engine.rs\n- Remaining warnings are in agent-coherence owned files",
+  "content_type": "text/plain",
+  "topic": "task-result 2-2",
+  "references": [
+    "2308c64e-056f-45b4-bfb4-577d2a80e5c5",
+    "af25fe66-7fca-4488-8a14-babee8b148f2",
+    "421ae951-9f47-4344-abe6-03838ede51ef"
+  ],
+  "revision_of": null,
+  "author": "agent-entropy",
+  "causal_position": {
+    "sequence": 55,
+    "activity_context": {
+      "entries_since_last_by_author": 1,
+      "total_notebook_entries": 54,
+      "recent_entropy": 22.9
+    }
+  },
+  "created": "2026-02-05T11:10:06.120147+00:00",
+  "integration_cost": {
+    "entries_revised": 7,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

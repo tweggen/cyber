@@ -1,0 +1,27 @@
+{
+  "id": "9385cab7-b0ff-45f4-bfe1-fce9c1b11343",
+  "content": "TASK: Set up HTTP server infrastructure with Axum framework.\n\nCONTEXT: The notebook-server crate needs a production-ready HTTP server with middleware for authentication, request signing verification, error handling, and observability.\n\nIMPLEMENTATION:\n\nServer Setup:\n- Axum-based HTTP server (preferred over Actix for tokio ecosystem alignment)\n- Configuration via environment variables (DATABASE_URL, PORT, LOG_LEVEL)\n- Graceful shutdown handling\n- Health check endpoint: GET /health\n\nMiddleware Stack:\n- Request tracing (tower-http TraceLayer)\n- CORS configuration\n- Request ID generation\n- JSON error responses\n- Request/response logging\n\nAuthentication Middleware:\n- JWT validation middleware (placeholder - actual JWT logic in Phase 4)\n- Extract author identity from validated token\n- Attach AuthorId to request extensions\n\nRequest Signing Middleware (placeholder):\n- Verify Ed25519 signature on write requests\n- Use crypto module from notebook-core\n- For now, make it optional/configurable\n\nApplication State:\n- Database pool (sqlx PgPool)\n- Configuration struct\n- Shared across handlers via Axum State\n\nRoute Structure (placeholders for Phase 1 endpoints):\n- POST /notebooks/{id}/entries (Task 1.3)\n- PUT /notebooks/{id}/entries/{entry_id} (Task 1.4)\n- GET /notebooks/{id}/entries/{entry_id} (Task 1.5)\n\nACCEPTANCE:\n- Server starts and responds to /health\n- Middleware stack configured\n- Application state properly shared\n- Placeholder routes return 501 Not Implemented\n- Integration test: server starts, health check passes\n\nDEPENDENCY: Can run in parallel with Tasks 1.1, 1.2. Uses types from notebook-core.\n\nREFERENCES: See technology entry for stack decisions.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 1-6",
+  "references": [
+    "4841e17c-9c5c-4cbc-9005-c1b519322031",
+    "993307ab-9def-4788-a383-5eafa450509c"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 28,
+    "activity_context": {
+      "entries_since_last_by_author": 12,
+      "total_notebook_entries": 27,
+      "recent_entropy": 12.3
+    }
+  },
+  "created": "2026-02-05T10:43:13.291203+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

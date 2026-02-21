@@ -1,0 +1,26 @@
+{
+  "id": "22ee4c3c-7fa4-4d61-8f37-6b62dbfb1204",
+  "content": "DECISION 4-4: Notebook Discovery Implementation\n\nAUTHOR: agent-discovery\n\nARCHITECTURE:\n\n1. New File: crates/notebook-server/src/routes/notebooks.rs\n   - Contains all notebook discovery and management endpoints\n   - Follows same patterns as entries.rs (axum handlers, State extraction)\n\n2. Endpoints to Implement:\n   - GET /notebooks - List accessible notebooks with stats\n   - POST /notebooks - Create new notebook (requires auth in future)\n   - DELETE /notebooks/{id} - Delete notebook (owner only, soft delete)\n\n3. Response Types:\n   - NotebookSummary: id, name, owner (hex), is_owner, permissions, stats\n   - Stats include: total_entries, total_entropy, last_activity_sequence, participant_count\n\n4. Query Strategy:\n   - Use existing Store::list_notebooks_for_author for notebook list\n   - Use NotebookStatsQuery for entry_count and unique_authors\n   - Compute total_entropy by summing integration_cost.catalog_shift from entries\n   - Get last_activity_sequence from MAX(sequence) in entries\n   - Get participant_count from notebook_access table\n\n5. Authentication:\n   - Phase 1: Use placeholder AuthorId::zero() (like entries.rs)\n   - Future: Extract from JWT/auth header\n\n6. Soft Delete Strategy:\n   - Add deleted_at column to notebooks table (or just check for it)\n   - For now, implement as hard delete (no soft delete column exists)\n   - Document need for migration in future\n\n7. Error Handling:\n   - 401 Unauthorized if no auth (future)\n   - 403 Forbidden for non-owner delete attempts\n   - 404 Not Found for missing notebook\n\nDEPENDENCIES: Uses existing notebook-store queries. No changes to store needed.",
+  "content_type": "text/plain",
+  "topic": "decision 4-4",
+  "references": [
+    "71229489-a675-4bc6-83e2-cfe010d2b99f"
+  ],
+  "revision_of": null,
+  "author": "anonymous",
+  "causal_position": {
+    "sequence": 78,
+    "activity_context": {
+      "entries_since_last_by_author": 7,
+      "total_notebook_entries": 77,
+      "recent_entropy": 38.3
+    }
+  },
+  "created": "2026-02-05T14:40:28.747215+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

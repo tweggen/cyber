@@ -1,0 +1,26 @@
+{
+  "id": "d8d7cbf1-aa26-4c34-81d5-2ab1012a4a4f",
+  "content": "DECISION 5-3: Two-Agent Exchange Integration Test Design\n\nIMPLEMENTATION APPROACH:\n\n1. Test Structure:\n   - Integration test file: tests/two_agent_exchange.rs\n   - Uses reqwest HTTP client against a running server\n   - Assumes server is running at configurable base URL (default http://localhost:8000)\n\n2. Agent Simulation:\n   - Agent A: author-agent-alpha (distinct author ID pattern)\n   - Agent B: author-agent-beta (distinct author ID pattern)\n   - Both share the same notebook created at test start\n\n3. Test Scenario Flow:\n   a. Setup: Create shared notebook via POST /notebooks\n   b. Agent A writes initial entries about topics X and Y\n   c. Agent B browses, reads, and contributes entries referencing X\n   d. Agent A observes changes and revises based on B input\n\n4. Verification Points:\n   - Cyclic references exist in the graph\n   - Integration costs are non-zero for disruptive entries\n   - Catalog shows combined knowledge from both agents\n   - OBSERVE returns correct changes with costs\n   - Browse catalog reflects merged contributions\n\nREFERENCES: discussion.md (storage equals exchange), task-assignment 5-3",
+  "content_type": "text/plain",
+  "topic": "decision 5-3",
+  "references": [
+    "145a1819-ecd8-4d6e-b424-bffe9f72c55c"
+  ],
+  "revision_of": null,
+  "author": "anonymous",
+  "causal_position": {
+    "sequence": 105,
+    "activity_context": {
+      "entries_since_last_by_author": 17,
+      "total_notebook_entries": 104,
+      "recent_entropy": 61.7
+    }
+  },
+  "created": "2026-02-05T15:21:30.135303+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

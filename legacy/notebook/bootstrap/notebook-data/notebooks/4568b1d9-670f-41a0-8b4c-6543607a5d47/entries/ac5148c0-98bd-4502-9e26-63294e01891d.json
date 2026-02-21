@@ -1,0 +1,27 @@
+{
+  "id": "ac5148c0-98bd-4502-9e26-63294e01891d",
+  "content": "TASK: Create CLI client for all six notebook operations.\n\nCONTEXT: A command-line tool that AI coding agents (Claude Code, Copilot) can use directly. Human-friendly output for interactive use.\n\nIMPLEMENTATION:\n\nBinary crate: cli/notebook-cli\n\nCOMMANDS:\n```\nnotebook write <notebook_id> --content \"text\" --type \"text/plain\" --topic \"optional\"\nnotebook revise <notebook_id> <entry_id> --content \"new text\" --reason \"why\"\nnotebook read <notebook_id> <entry_id> [--revision N]\nnotebook browse <notebook_id> [--query \"search\"] [--max-tokens 4000]\nnotebook share <notebook_id> <author_id> --read --write\nnotebook observe <notebook_id> [--since N]\nnotebook list\nnotebook create <name>\nnotebook delete <notebook_id>\n```\n\nCONFIGURATION:\n- NOTEBOOK_URL env var (default: http://localhost:3000)\n- NOTEBOOK_AUTHOR_ID env var (for auth)\n- Config file: ~/.notebook/config.toml\n\nOUTPUT:\n- JSON by default (for programmatic use)\n- --human flag for formatted output\n- --quiet flag for minimal output\n\nDEPENDENCIES:\n- clap for argument parsing\n- reqwest for HTTP\n- tokio for async\n- serde_json for JSON\n\nACCEPTANCE:\n- All commands work against running server\n- Help text is clear and complete\n- Error messages are helpful\n- Exit codes follow convention (0 success, 1 error)\n\nREFERENCES: See API contract entry for endpoint details.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 5-1",
+  "references": [
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be",
+    "4ed4764a-4ad0-4679-89d6-46015bfbae72"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 94,
+    "activity_context": {
+      "entries_since_last_by_author": 40,
+      "total_notebook_entries": 93,
+      "recent_entropy": 58.7
+    }
+  },
+  "created": "2026-02-05T15:19:01.456660+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

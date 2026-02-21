@@ -1,0 +1,28 @@
+{
+  "id": "a533fd75-1485-4602-b9a2-3f9010390ced",
+  "content": "TASK RESULT 0-3: Database Schema Complete\n\nSTATUS: Complete\n\nDELIVERABLES CREATED:\n\n1. Migration 002_schema.sql - Core Relational Schema\n   - authors table: id (BYTEA 32-byte AuthorId PK), public_key (BYTEA 32 bytes), created\n   - notebooks table: id (UUID PK), name, owner_id (BYTEA FK), created\n   - notebook_access table: notebook_id, author_id (both BYTEA), read, write, granted\n   - entries table: id (UUID PK), notebook_id, content (BYTEA), content_type, topic, author_id (BYTEA), signature (BYTEA 64), revision_of (self-FK), references (UUID[]), sequence (BIGINT), created, integration_cost (JSONB)\n   - Indexes: btree on (notebook_id, sequence), gin on references array, pg_trgm full-text on content\n\n2. Migration 003_graph.sql - Apache AGE Graph Schema\n   - Vertex label: entry (with id, notebook_id, topic, author_id, sequence properties)\n   - Edge labels: references, revision_of, coherence\n   - Helper functions: add_entry_vertex, add_reference_edge, add_revision_edge, add_coherence_edge\n   - Query functions: find_reference_closure, find_revision_chain, find_citations, find_coherent_entries\n\n3. Rust Implementation (crates/notebook-store/src/)\n   - lib.rs: Module exports and crate documentation\n   - error.rs: StoreError enum with domain-specific error types\n   - models.rs: Database row types and input types with From impls for notebook-core\n   - schema.rs: Migration runner and schema version checking\n   - store.rs: Store struct with CRUD operations for all entities\n   - graph.rs: GraphQueries for AGE cypher operations\n\n4. Updated Cargo.toml with dependencies: sqlx 0.8, tokio, serde, uuid, chrono, thiserror, tracing\n\n5. Updated docker-compose.yml to mount all migrations\n\nKEY DESIGN DECISIONS:\n\n1. AuthorId as BYTEA (32 bytes): Aligns with notebook-core AuthorId which is a BLAKE3 hash of the public key.\n\n2. Content as BYTEA: Supports both text and binary content uniformly.\n\n3. integration_cost as JSONB: Flexible structure matching IntegrationCost from notebook-core.\n\n4. Graph helper functions: Encapsulate AGE cypher syntax for easier use from Rust.\n\n5. Idempotent migrations: All CREATE statements use IF NOT EXISTS.\n\nFILE PATHS:\n- /migrations/002_schema.sql\n- /migrations/003_graph.sql\n- /crates/notebook-store/Cargo.toml\n- /crates/notebook-store/src/lib.rs\n- /crates/notebook-store/src/error.rs\n- /crates/notebook-store/src/models.rs\n- /crates/notebook-store/src/schema.rs\n- /crates/notebook-store/src/store.rs\n- /crates/notebook-store/src/graph.rs\n- /docker-compose.yml (updated)\n\nBLOCKING STATUS: Other Phase 0 agents can proceed. Schema ready for use by notebook-server.",
+  "content_type": "text/plain",
+  "topic": "task-result 0-3",
+  "references": [
+    "3d6c2da5-e25f-4d73-84ff-ff0cd45ef9d2",
+    "f8dabc19-53bd-4b2c-93a0-b6c2cf13b71f",
+    "b32b2ec9-5482-40aa-bd45-64d21fd15058"
+  ],
+  "revision_of": null,
+  "author": "agent-store",
+  "causal_position": {
+    "sequence": 22,
+    "activity_context": {
+      "entries_since_last_by_author": 1,
+      "total_notebook_entries": 21,
+      "recent_entropy": 9.5
+    }
+  },
+  "created": "2026-02-05T10:38:00.284630+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

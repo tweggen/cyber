@@ -1,0 +1,27 @@
+{
+  "id": "bb322ced-1f15-44ba-a975-5b46c56e306c",
+  "content": "PHASE 2 COORDINATION\n\nIntegration Cost Engine - the core entropy computation system.\n\nModule ownership:\n- Agent coherence: owns notebook-entropy/src/coherence.rs, clustering logic\n- Agent entropy: owns notebook-entropy/src/engine.rs, cost computation\n- Agent calibration: owns notebook-entropy/src/calibration.rs, thresholds\n- Agent propagation: owns notebook-entropy/src/propagation.rs, background jobs\n\nDEPENDENCY GRAPH:\n```\nTask 2.1 (coherence model)\n    |\n    v\nTask 2.2 (cost computation)\n    |\n    +---> Task 2.3 (orphan threshold)\n    +---> Task 2.4 (retroactive propagation)\n    +---> Task 2.5 (endpoint integration)\n```\n\nWAVE 1: Task 2.1 only (coherence model must be defined first)\nWAVE 2: Task 2.2 (builds on coherence model)\nWAVE 3: Tasks 2.3, 2.4, 2.5 in parallel\n\nDESIGN PRINCIPLES:\n- Coherence is approximate (keyword overlap, TF-IDF) - not semantic embeddings\n- Integration cost computed synchronously on write (500ms budget)\n- Retroactive propagation is async background job\n- All computation happens in notebook-entropy crate",
+  "content_type": "text/plain",
+  "topic": "coordination phase-2",
+  "references": [
+    "91d76c46-49de-4f43-aa83-e763a6f2aa4d",
+    "509be5e4-b5e7-4f16-845e-b17e63b44605"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 46,
+    "activity_context": {
+      "entries_since_last_by_author": 18,
+      "total_notebook_entries": 45,
+      "recent_entropy": 18.1
+    }
+  },
+  "created": "2026-02-05T10:55:50.304681+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

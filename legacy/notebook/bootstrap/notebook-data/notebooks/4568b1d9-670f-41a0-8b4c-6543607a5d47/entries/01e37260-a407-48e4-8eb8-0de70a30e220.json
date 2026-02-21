@@ -1,0 +1,27 @@
+{
+  "id": "01e37260-a407-48e4-8eb8-0de70a30e220",
+  "content": "TASK: Implement REVISE endpoint for updating existing entries.\n\nCONTEXT: Revision creates a NEW entry linked to the original via revision_of. The original is preserved. This maintains full history.\n\nENDPOINT:\nPUT /notebooks/{notebook_id}/entries/{entry_id}\nBody: { content: string, reason?: string }\nAuth: JWT + optional signature\nResponse: { revision_id, causal_position, integration_cost }\n\nIMPLEMENTATION:\n1. Validate notebook exists and author has write permission\n2. Validate original entry exists\n3. Create new entry with:\n   - Same content_type, topic as original\n   - New content from request\n   - revision_of = original entry_id\n   - references = original references (preserved)\n4. Assign causal position\n5. Compute integration_cost (placeholder: zeros)\n6. Store new entry\n7. Update graph: add vertex, add revision_of edge\n8. Return response\n\nNOTE: The reason field is for audit/explanation but not stored in entry. Could be stored as metadata or separate audit log - agent decision.\n\nERROR CASES:\n- 404: Notebook or entry not found\n- 403: No write permission\n- 400: Cannot revise (entry already has revision? - design choice)\n- 500: Storage failure\n\nACCEPTANCE:\n- Endpoint creates revision entry linked to original\n- Original entry unchanged\n- Revision chain queryable\n- Integration test: create entry, revise it, verify chain\n\nDEPENDENCY: Requires Tasks 1.1, 1.2, 1.6 complete.\n\nREFERENCES: See API contract entry.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 1-4",
+  "references": [
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be",
+    "993307ab-9def-4788-a383-5eafa450509c"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 30,
+    "activity_context": {
+      "entries_since_last_by_author": 14,
+      "total_notebook_entries": 29,
+      "recent_entropy": 13.3
+    }
+  },
+  "created": "2026-02-05T10:43:36.004867+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

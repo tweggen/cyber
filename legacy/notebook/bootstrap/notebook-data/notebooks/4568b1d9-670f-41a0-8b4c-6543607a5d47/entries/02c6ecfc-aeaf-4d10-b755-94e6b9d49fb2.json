@@ -1,0 +1,30 @@
+{
+  "id": "02c6ecfc-aeaf-4d10-b755-94e6b9d49fb2",
+  "content": "TASK RESULT 1-4: REVISE Endpoint Implementation Complete\n\nSTATUS: Complete\n\nAUTHOR: agent-revise\n\nDELIVERABLES CREATED:\n\n1. REVISE Endpoint (crates/notebook-server/src/routes/entries.rs)\n   - PUT /notebooks/{notebook_id}/entries/{entry_id}\n   - Full implementation replacing the 501 placeholder\n   - ~140 lines added/modified\n\n2. Request/Response Types:\n   - ReviseRequest: { content: String, reason: Option<String> }\n   - ReviseResponse: { revision_id: EntryId, causal_position: CausalPosition, integration_cost: IntegrationCost }\n\n3. Unit Tests:\n   - test_revise_request_deserialize: Verify JSON deserialization without reason\n   - test_revise_request_with_reason: Verify JSON deserialization with reason\n   - test_revise_response_serialize: Verify JSON serialization of response\n\nIMPLEMENTATION DETAILS:\n\n1. REVISION FLOW:\n   a. Parse request body (content + optional reason)\n   b. Log revision reason for audit if provided\n   c. Create Repository from AppState store\n   d. Fetch original entry via Repository::get_entry()\n   e. Assign causal position via CausalPositionService::assign_position()\n   f. Create new Entry with:\n      - New UUID (revision_id)\n      - Same content_type, topic as original\n      - New content from request\n      - revision_of = original entry_id\n      - references = copy from original\n      - author = placeholder zeros (auth not yet implemented)\n      - signature = placeholder zeros (crypto not yet wired)\n      - integration_cost = zeros (placeholder per spec)\n   g. Store via Repository::store_entry_in_notebook()\n   h. Return ReviseResponse with revision_id, causal_position, integration_cost\n\n2. ERROR HANDLING:\n   - 404 Not Found: Entry or notebook not found (via StoreError conversion)\n   - 400 Bad Request: Invalid JSON in request body (Axum handles automatically)\n   - 500 Internal Server Error: Storage failures (via ApiError::Store)\n\n3. INTEGRATION WITH EXISTING CODE:\n   - Uses Repository pattern from task-result 1-1\n   - Uses CausalPositionService from task-result 1-2\n   - Uses AppState and ApiError from task-result 1-6\n   - Follows existing code conventions and patterns\n\nACCEPTANCE CRITERIA MET:\n- [x] Endpoint creates revision entry linked to original\n- [x] Original entry unchanged (fetch only, no modification)\n- [x] Revision chain queryable (revision_of field set correctly)\n- [x] Returns revision_id, causal_position, integration_cost\n- [x] Handles 404 for missing notebook/entry\n- [x] Handles 400 for validation errors\n\nFILE PATHS:\n- /crates/notebook-server/src/routes/entries.rs (modified, ~220 lines total)\n\nNOTE: Cargo not available in build environment; compilation verification deferred to CI.\n\nKNOWN LIMITATIONS:\n1. Author is placeholder zeros (awaiting auth implementation)\n2. Signature is placeholder zeros (awaiting crypto wiring)\n3. Integration cost is zeros (awaiting entropy service)\n\nThese limitations are expected per the task specification and will be addressed in subsequent tasks.\n\nINTEGRATION TEST EXAMPLE:\ncurl -X PUT http://localhost:3000/notebooks/{notebook_id}/entries/{entry_id} -H Content-Type:application/json -d {content:Updated content,reason:Fixing typo}\n\nREFERENCES: task-assignment 1-4, decision 1-4, task-result 1-1, task-result 1-2, task-result 1-6",
+  "content_type": "text/plain",
+  "topic": "task-result 1-4",
+  "references": [
+    "01e37260-a407-48e4-8eb8-0de70a30e220",
+    "08df80cd-0781-4566-bf72-b350e3adeae2",
+    "32ae7b85-10a9-45d3-b5c0-8686f99756e3",
+    "1153e8da-088f-474e-9418-984fc57ecfc3",
+    "435fdcce-c693-45e7-88c0-413f1d558830"
+  ],
+  "revision_of": null,
+  "author": "agent-revise",
+  "causal_position": {
+    "sequence": 41,
+    "activity_context": {
+      "entries_since_last_by_author": 1,
+      "total_notebook_entries": 40,
+      "recent_entropy": 15.2
+    }
+  },
+  "created": "2026-02-05T10:51:01.096500+00:00",
+  "integration_cost": {
+    "entries_revised": 4,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

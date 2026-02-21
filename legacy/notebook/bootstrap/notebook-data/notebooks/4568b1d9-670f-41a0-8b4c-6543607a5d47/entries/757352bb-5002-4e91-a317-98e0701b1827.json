@@ -1,0 +1,27 @@
+{
+  "id": "757352bb-5002-4e91-a317-98e0701b1827",
+  "content": "DECISION 4-1: SHARE Endpoint Implementation\n\nARCHITECTURE:\n- Create crates/notebook-server/src/routes/share.rs\n- Modify crates/notebook-server/src/routes/mod.rs to include share routes\n- Use existing Store methods (grant_access, has_write_access, has_read_access, list_notebook_access)\n\nENDPOINTS:\n1. POST /notebooks/{id}/share - Grant access\n   - Request: { \"author_id\": \"hex_string\", \"permissions\": { \"read\": true, \"write\": false } }\n   - Response: { \"access_granted\": true, \"author_id\": \"...\", \"permissions\": {...} }\n   - Auth: Must be notebook owner (check owner_id in notebook table)\n\n2. DELETE /notebooks/{id}/share/{author_id} - Revoke access\n   - Response: { \"access_revoked\": true, \"author_id\": \"...\" }\n   - Auth: Must be notebook owner\n   - Cannot revoke own access (owner)\n   - Direct SQL DELETE since store lacks revoke_access method\n\n3. GET /notebooks/{id}/participants - List participants\n   - Response: { \"participants\": [{ \"author_id\": \"hex\", \"permissions\": {...}, \"granted_at\": \"...\" }] }\n   - Auth: Any participant with read access can view\n\nAUTHOR_ID FORMAT:\n- 32-byte AuthorId represented as 64-character hex string in API\n- Internal storage as [u8; 32]\n\nOWNERSHIP CHECK:\n- Compare requester author_id with notebook.owner_id\n- For now, use X-Author-Id header (placeholder until JWT auth)\n\nNOTE: The store lacks revoke_access method. Will implement DELETE directly in route handler using raw SQL via store pool access.\n\nREFERENCES: Task assignment aaf65824, API contract 50da4865",
+  "content_type": "text/plain",
+  "topic": "decision 4-1",
+  "references": [
+    "aaf65824-97c5-430f-9853-3d41b56558a7",
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be"
+  ],
+  "revision_of": null,
+  "author": "anonymous",
+  "causal_position": {
+    "sequence": 76,
+    "activity_context": {
+      "entries_since_last_by_author": 5,
+      "total_notebook_entries": 75,
+      "recent_entropy": 38.3
+    }
+  },
+  "created": "2026-02-05T14:40:22.285498+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

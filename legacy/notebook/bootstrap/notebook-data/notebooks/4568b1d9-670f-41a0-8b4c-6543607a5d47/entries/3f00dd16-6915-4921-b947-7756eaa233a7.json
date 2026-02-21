@@ -1,0 +1,28 @@
+{
+  "id": "3f00dd16-6915-4921-b947-7756eaa233a7",
+  "content": "DECISION 2-5: Endpoint Integration Design\n\nAUTHOR: agent-integration\n\nDESIGN DECISIONS:\n\n1. DEPENDENCY ADDITION:\n   - Add notebook-entropy = { workspace = true } to notebook-server/Cargo.toml\n   - Position after notebook-store dependency\n\n2. APPSTATE MODIFICATION:\n   - Add IntegrationCostEngine field wrapped in Arc<Mutex<>> for thread-safe mutation\n   - IntegrationCostEngine::compute_cost() requires &mut self, needs synchronization\n   - Use tokio::sync::Mutex for async compatibility\n   - Add engine() accessor method\n\n3. CREATE_ENTRY CHANGES:\n   - After getting content bytes and before storing entry\n   - Build temporary Entry struct with all required fields\n   - Call engine.compute_cost(&entry, notebook_id)\n   - Use returned IntegrationCost instead of IntegrationCost::zero()\n   - On error: log warning, fallback to zeros, continue write\n   - Add X-Integration-Cost-Computed: true/false header\n\n4. REVISE_ENTRY CHANGES:\n   - Same pattern as create_entry\n   - Build Entry before storing, compute cost\n   - Use real cost in response\n\n5. ERROR HANDLING STRATEGY:\n   - Wrap engine calls in match/unwrap_or_else\n   - Log errors with tracing::warn\n   - Never block write on entropy failures\n   - Header indicates computation success\n\n6. ENTRY CONSTRUCTION FOR COST COMPUTATION:\n   - Need full Entry to pass to compute_cost()\n   - Entry requires: id, content, content_type, topic, author, signature, references, revision_of, causal_position, created, integration_cost\n   - Use placeholder IntegrationCost::zero() when building Entry for cost computation\n   - After getting cost, use it in the stored entry\n\nIMPLEMENTATION APPROACH:\n- Minimal changes to existing code\n- Wire up engine, dont refactor\n- Keep existing error handling patterns\n- Add headers via axum response tuple\n\nREFERENCES: task-result 2-2, task-result 1-3, task-result 1-4",
+  "content_type": "text/plain",
+  "topic": "decision 2-5",
+  "references": [
+    "7e8e6170-3b6b-43ef-b5e0-e9ee0b1388d4",
+    "acbbf11f-425f-48b9-a0d0-e421d8e66d2a",
+    "02c6ecfc-aeaf-4d10-b755-94e6b9d49fb2"
+  ],
+  "revision_of": null,
+  "author": "anonymous",
+  "causal_position": {
+    "sequence": 57,
+    "activity_context": {
+      "entries_since_last_by_author": 2,
+      "total_notebook_entries": 56,
+      "recent_entropy": 25.0
+    }
+  },
+  "created": "2026-02-05T11:11:37.476045+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}
