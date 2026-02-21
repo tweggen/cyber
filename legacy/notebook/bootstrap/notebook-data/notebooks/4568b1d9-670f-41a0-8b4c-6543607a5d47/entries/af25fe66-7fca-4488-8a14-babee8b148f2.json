@@ -1,0 +1,28 @@
+{
+  "id": "af25fe66-7fca-4488-8a14-babee8b148f2",
+  "content": "DECISION 2-2: Integration Cost Computation Engine\n\nAUTHOR: agent-entropy\n\nDESIGN DECISIONS:\n\n1. MODULE STRUCTURE:\n   - engine.rs: IntegrationCostEngine with compute_cost() method\n   - No separate cost.rs needed - engine.rs contains all logic\n   - Export IntegrationCostEngine from lib.rs\n\n2. ENGINE DESIGN:\n   ```rust\n   pub struct IntegrationCostEngine {\n       // In-memory cache of coherence snapshots per notebook\n       // No database dependency for initial implementation\n       snapshots: HashMap<NotebookId, CoherenceSnapshot>,\n   }\n   ```\n   - Start with in-memory storage of coherence snapshots\n   - Future task can add database persistence layer\n   - Allows testing without database dependency\n\n3. ALGORITHM:\n   a) get_or_create_snapshot(notebook_id) - returns mutable reference to snapshot\n   b) Clone snapshot for tentative analysis\n   c) Simulate adding entry:\n      - Get old cluster assignments for all entries\n      - Add entry to cloned snapshot\n      - Compare cluster assignments before/after\n   d) Compute cost components:\n      - entries_revised: count entries whose cluster_id changed\n      - references_broken: count references that cross NEW cluster boundaries\n      - catalog_shift: cosine distance of merged cluster vectors before/after\n      - orphan: true if assign_to_cluster() returns None AND entry.references is empty\n   e) Commit: update real snapshot with new entry\n   f) Return IntegrationCost\n\n4. ENTRIES_REVISED COMPUTATION:\n   - Track entry_id -> cluster_id mapping before add\n   - After tentative add, compare mappings\n   - Count entries with different cluster_id\n\n5. REFERENCES_BROKEN COMPUTATION:\n   - For each reference in the entry:\n     - Check if source and target are now in different clusters\n   - Also check if existing references now cross boundaries due to re-clustering\n\n6. CATALOG_SHIFT COMPUTATION:\n   - Before: compute merged TF-IDF vector across all clusters\n   - After: compute merged TF-IDF vector after adding entry\n   - Return 1.0 - cosine_similarity(before, after)\n\n7. ORPHAN DETECTION:\n   - Entry is orphan if:\n     - CoherenceSnapshot.assign_to_cluster(entry) returns None\n     - AND entry.references is empty\n   - This means entry has no semantic connection AND no explicit references\n\n8. PERFORMANCE OPTIMIZATIONS:\n   - Clone only affected clusters, not entire snapshot\n   - Cache cluster vectors for fast similarity lookups\n   - Incremental update rather than full rebuild\n   - Target: <500ms for 10k entries\n\n9. NO DATABASE DEPENDENCY:\n   - Task 2-2 focuses on algorithm correctness\n   - Task 2-5 (integration into endpoints) can handle persistence\n   - This allows clean separation of concerns\n\n10. THREAD SAFETY:\n    - Use interior mutability pattern if needed\n    - Or require mutable reference to engine for compute_cost\n\nREFERENCES: task-assignment 2-2, task-result 2-1, entropy model entry",
+  "content_type": "text/plain",
+  "topic": "decision 2-2",
+  "references": [
+    "2308c64e-056f-45b4-bfb4-577d2a80e5c5",
+    "421ae951-9f47-4344-abe6-03838ede51ef",
+    "509be5e4-b5e7-4f16-845e-b17e63b44605"
+  ],
+  "revision_of": null,
+  "author": "agent-entropy",
+  "causal_position": {
+    "sequence": 54,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 53,
+      "recent_entropy": 22.9
+    }
+  },
+  "created": "2026-02-05T11:04:48.852212+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

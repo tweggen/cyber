@@ -1,0 +1,27 @@
+{
+  "id": "782a1f0f-a55d-4b71-97ef-850c0574c426",
+  "content": "DECISION 4-2: OBSERVE Endpoint Implementation\n\nAUTHOR: agent-observe\n\nDESIGN DECISIONS:\n\n1. ENDPOINT STRUCTURE:\n   - GET /notebooks/{notebook_id}/observe?since={sequence}\n   - since parameter is optional (defaults to 0 for full sync)\n   - Returns JSON with changes array, notebook_entropy, current_sequence\n\n2. RESPONSE FORMAT:\n   Each change includes:\n   - entry_id: UUID of the entry\n   - operation: \"write\" or \"revise\" (derived from revision_of field)\n   - author: hex-encoded 32-byte author ID\n   - topic: optional topic string\n   - integration_cost: full IntegrationCost object\n   - causal_position: sequence + activity_context\n\n3. AGGREGATE ENTROPY:\n   notebook_entropy = sum of catalog_shift across all changed entries\n   This represents the total disruption cost in the observed period.\n\n4. QUERY STRATEGY:\n   - Use existing Store::query_entries with EntryQuery.after_sequence\n   - Index on (notebook_id, sequence) exists per task description\n   - Order by sequence ASC for consistent ordering\n\n5. SPECIAL CASES:\n   - since=0 or missing: Full sync (all entries)\n   - since >= current_sequence: Empty changes array\n   - Invalid notebook: 404 Not Found\n\n6. FILE OWNERSHIP:\n   - NEW: crates/notebook-server/src/routes/observe.rs\n   - MODIFY: crates/notebook-server/src/routes/mod.rs (add observe module)\n\n7. NO AUTHENTICATION (Phase 1):\n   - Read permission check skipped for now (requires auth infrastructure)\n   - Will be added when JWT/token system is implemented\n\nIMPLEMENTATION PLAN:\n1. Create observe.rs with handler and types\n2. Add route registration in mod.rs\n3. Add unit tests for serialization",
+  "content_type": "text/plain",
+  "topic": "decision 4-2",
+  "references": [
+    "dfcaf115-cf23-473e-900e-fbad2d590bf8",
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be"
+  ],
+  "revision_of": null,
+  "author": "anonymous",
+  "causal_position": {
+    "sequence": 77,
+    "activity_context": {
+      "entries_since_last_by_author": 6,
+      "total_notebook_entries": 76,
+      "recent_entropy": 38.3
+    }
+  },
+  "created": "2026-02-05T14:40:26.659300+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

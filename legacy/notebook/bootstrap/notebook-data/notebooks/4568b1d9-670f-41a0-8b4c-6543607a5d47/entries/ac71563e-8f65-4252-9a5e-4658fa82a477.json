@@ -1,0 +1,27 @@
+{
+  "id": "ac71563e-8f65-4252-9a5e-4658fa82a477",
+  "content": "DECISION 2-4: Retroactive Cost Propagation Implementation\n\nAUTHOR: agent-propagation\n\nDESIGN DECISIONS:\n\n1. MODULE STRUCTURE:\n   - propagation.rs: Main module containing PropagationJob, PropagationQueue, and PropagationWorker\n   - In-memory VecDeque for MVP job queue\n   - Background worker pattern using tokio::spawn\n\n2. PROPAGATION JOB:\n   - PropagationJob struct with notebook_id, affected_entry_ids, cost_delta\n   - Jobs track affected entries and the delta to add to cumulative_cost\n   - Each job has a unique job_id for idempotency tracking\n\n3. PROPAGATION QUEUE:\n   - PropagationQueue wraps VecDeque<PropagationJob>\n   - Thread-safe via Arc<Mutex<>> wrapper for async access\n   - Methods: new(), enqueue(), process_next(), len(), is_empty()\n   - Processing order: FIFO (first-in, first-out)\n\n4. IDEMPOTENCY DESIGN:\n   - Each job has unique UUID job_id\n   - Track completed job IDs in a HashSet\n   - Before processing, check if job_id was already completed\n   - Skip if already processed, preventing double-counting\n\n5. BACKGROUND WORKER:\n   - PropagationWorker struct holds queue reference and completed jobs set\n   - start() method spawns tokio task that polls queue\n   - Configurable poll interval (default 100ms)\n   - Graceful shutdown via shutdown flag\n   - Logging of job completion times and queue depth\n\n6. COST UPDATE INTERFACE:\n   - Worker needs callback/trait to actually update entry metadata\n   - For MVP, define CostUpdater trait with update_cumulative_cost method\n   - Actual storage integration done in Task 2-5\n\n7. ERROR HANDLING:\n   - PropagationError enum for queue and worker errors\n   - Failed jobs logged but not retried in MVP\n   - Future: dead letter queue for failed jobs\n\nDEPENDENCIES:\n- notebook-core: EntryId, NotebookId types\n- tokio: async runtime, spawn, time::interval\n- std::collections: VecDeque, HashSet\n- std::sync: Arc, Mutex\n- tracing: logging\n\nINTERFACE WITH ENGINE (Task 2-2):\n- Engine computes IntegrationCost with entries_revised count\n- When entries_revised > 0, create PropagationJob with:\n  - notebook_id from the write context\n  - affected_entry_ids from cluster changes\n  - cost_delta derived from integration cost components\n\nTEST PLAN:\n- Unit tests for queue operations (enqueue, process_next, len)\n- Unit tests for idempotency (same job_id processed once)\n- Integration test for worker lifecycle (start, process, shutdown)\n- Test queue depth monitoring",
+  "content_type": "text/plain",
+  "topic": "decision 2-4",
+  "references": [
+    "1e76bfde-c281-41fd-96f1-2ab3eb97b4f3",
+    "7e8e6170-3b6b-43ef-b5e0-e9ee0b1388d4"
+  ],
+  "revision_of": null,
+  "author": "agent-propagation",
+  "causal_position": {
+    "sequence": 58,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 57,
+      "recent_entropy": 25.0
+    }
+  },
+  "created": "2026-02-05T11:11:42.222426+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

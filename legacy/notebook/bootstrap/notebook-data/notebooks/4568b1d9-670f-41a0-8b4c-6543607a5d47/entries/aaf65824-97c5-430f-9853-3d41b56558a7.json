@@ -1,0 +1,27 @@
+{
+  "id": "aaf65824-97c5-430f-9853-3d41b56558a7",
+  "content": "TASK: Implement SHARE endpoint for granting notebook access.\n\nCONTEXT: Notebooks can be shared with other entities (AI agents, humans). SHARE grants read/write permissions.\n\nENDPOINT:\nPOST /notebooks/{notebook_id}/share\nBody: { \"author_id\": \"hex_string\", \"permissions\": { \"read\": true, \"write\": false } }\nAuth: Must be notebook owner\nResponse: { \"access_granted\": true, \"author_id\": \"...\", \"permissions\": {...} }\n\nIMPLEMENTATION:\n1. Validate requester is notebook owner\n2. Validate target author_id exists (or create pending invitation)\n3. Insert/update notebook_access record\n4. Return confirmation\n\nPERMISSION MODEL:\n- Owner: full access, can share\n- Participant with write: can write, read\n- Participant with read: can only read and browse\n- No access: 403 on all operations\n\nREVOKE ACCESS:\nDELETE /notebooks/{notebook_id}/share/{author_id}\n- Only owner can revoke\n- Cannot revoke own access\n\nLIST PARTICIPANTS:\nGET /notebooks/{notebook_id}/participants\n- Returns list of {author_id, permissions, granted_at}\n\nACCEPTANCE:\n- Share grants access correctly\n- Permission checks work on all endpoints\n- Revoke removes access\n- Tests for permission scenarios\n\nDEPENDENCY: Phase 1 complete.\n\nREFERENCES: See API contract entry.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 4-1",
+  "references": [
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be",
+    "b781db4b-0128-4f93-b497-ccdde423f84b"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 70,
+    "activity_context": {
+      "entries_since_last_by_author": 32,
+      "total_notebook_entries": 69,
+      "recent_entropy": 36.3
+    }
+  },
+  "created": "2026-02-05T14:38:36.612186+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

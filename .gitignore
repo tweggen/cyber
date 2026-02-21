@@ -1,6 +1,65 @@
-# .NET build artifacts
-admin/bin/
-admin/obj/
+# Build Artifacts
+# .NET
+frontend/admin/bin/
+frontend/admin/obj/
+backend/src/*/bin/
+backend/src/*/obj/
+backend/tests/*/bin/
+backend/tests/*/obj/
 
-# Copied from mcp/notebook_mcp.py by CI before Docker build
-admin/wwwroot/scripts/notebook_mcp.py
+# Rust
+legacy/notebook/target/
+legacy/notebook/**/*.rs.bk
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# IDE and Editor Files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+*.code-workspace
+
+# Environment and Secrets
+.env
+.env.local
+.env.*.local
+*.pem
+*.key
+.env.vault
+
+# OS Files
+.DS_Store
+Thumbs.db
+*.bak
+
+# Docker
+docker-compose.override.yml
+.dockerignore
+
+# Bootstrap Data
+legacy/notebook/notebook-data/
+
+# Generated Files
+frontend/admin/wwwroot/scripts/notebook_mcp.py
+
+# Node (if frontend gets npm dependencies)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Temporary files
+*.tmp
+*.temp
+*.log
+*.swp

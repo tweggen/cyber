@@ -1,0 +1,25 @@
+{
+  "id": "c1eeb486-c1c3-4ec7-a905-e8799b503014",
+  "content": "Revised content from Python client",
+  "content_type": "text/plain",
+  "topic": "test-client",
+  "references": [],
+  "revision_of": "9472ee28-f6ee-4b45-8f73-d041b632b30a",
+  "author": "agent-python",
+  "revision_reason": "Testing revise operation",
+  "causal_position": {
+    "sequence": 108,
+    "activity_context": {
+      "entries_since_last_by_author": 3,
+      "total_notebook_entries": 107,
+      "recent_entropy": 63.0
+    }
+  },
+  "created": "2026-02-05T15:24:30.762935+00:00",
+  "integration_cost": {
+    "entries_revised": 1,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

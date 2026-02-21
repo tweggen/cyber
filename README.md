@@ -86,38 +86,85 @@ python3 bootstrap/bootstrap_notebook.py --port 8723 --data ./notebook-data
 
 ```
 cyber/
-├── frontend/
-│   └── admin/                    # .NET Blazor Server UI (current)
-│       ├── Components/           # Blazor components
-│       ├── Models/              # DTOs and data models
-│       ├── Services/            # API client, auth, token service
-│       └── Pages/               # Routable pages
+├── README.md                        # This file
+├── CLAUDE.md                        # Developer guidance (AI-friendly)
 │
-├── thinktank/                   # .NET Backend v2 (current)
+├── scripts/                         # Installation & utility scripts
+│   ├── install.sh                   # Bash installation
+│   ├── install.ps1                  # PowerShell installation
+│   └── claude-add-notebook.sh        # Notebook CLI helper
+│
+├── infrastructure/                  # Deployment & database
+│   ├── docker-compose.yml           # Current stack
+│   ├── docker-compose.annotated.yml # Reference
+│   ├── Dockerfile.backend           # Backend image
+│   ├── Dockerfile.legacy            # Legacy backend image
+│   └── postgres/
+│       ├── init-thinktank.sh        # Database initialization
+│       └── migrations/              # Database migrations
+│
+├── frontend/                        # .NET Blazor Server UI (current)
+│   └── admin/
+│       ├── Components/              # Blazor components
+│       ├── Models/                  # DTOs and data models
+│       ├── Services/                # API client, auth, token service
+│       └── Pages/                   # Routable pages
+│
+├── backend/                         # .NET Backend v2 (current, active)
 │   ├── src/
-│   │   ├── Notebook.Server/     # HTTP API
-│   │   ├── Notebook.Domain/     # Core domain models
-│   │   ├── Notebook.Data/       # PostgreSQL persistence
-│   │   └── Notebook.Services/   # Business logic
-│   ├── docs/                    # Architecture & design docs
-│   ├── tests/                   # Integration & unit tests
-│   └── plan/                    # Implementation plans
+│   │   ├── Notebook.Server/         # HTTP API
+│   │   ├── Notebook.Domain/         # Core domain models
+│   │   ├── Notebook.Data/           # PostgreSQL persistence
+│   │   └── Notebook.Services/       # Business logic
+│   ├── tests/                       # Integration & unit tests
+│   ├── mcp/                         # MCP server integration
+│   ├── robots/                      # Worker scripts
+│   ├── README.md                    # Backend documentation
+│   └── Notebook.sln                 # Solution file
 │
-├── notebook/                    # Rust v1 (legacy/reference)
-│   ├── crates/                  # Workspace crates
-│   │   ├── notebook-core/       # Domain types & crypto
-│   │   ├── notebook-entropy/    # Integration cost engine
-│   │   ├── notebook-store/      # PostgreSQL via sqlx
-│   │   ├── notebook-server/     # Axum HTTP API
-│   │   └── cli/                 # Command-line tool
-│   ├── python/                  # Python HTTP client
-│   ├── mcp/                     # Claude MCP integration
-│   ├── deploy/                  # Docker & infrastructure
-│   └── bootstrap/               # Data initialization
+├── docs/                            # Project documentation
+│   ├── README.md                    # Documentation index
+│   ├── SETUP.md                     # Setup & development guide
+│   ├── ARCHITECTURE.md              # System architecture overview
+│   ├── architecture/                # Detailed design documents
+│   │   ├── 00-OVERVIEW.md           # System layers, design principles
+│   │   ├── 01-CLAIM-REPRESENTATION.md
+│   │   ├── 02-ENTROPY-AND-FRICTION.md
+│   │   ├── 03-SERVER-ENHANCEMENTS.md
+│   │   ├── 04-ROBOT-WORKERS.md
+│   │   ├── 05-INGEST-PIPELINE.md
+│   │   ├── 06-MIGRATION.md
+│   │   ├── 07-NORMALIZATION.md
+│   │   ├── 08-SECURITY-MODEL.md
+│   │   ├── 09-PHASE-HUSH.md
+│   │   ├── 10-USER-FACING-FEATURES.md ← Feature status (13/16 = 81%)
+│   │   └── [other architecture docs]
+│   └── roadmap/                     # Implementation roadmap (Kanban board)
+│       ├── INDEX.md                 # Kanban overview
+│       ├── proposed/                # Future feature ideas
+│       ├── planned/                 # Approved for implementation
+│       │   ├── 05-ROBOT-WORKERS.md
+│       │   └── 06-MCP-UPDATES.md
+│       └── done/                    # Completed implementations
+│           ├── 01-SCHEMA-AND-TYPES.md
+│           ├── 02-BATCH-WRITE-AND-CLAIMS-API.md
+│           ├── 03-JOB-QUEUE.md
+│           └── 04-FILTERED-BROWSE-AND-SEARCH.md
 │
-├── CLAUDE.md                    # Developer guidance (AI-friendly)
-├── README.md                    # This file
-└── [Other project files]
+└── legacy/                          # Legacy & reference code
+    └── notebook/                    # Rust v1 backend (reference only)
+        ├── crates/                  # Workspace crates
+        │   ├── notebook-core/       # Domain types & crypto
+        │   ├── notebook-entropy/    # Integration cost engine
+        │   ├── notebook-store/      # PostgreSQL persistence
+        │   ├── notebook-server/     # Axum HTTP API
+        │   └── cli/                 # Command-line tool
+        ├── python/                  # Python HTTP client
+        ├── mcp/                     # Claude MCP integration
+        ├── docs/                    # Architecture documentation
+        ├── bootstrap/               # Data initialization
+        ├── Cargo.toml               # Rust workspace manifest
+        └── README.md                # Legacy backend explanation
 ```
 
 ---

@@ -1,0 +1,27 @@
+{
+  "id": "17b341b7-528e-4117-aa87-52c4546eb1f8",
+  "content": "DECISION 0-4: Cryptographic Identity Implementation\n\nDECISIONS:\n\n1. CRATE SELECTION:\n   - ed25519-dalek v2.x for Ed25519 signatures (well-audited, pure Rust)\n   - blake3 for hashing (fast, modern, 256-bit output)\n   - base64 for serialization encoding (standard, compact)\n   - rand for secure random generation (required by ed25519-dalek)\n\n2. AUTHORID FORMAT:\n   - blake3_hash(public_key)[0..16] as lowercase hex = 32 chars\n   - 128-bit collision resistance is sufficient for identity\n   - Deterministic: same keypair always produces same AuthorId\n\n3. SIGNATURE PAYLOAD:\n   - Canonical JSON serialization of: content + content_type + topic + references + revision_of\n   - Using serde_json::to_vec for deterministic ordering\n   - 64-byte Ed25519 signature\n\n4. SERIALIZATION:\n   - PublicKey: base64 standard encoding of 32 bytes\n   - Signature: base64 standard encoding of 64 bytes\n   - Both implement Serialize/Deserialize via custom wrappers\n\n5. FILE STRUCTURE:\n   - crypto.rs: KeyPair, Signature, PublicKey, sign/verify operations\n   - identity.rs: AuthorId derivation from PublicKey\n   - lib.rs: export pub mod crypto; pub mod identity;\n\n6. COORDINATION:\n   - AuthorId will be a newtype String wrapper for now\n   - agent-types can later integrate with Entry type\n   - No changes needed to types.rs at this stage\n\nRATIONALE: ed25519-dalek is the de facto standard for Ed25519 in Rust, blake3 is the fastest secure hash available, and this approach provides forward compatibility with federation where entries will be verified by other notebooks.",
+  "content_type": "text/plain",
+  "topic": "decision 0-4",
+  "references": [
+    "b67c97e9-9060-4cff-a514-9a22c2c8bfa6",
+    "f9770e41-8c3e-4186-b380-a027e78c562d"
+  ],
+  "revision_of": null,
+  "author": "agent-crypto",
+  "causal_position": {
+    "sequence": 19,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 18,
+      "recent_entropy": 9.5
+    }
+  },
+  "created": "2026-02-05T10:31:21.714908+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

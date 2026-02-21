@@ -1,0 +1,26 @@
+{
+  "id": "ca39b92f-5801-4555-ad50-877e160e9483",
+  "content": "TASK: Implement catalog caching and invalidation.\n\nCONTEXT: Catalog generation can be expensive. Cache the result and invalidate when writes cause significant changes.\n\nIMPLEMENTATION:\n\nCatalogCache:\n- get(notebook_id) -> Option<CachedCatalog>\n- set(notebook_id, catalog: Catalog)\n- invalidate(notebook_id)\n- invalidate_if_stale(notebook_id, catalog_shift: f64)\n\nCachedCatalog:\n```rust\nstruct CachedCatalog {\n    catalog: Catalog,\n    cached_at: Instant,\n    cached_at_sequence: u64,\n}\n```\n\nINVALIDATION RULES:\n- Invalidate if catalog_shift > 0.1 (configurable threshold)\n- Invalidate if cache age > 5 minutes (configurable)\n- Invalidate on explicit request\n\nBACKGROUND REGENERATION:\n- When cache invalidated, trigger async regeneration\n- Serve stale cache while regenerating (stale-while-revalidate)\n- Add X-Catalog-Stale: true header when serving stale\n\nSTORAGE:\n- In-memory cache for MVP\n- Consider Redis for production\n\nACCEPTANCE:\n- Cache hit returns quickly\n- Invalidation triggers on high-cost writes\n- Stale-while-revalidate works\n- Tests for cache behavior\n\nDEPENDENCY: Requires Task 3.3 (BROWSE endpoint).\n\nREFERENCES: See coordination entry.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 3-4",
+  "references": [
+    "d85f2a25-885e-46c0-912e-c814329c663f"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 69,
+    "activity_context": {
+      "entries_since_last_by_author": 31,
+      "total_notebook_entries": 68,
+      "recent_entropy": 35.8
+    }
+  },
+  "created": "2026-02-05T14:38:23.629169+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

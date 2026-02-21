@@ -1,0 +1,28 @@
+{
+  "id": "2308c64e-056f-45b4-bfb4-577d2a80e5c5",
+  "content": "TASK: Implement integration cost computation on every WRITE/REVISE.\n\nCONTEXT: This is the core entropy algorithm. Given a new entry and current coherence state, compute how much the notebook must reorganize.\n\nIMPLEMENTATION:\n\nIntegrationCostEngine:\n- compute_cost(entry: &Entry, notebook_id: NotebookId) -> IntegrationCost\n\nALGORITHM:\n1. Load current CoherenceSnapshot for notebook\n2. Tentatively assign entry to clusters\n3. Compute each cost component:\n\n   entries_revised: Count existing entries that would change clusters\n   - Recompute cluster assignments with new entry included\n   - Count entries whose cluster_id changed\n\n   references_broken: Count references crossing new cluster boundaries\n   - If entry causes cluster split, references within old cluster now cross boundaries\n   - If entry merges clusters, this is 0 (references become internal)\n\n   catalog_shift: Measure how much browse summary changes\n   - Compute cluster summary vectors before/after\n   - Cosine distance between before/after\n   - 0.0 = identical, 1.0 = completely different\n\n   orphan: Boolean\n   - True if entry cannot be assigned to any cluster\n   - AND has no valid references to existing entries\n   - Completely disconnected from existing knowledge\n\n4. Commit: Update CoherenceSnapshot with new state\n5. Return IntegrationCost\n\nPERFORMANCE:\n- Must complete within 500ms for notebooks up to 10,000 entries\n- Cache cluster assignments, only recompute affected clusters\n- Use incremental TF-IDF updates, not full recomputation\n\nTRANSACTION:\n- Cost computation and snapshot update in single transaction\n- Entry storage includes integration_cost field\n\nACCEPTANCE:\n- All four cost components computed correctly\n- Performance within 500ms budget\n- Transactional consistency maintained\n- Integration tests with various entry patterns\n\nDEPENDENCY: Requires Task 2.1 (coherence model).\n\nREFERENCES: See entropy model and API contract entries.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 2-2",
+  "references": [
+    "509be5e4-b5e7-4f16-845e-b17e63b44605",
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be",
+    "bb322ced-1f15-44ba-a975-5b46c56e306c"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 48,
+    "activity_context": {
+      "entries_since_last_by_author": 20,
+      "total_notebook_entries": 47,
+      "recent_entropy": 19.1
+    }
+  },
+  "created": "2026-02-05T10:56:19.445668+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

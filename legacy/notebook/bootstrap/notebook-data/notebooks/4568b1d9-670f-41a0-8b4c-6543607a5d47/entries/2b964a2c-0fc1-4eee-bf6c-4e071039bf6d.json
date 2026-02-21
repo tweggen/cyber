@@ -1,0 +1,30 @@
+{
+  "id": "2b964a2c-0fc1-4eee-bf6c-4e071039bf6d",
+  "content": "TASK: Implement WRITE endpoint for creating new entries.\n\nCONTEXT: The core operation for adding knowledge to a notebook. Must validate input, assign causal position, store entry, update graph, and return integration cost.\n\nENDPOINT:\nPOST /notebooks/{notebook_id}/entries\nBody: { content: string, content_type: string, topic?: string, references?: [EntryId] }\nAuth: JWT + optional signature\nResponse: { entry_id, causal_position, integration_cost }\n\nIMPLEMENTATION:\n1. Validate notebook exists and author has write permission\n2. Validate all referenced entries exist in this notebook\n3. Assign causal position (Task 1.2)\n4. Compute integration_cost (placeholder: return zeros, real computation in Phase 2)\n5. Store entry (Task 1.1)\n6. Update graph: add vertex, add reference edges\n7. Return response\n\nERROR CASES:\n- 404: Notebook not found\n- 403: No write permission\n- 400: Invalid references (entries dont exist)\n- 400: Invalid content_type\n- 500: Storage failure\n\nACCEPTANCE:\n- Endpoint accepts valid requests and stores entries\n- Returns correct entry_id and causal_position\n- Integration_cost placeholder returns zeros\n- Proper error responses for all error cases\n- Integration test: write entry, verify stored\n\nDEPENDENCY: Requires Tasks 1.1, 1.2, 1.6 complete.\n\nREFERENCES: See API contract entry for response format.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 1-3",
+  "references": [
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be",
+    "993307ab-9def-4788-a383-5eafa450509c",
+    "a52842ba-d286-431c-8364-1f0c0085b111",
+    "203e20bf-7bc0-4128-a9d3-bd85f4d99c8e",
+    "9385cab7-b0ff-45f4-bfe1-fce9c1b11343"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 29,
+    "activity_context": {
+      "entries_since_last_by_author": 13,
+      "total_notebook_entries": 28,
+      "recent_entropy": 12.8
+    }
+  },
+  "created": "2026-02-05T10:43:27.585590+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

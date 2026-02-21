@@ -1,0 +1,28 @@
+{
+  "id": "63f9e197-b245-49c1-a10f-35463fddb77a",
+  "content": "DECISION 0-2: Core Data Types Design\n\nAUTHOR: agent-types\n\nSUMMARY: Design decisions for implementing core data types in notebook-core/src/types.rs\n\nDEPENDENCIES TO ADD:\n- Root Cargo.toml workspace dependencies: serde 1.x with derive feature, serde_json 1.x, uuid 1.x with v4 and serde features, chrono 0.4.x with serde feature\n- notebook-core/Cargo.toml: use workspace dependencies\n\nTYPE DESIGN DECISIONS:\n\n1. EntryId and NotebookId:\n   - Newtype wrappers around uuid::Uuid\n   - Implement Display (via inner), FromStr (parse UUID), Default (random v4)\n   - Derive: Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize\n\n2. AuthorId:\n   - Newtype wrapper around [u8; 32] (SHA-256 hash of public key)\n   - Implement Display (hex encoding), FromStr (hex decoding)\n   - Derive: Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize\n   - Note: The actual derivation from public key will be in crypto.rs (agent-crypto)\n\n3. Entry:\n   - content: Vec<u8> - raw bytes, representation-agnostic per axioms\n   - content_type: String - MIME-like type registry\n   - topic: Option<String> - optional categorization\n   - author: AuthorId - cryptographic identity\n   - signature: Vec<u8> - Ed25519 signature (64 bytes, kept as Vec for flexibility)\n   - references: Vec<EntryId> - causal context, cyclic allowed\n   - revision_of: Option<EntryId> - tracks revisions\n   - causal_position: CausalPosition - system-computed\n   - created: chrono::DateTime<chrono::Utc> - timestamp\n   - integration_cost: IntegrationCost - system-computed per axioms\n\n4. IntegrationCost:\n   - entries_revised: u32 - count of entries that needed revision\n   - references_broken: u32 - count of broken references\n   - catalog_shift: f64 - how much catalog reorganization occurred\n   - orphan: bool - whether this entry has no incoming references\n\n5. CausalPosition:\n   - sequence: u64 - monotonic sequence number\n   - activity_context: ActivityContext\n\n6. ActivityContext:\n   - entries_since_last_by_author: u32\n   - total_notebook_entries: u32\n   - recent_entropy: f64 - entropy measure from notebook-entropy crate\n\n7. Notebook:\n   - id: NotebookId\n   - name: String\n   - owner: AuthorId\n   - participants: Vec<Participant>\n\n8. Participant:\n   - entity: AuthorId\n   - permissions: Permissions\n\n9. Permissions:\n   - read: bool\n   - write: bool\n\nSERIALIZATION:\n- Use serde with JSON as primary format\n- EntryId/NotebookId serialize as UUID strings\n- AuthorId serializes as hex string\n- Signature serializes as base64 or hex (will use hex for consistency)\n\nTESTS:\n- Round-trip serialization tests for all types\n- Display/FromStr tests for ID types\n- Edge cases: empty content, no references, max values\n\nFILES TO CREATE/MODIFY:\n- CREATE: crates/notebook-core/src/types.rs\n- MODIFY: Cargo.toml (workspace deps)\n- MODIFY: crates/notebook-core/Cargo.toml (deps)\n- MODIFY: crates/notebook-core/src/lib.rs (export types module)",
+  "content_type": "text/plain",
+  "topic": "decision 0-2",
+  "references": [
+    "013bba92-7e7e-452c-b224-b19240f6bbdd",
+    "f9770e41-8c3e-4186-b380-a027e78c562d",
+    "b32b2ec9-5482-40aa-bd45-64d21fd15058"
+  ],
+  "revision_of": null,
+  "author": "agent-types",
+  "causal_position": {
+    "sequence": 17,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 16,
+      "recent_entropy": 9.5
+    }
+  },
+  "created": "2026-02-05T10:30:12.923434+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

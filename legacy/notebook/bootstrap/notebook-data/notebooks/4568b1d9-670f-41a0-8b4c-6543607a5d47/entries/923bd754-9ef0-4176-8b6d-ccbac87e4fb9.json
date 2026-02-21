@@ -1,0 +1,27 @@
+{
+  "id": "923bd754-9ef0-4176-8b6d-ccbac87e4fb9",
+  "content": "TASK: Implement full-text search indexing with Tantivy.\n\nCONTEXT: BROWSE needs fast text search over entries. Tantivy is a Rust-native full-text search library (like Lucene).\n\nIMPLEMENTATION:\n\nSearchIndex:\n- new(index_path: &Path) -> Self\n- index_entry(entry: &Entry) -> Result<()>\n- search(query: &str, notebook_id: NotebookId, limit: usize) -> Vec<SearchHit>\n- delete_entry(entry_id: EntryId) -> Result<()>\n\nSearchHit:\n```rust\nstruct SearchHit {\n    entry_id: EntryId,\n    score: f32,\n    snippet: String,  // Highlighted match context\n}\n```\n\nINDEX SCHEMA:\n- entry_id: stored, indexed\n- notebook_id: indexed (for filtering)\n- content: indexed, stored (for snippets)\n- topic: indexed\n- author_id: indexed\n- content_type: indexed\n\nINDEX LOCATION:\n- Configurable path (default: ./data/search_index)\n- One index for all notebooks (filter by notebook_id)\n\nINDEX UPDATES:\n- Index on WRITE\n- Reindex on REVISE (update document)\n- Background reindex capability for bulk operations\n\nACCEPTANCE:\n- Tantivy index creates and persists\n- Search returns relevant results\n- Snippets highlight matches\n- Notebook filtering works\n- Performance: <100ms for 10k entries\n\nDEPENDENCY: Phase 1 complete.\n\nREFERENCES: See technology entry for Tantivy choice.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 3-2",
+  "references": [
+    "4841e17c-9c5c-4cbc-9005-c1b519322031",
+    "d85f2a25-885e-46c0-912e-c814329c663f"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 67,
+    "activity_context": {
+      "entries_since_last_by_author": 29,
+      "total_notebook_entries": 66,
+      "recent_entropy": 34.8
+    }
+  },
+  "created": "2026-02-05T14:38:23.472748+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

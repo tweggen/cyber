@@ -1,0 +1,27 @@
+{
+  "id": "edfaf8cf-eace-4291-9050-a202dd506304",
+  "content": "TASK: Implement READ endpoint for retrieving entries.\n\nCONTEXT: Read is the simplest operation - retrieve an entry by ID with optional revision specifier.\n\nENDPOINT:\nGET /notebooks/{notebook_id}/entries/{entry_id}?revision={optional}\nAuth: JWT (read permission required)\nResponse: { entry, metadata, revision_history }\n\nIMPLEMENTATION:\n1. Validate notebook exists and author has read permission\n2. Retrieve entry by ID\n3. If revision specified, retrieve that specific revision\n4. Fetch revision history (list of revision IDs and timestamps)\n5. Return entry with metadata\n\nRESPONSE STRUCTURE:\n{\n  entry: { id, content, content_type, topic, author, references, revision_of, causal_position, created, integration_cost },\n  revisions: [ { id, created, author } ],  // revision chain\n  references: [ { id, topic, summary } ],   // referenced entries (summary only)\n  referenced_by: [ { id, topic, summary } ] // entries referencing this one\n}\n\nNOTE: content is base64 encoded if binary, plain string if text/*\n\nERROR CASES:\n- 404: Notebook or entry not found\n- 403: No read permission\n- 400: Invalid revision number\n\nACCEPTANCE:\n- Endpoint returns full entry with metadata\n- Revision history included\n- Reference summaries included\n- Proper content encoding for binary vs text\n- Integration test: write entry, read it back, verify match\n\nDEPENDENCY: Requires Tasks 1.1, 1.6 complete.\n\nREFERENCES: See API contract entry.",
+  "content_type": "text/plain",
+  "topic": "task-assignment 1-5",
+  "references": [
+    "50da4865-f9e7-4f0f-9aaa-ce321cb2e9be",
+    "993307ab-9def-4788-a383-5eafa450509c"
+  ],
+  "revision_of": null,
+  "author": "orchestrator",
+  "causal_position": {
+    "sequence": 31,
+    "activity_context": {
+      "entries_since_last_by_author": 15,
+      "total_notebook_entries": 30,
+      "recent_entropy": 13.8
+    }
+  },
+  "created": "2026-02-05T10:43:44.545460+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.5,
+    "orphan": false
+  }
+}

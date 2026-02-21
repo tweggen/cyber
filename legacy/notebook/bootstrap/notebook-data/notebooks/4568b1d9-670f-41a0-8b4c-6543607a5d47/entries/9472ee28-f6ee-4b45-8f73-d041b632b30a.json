@@ -1,0 +1,24 @@
+{
+  "id": "9472ee28-f6ee-4b45-8f73-d041b632b30a",
+  "content": "Test entry from Python client",
+  "content_type": "text/plain",
+  "topic": "test-client",
+  "references": [],
+  "revision_of": null,
+  "author": "agent-python",
+  "causal_position": {
+    "sequence": 106,
+    "activity_context": {
+      "entries_since_last_by_author": 1,
+      "total_notebook_entries": 105,
+      "recent_entropy": 61.7
+    }
+  },
+  "created": "2026-02-05T15:24:30.673294+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 1.0,
+    "orphan": true
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "id": "68a3cf2e-eed1-48ac-a402-3b884cd41cb4",
+  "content": "TASK RESULT 2-4: Retroactive Cost Propagation Complete\n\nSTATUS: Complete\n\nAUTHOR: agent-propagation\n\nDELIVERABLES CREATED:\n\n1. Propagation Module (crates/notebook-entropy/src/propagation.rs)\n   - PropagationJob struct with job_id, notebook_id, affected_entry_ids, cost_delta\n   - PropagationQueue with thread-safe VecDeque using Arc<Mutex<>>\n   - PropagationWorker for async background processing via tokio::spawn\n   - CostUpdater trait for abstracted storage updates\n   - NoOpCostUpdater for testing\n   - WorkerStats for monitoring jobs_processed, entries_updated, jobs_skipped, jobs_failed\n   - PropagationError enum for error handling\n   - create_propagation_job() helper function\n\n2. Updated lib.rs (crates/notebook-entropy/src/lib.rs)\n   - Added pub mod propagation declaration\n   - Re-exports: PropagationJob, PropagationQueue, PropagationWorker, PropagationError, CostUpdater, NoOpCostUpdater, WorkerStats, create_propagation_job\n\n3. Updated Cargo.toml (crates/notebook-entropy/Cargo.toml)\n   - Added tokio = { workspace = true } for async runtime\n   - Added uuid = { workspace = true } for job IDs\n   - Added tracing = { workspace = true } for logging\n\nFILE PATHS:\n- /crates/notebook-entropy/src/propagation.rs (created, ~520 lines)\n- /crates/notebook-entropy/src/lib.rs (modified)\n- /crates/notebook-entropy/Cargo.toml (modified)\n\nIMPLEMENTATION DETAILS:\n\n1. PropagationJob:\n   - Each job has unique UUID job_id for idempotency\n   - Tracks notebook_id, affected_entry_ids, and cost_delta\n   - with_id() constructor for testing/replay scenarios\n   - is_empty() and affected_count() convenience methods\n\n2. PropagationQueue:\n   - Thread-safe via Arc<Mutex<VecDeque>>\n   - Clone shares state (for worker access)\n   - Silently drops empty jobs on enqueue\n   - FIFO processing order\n   - clear() for queue reset\n\n3. PropagationWorker:\n   - Configurable poll_interval (default 100ms)\n   - Idempotency via completed_jobs HashSet\n   - Graceful shutdown via watch channel\n   - Comprehensive stats tracking\n   - Uses CostUpdater trait for storage abstraction\n\n4. Idempotency Design:\n   - Each job has unique job_id\n   - Completed job IDs tracked in HashSet\n   - Jobs with already-seen IDs are skipped (counted in jobs_skipped)\n   - Safe to replay jobs without double-counting\n\n5. Background Worker Pattern:\n   - start() returns JoinHandle for task management\n   - Uses tokio::select! for poll interval + shutdown signal\n   - Logs queue depth when > 0\n   - Logs job completion times and entry counts\n\nTEST COVERAGE (17 tests):\n- propagation_job_new: constructor with auto job_id\n- propagation_job_empty: empty job detection\n- propagation_job_with_id: custom job_id\n- propagation_queue_new: empty queue\n- propagation_queue_enqueue_dequeue: FIFO order\n- propagation_queue_drops_empty_jobs: empty jobs filtered\n- propagation_queue_clear: queue reset\n- propagation_queue_clone_shares_state: Arc sharing works\n- no_op_cost_updater: stub updater for tests\n- worker_idempotency: same job_id processed once\n- worker_stats: stats tracking\n- worker_poll_interval: configurable interval\n- worker_queue_depth: depth monitoring\n- worker_start_and_shutdown: lifecycle management\n- worker_processes_multiple_jobs: batch processing\n- create_propagation_job_none_for_empty: helper returns None\n- create_propagation_job_computes_delta: cost delta formula\n\nCOST DELTA FORMULA:\ncost_delta = (entries_revised * 0.5) + (references_broken * 0.3) + (catalog_shift * 0.2)\n\nINTEGRATION NOTES:\n- Task 2-5 implements actual CostUpdater for storage\n- Worker can be started at server initialization\n- Engine compute_cost returns entries_revised for job creation\n- create_propagation_job() bridges Engine and Queue\n\nBLOCKING ISSUES: None\n\nVERIFICATION:\n- All 17 propagation tests pass\n- Code compiles without errors\n- Async tests verify worker lifecycle",
+  "content_type": "text/plain",
+  "topic": "task-result 2-4",
+  "references": [
+    "1e76bfde-c281-41fd-96f1-2ab3eb97b4f3",
+    "7e8e6170-3b6b-43ef-b5e0-e9ee0b1388d4",
+    "ac71563e-8f65-4252-9a5e-4658fa82a477"
+  ],
+  "revision_of": null,
+  "author": "agent-propagation",
+  "causal_position": {
+    "sequence": 61,
+    "activity_context": {
+      "entries_since_last_by_author": 1,
+      "total_notebook_entries": 60,
+      "recent_entropy": 29.5
+    }
+  },
+  "created": "2026-02-05T11:15:32.200267+00:00",
+  "integration_cost": {
+    "entries_revised": 10,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}

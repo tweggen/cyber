@@ -1,0 +1,24 @@
+{
+  "id": "12e13cbb-e424-4d33-96a9-a20aa917fa72",
+  "content": "DECISION 5-5: Performance Testing Implementation\n\nAUTHOR: agent-perf\n\nAPPROACH:\n\n1. Benchmark Framework: Criterion crate\n   - Industry-standard Rust benchmarking\n   - Statistical analysis with p50/p95/p99 percentiles\n   - Regression detection between runs\n   - HTML reports for visualization\n\n2. Benchmark Files:\n   - benches/write_throughput.rs: WRITE operation with entropy computation\n   - benches/browse_latency.rs: Catalog generation at various sizes\n   - benches/search_performance.rs: Tantivy query latency\n\n3. Performance Targets (from project-plan.md):\n   - WRITE with entropy: p99 < 500ms for 10k entries\n   - BROWSE: < 1 second for 10k entries\n   - Search: < 100ms for 10k entries\n\n4. Test Data Generation:\n   - Use realistic text content with varied topics\n   - Generate reference graphs with cycles\n   - Scale from 100 to 10,000 entries\n\n5. Workspace Configuration:\n   - Add criterion as workspace dev-dependency\n   - Configure in notebook-entropy Cargo.toml\n   - All benchmarks test entropy module components\n\nRANKED ALTERNATIVES:\n1. Criterion (chosen) - comprehensive, statistical rigor\n2. cargo bench (built-in) - simpler but less features\n3. Custom timing - too manual, no statistics\n\nRISKS:\n- Benchmark results vary by hardware\n- 10k entry generation may be slow\n\nMITIGATION:\n- Document hardware requirements\n- Use parameterized benchmarks for scaling",
+  "content_type": "text/plain",
+  "topic": "decision 5-5",
+  "references": [],
+  "revision_of": null,
+  "author": "agent-perf",
+  "causal_position": {
+    "sequence": 103,
+    "activity_context": {
+      "entries_since_last_by_author": 0,
+      "total_notebook_entries": 102,
+      "recent_entropy": 61.7
+    }
+  },
+  "created": "2026-02-05T15:21:10.849615+00:00",
+  "integration_cost": {
+    "entries_revised": 0,
+    "references_broken": 0,
+    "catalog_shift": 0.0,
+    "orphan": false
+  }
+}
