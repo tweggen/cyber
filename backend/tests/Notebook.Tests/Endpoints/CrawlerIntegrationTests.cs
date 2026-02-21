@@ -43,8 +43,11 @@ public class CrawlerIntegrationTests : IClassFixture<NotebookApiFixture>
             name = $"Test Org {Guid.NewGuid():N}",
             description = "Test organization for crawler tests"
         });
-        var createdOrg = await orgResponse.Content.ReadFromJsonAsync<dynamic>();
-        _testOrganizationId = Guid.Parse(createdOrg?.id.ToString() ?? Guid.Empty.ToString());
+        using var orgDoc = JsonDocument.Parse(await orgResponse.Content.ReadAsStringAsync());
+        if (orgDoc.RootElement.TryGetProperty("id", out var idElement))
+        {
+            _testOrganizationId = Guid.Parse(idElement.GetString() ?? Guid.Empty.ToString());
+        }
 
         // Create test user
         _testUserId = Guid.NewGuid();

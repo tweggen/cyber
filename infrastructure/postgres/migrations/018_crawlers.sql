@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS crawlers (
     -- Audit trail
     created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-    created_by UUID NOT NULL REFERENCES auth_users(id),
+    created_by UUID,
     organization_id UUID NOT NULL REFERENCES organizations(id),
 
     UNIQUE(notebook_id, name)
