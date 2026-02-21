@@ -4,12 +4,12 @@ FROM rust:1.88-bookworm AS builder
 WORKDIR /build
 
 # Copy workspace manifests first for better layer caching
-COPY notebook/Cargo.toml notebook/Cargo.lock ./
-COPY notebook/crates/notebook-core/Cargo.toml crates/notebook-core/Cargo.toml
-COPY notebook/crates/notebook-server/Cargo.toml crates/notebook-server/Cargo.toml
-COPY notebook/crates/notebook-store/Cargo.toml crates/notebook-store/Cargo.toml
-COPY notebook/crates/notebook-entropy/Cargo.toml crates/notebook-entropy/Cargo.toml
-COPY notebook/cli/Cargo.toml cli/Cargo.toml
+COPY legacy/notebook/Cargo.toml legacy/notebook/Cargo.lock ./
+COPY legacy/notebook/crates/notebook-core/Cargo.toml crates/notebook-core/Cargo.toml
+COPY legacy/notebook/crates/notebook-server/Cargo.toml crates/notebook-server/Cargo.toml
+COPY legacy/notebook/crates/notebook-store/Cargo.toml crates/notebook-store/Cargo.toml
+COPY legacy/notebook/crates/notebook-entropy/Cargo.toml crates/notebook-entropy/Cargo.toml
+COPY legacy/notebook/cli/Cargo.toml cli/Cargo.toml
 
 # Create dummy source files so cargo can resolve dependencies
 RUN mkdir -p crates/notebook-core/src && echo "" > crates/notebook-core/src/lib.rs && \
@@ -22,9 +22,9 @@ RUN mkdir -p crates/notebook-core/src && echo "" > crates/notebook-core/src/lib.
 RUN cargo build --release --bin notebook-server 2>/dev/null || true
 
 # Copy real source code and migrations (needed at compile time by build.rs)
-COPY notebook/crates/ crates/
-COPY notebook/cli/ cli/
-COPY postgres/migrations/ migrations/
+COPY legacy/notebook/crates/ crates/
+COPY legacy/notebook/cli/ cli/
+COPY infrastructure/postgres/migrations/ migrations/
 
 # Touch source files to invalidate cached dummy builds
 RUN find crates/ cli/ -name "*.rs" -exec touch {} +
@@ -43,7 +43,7 @@ RUN apt-get update && \
 COPY --from=builder /build/target/release/notebook-server /usr/local/bin/
 
 # Copy migrations so the server can run them on startup
-COPY postgres/migrations/ /app/migrations/
+COPY infrastructure/postgres/migrations/ /app/migrations/
 
 EXPOSE 3000
 

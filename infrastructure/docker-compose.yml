@@ -12,13 +12,13 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ../postgres/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
-      - ../postgres/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
-      - ../postgres/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
-      - ../postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
-      - ../postgres/migrations/000_create_thinktank_db.sql:/docker-entrypoint-initdb.d/00-thinktank-db.sql:ro
-      - ../postgres/init-thinktank.sh:/docker-entrypoint-initdb.d/04-thinktank.sh:ro
-      - ../postgres/migrations:/thinktank-migrations:ro
+      - ./postgres/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
+      - ./postgres/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./postgres/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      - ./postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
+      - ./postgres/migrations/000_create_thinktank_db.sql:/docker-entrypoint-initdb.d/00-thinktank-db.sql:ro
+      - ./postgres/init-thinktank.sh:/docker-entrypoint-initdb.d/04-thinktank.sh:ro
+      - ./postgres/migrations:/thinktank-migrations:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U notebook -d notebook"]
       interval: 10s

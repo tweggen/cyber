@@ -72,25 +72,25 @@ services:
       # data directory is empty). They are NOT re-run on subsequent starts.
       #
       # We prefix with 00-, 01-, 02-, 03- to enforce execution order:
-      - ../postgres/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
+      - ./postgres/migrations/000_create_admin_db.sql:/docker-entrypoint-initdb.d/00-admin-db.sql:ro
       #   00: Creates the separate "notebook_admin" database used by the
       #       admin service (ASP.NET). ":ro" = read-only mount.
-      - ../postgres/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+      - ./postgres/migrations/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
       #   01: Core initialization — enables extensions (uuid-ossp, age, etc.),
       #       sets up the search path.
-      - ../postgres/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
+      - ./postgres/migrations/002_schema.sql:/docker-entrypoint-initdb.d/02-schema.sql:ro
       #   02: Creates the notebook tables (entries, notebooks, authors, etc.).
-      - ../postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
+      - ./postgres/migrations/003_graph.sql:/docker-entrypoint-initdb.d/03-graph.sql:ro
       #   03: Sets up the Apache AGE graph for causal-reference traversal.
 
       # --- Thinktank database bootstrap ---
-      - ../postgres/migrations/000_create_thinktank_db.sql:/docker-entrypoint-initdb.d/00-thinktank-db.sql:ro
+      - ./postgres/migrations/000_create_thinktank_db.sql:/docker-entrypoint-initdb.d/00-thinktank-db.sql:ro
       #   00: Creates the separate "thinktank" database used by the .NET backend.
-      - ../postgres/init-thinktank.sh:/docker-entrypoint-initdb.d/04-thinktank.sh:ro
+      - ./postgres/init-thinktank.sh:/docker-entrypoint-initdb.d/04-thinktank.sh:ro
       #   04: Shell script that applies schema migrations (002–012) to the
       #       thinktank database. Runs after all .sql files have executed against
       #       the default notebook DB.
-      - ../postgres/migrations:/thinktank-migrations:ro
+      - ./postgres/migrations:/thinktank-migrations:ro
       #   Mounts the full migrations directory so init-thinktank.sh can
       #   reference migration files that aren't individually mounted in initdb.d.
 
