@@ -1,11 +1,11 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY backend/src/Notebook.Core/Notebook.Core.csproj backend/src/Notebook.Core/
-COPY backend/src/Notebook.Data/Notebook.Data.csproj backend/src/Notebook.Data/
-COPY backend/src/Notebook.Server/Notebook.Server.csproj backend/src/Notebook.Server/
-RUN dotnet restore backend/src/Notebook.Server/Notebook.Server.csproj
-COPY backend/src/ backend/src/
-RUN dotnet publish backend/src/Notebook.Server -c Release -o /app/publish
+COPY src/Notebook.Core/Notebook.Core.csproj src/Notebook.Core/
+COPY src/Notebook.Data/Notebook.Data.csproj src/Notebook.Data/
+COPY src/Notebook.Server/Notebook.Server.csproj src/Notebook.Server/
+RUN dotnet restore src/Notebook.Server/Notebook.Server.csproj
+COPY src/ src/
+RUN dotnet publish src/Notebook.Server -c Release -o /app/publish
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0
 WORKDIR /app

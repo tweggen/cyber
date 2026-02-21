@@ -19,13 +19,13 @@ jobs:
         include:
           - image: notebook-server
             context: .
-            dockerfile: notebook/Dockerfile
+            dockerfile: infrastructure/Dockerfile.legacy
           - image: notebook-admin
             context: ./frontend/admin
             dockerfile: ./frontend/admin/Dockerfile
           - image: thinktank-server
             context: ./thinktank
-            dockerfile: ./thinktank/Dockerfile
+            dockerfile: infrastructure/Dockerfile.backend
 
     steps:
       - name: Checkout
