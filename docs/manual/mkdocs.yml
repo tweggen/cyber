@@ -1,0 +1,91 @@
+site_name: Cyber User Manual
+site_description: User manual for the Cyber Knowledge Exchange Platform
+site_author: Cyber Project
+copyright: Copyright &copy; 2026 Cyber Project. All rights reserved.
+docs_dir: .
+site_dir: dist/html
+
+theme:
+  name: material
+  language: en
+  palette:
+    - scheme: light
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/lightbulb-outline
+        name: Switch to dark mode
+    - scheme: dark
+      primary: blue
+      accent: indigo
+      toggle:
+        icon: material/lightbulb
+        name: Switch to light mode
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - toc.follow
+    - content.code.copy
+    - content.tabs.link
+
+plugins:
+  - search:
+      lang: en
+  - awesome-pages
+  - glightbox
+
+markdown_extensions:
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - pymdownx.highlight:
+      use_pygments: true
+  - pymdownx.inlinehilite
+  - pymdownx.tasklist:
+      custom_checkbox: true
+  - pymdownx.arithmatex:
+      block_tag: 'div'
+  - pymdownx.details
+  - pymdownx.snippets
+  - md_in_html
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+      title: On this page
+      toc_depth: 3
+
+nav:
+  - Home: index.md
+  - Part I - Introduction:
+      - Chapter 1 - Platform Overview: chapters/01-platform-overview.md
+      - Chapter 2 - Security Model: chapters/02-security-model.md
+      - Chapter 3 - Getting Started: chapters/03-getting-started.md
+  - Part II - Persona Guides:
+      - Overview: part-ii-overview.md
+      - Chapter 4 - Knowledge Contributor: chapters/04-knowledge-contributor.md
+      - Chapter 5 - Organization Administrator: chapters/05-org-administrator.md
+      - Chapter 6 - Notebook Owner: chapters/06-notebook-owner.md
+      - Chapter 7 - Auditor/Compliance Officer: chapters/07-auditor.md
+      - Chapter 8 - System Administrator: chapters/08-system-administrator.md
+      - Chapter 9 - ThinkerAgent Operator: chapters/09-thinker-operator.md
+      - Chapter 10 - Cross-Org Coordinator: chapters/10-cross-org-coordinator.md
+  - Part III - Reference:
+      - Chapter 11 - MCP Reference: chapters/11-mcp-reference.md
+      - Chapter 12 - UI Reference: chapters/12-ui-reference.md
+      - Chapter 13 - Security Reference: chapters/13-security-reference.md
+      - Chapter 14 - Data Model: chapters/14-data-model.md
+      - Chapter 15 - Troubleshooting: chapters/15-troubleshooting.md
+      - Chapter 16 - Glossary & Index: chapters/16-glossary.md
+  - Workflows:
+      - WF-KC-001: Setting up MCP Access: workflows/wf-kc-001-mcp-setup.md
