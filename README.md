@@ -8,7 +8,7 @@ A platform for building externalized memory substrates that enable persistent, e
 
 ## 📊 Admin Panel Status
 
-**Current Phase: Phase 1 (User Management Enhancements)** ✅ COMPLETE
+**Current Phase: Phase 2 (Quota Monitoring)** ✅ COMPLETE
 
 The admin panel provides a comprehensive management interface for system administrators:
 
@@ -27,7 +27,14 @@ The admin panel provides a comprehensive management interface for system adminis
 - **Enhanced Lock Modal** — Lock accounts with predefined reasons and notes
 - **Database Migration** — New columns and indexes for efficient queries
 
-### 🔮 Phase 2: Planned Enhancements
+### ✅ Phase 2: Quota Monitoring (Complete)
+- **Organization Quota Defaults** — Set default quotas (50 notebooks, 5000 entries, 10MB size, 1GB storage) per organization
+- **Quota Inheritance** — User quotas inherit from organization → system defaults
+- **Usage Progress Bars** — Visualize notebooks, entries, and storage utilization on quota edit page
+- **Organization Quota UI** — Edit default quotas for all users in an organization
+- **Database Schema** — OrganizationQuotas table with migration tracking
+
+### 🔮 Phase 3+: Future Enhancements
 - User batch import/export (CSV)
 - Advanced audit filtering and reporting
 - Email notifications for account events
@@ -109,9 +116,25 @@ python3 notebook_mcp.py
 cd legacy/notebook
 docker compose -f deploy/docker-compose.yml up -d
 
+# Run database migrations
+# Admin panel database
+psql -U postgres -f infrastructure/postgres/migrations/admin/000_create_admin_db.sql
+psql -U postgres -d notebook_admin -f infrastructure/postgres/migrations/admin/022_admin_organization_quotas.sql
+
+# Backend database
+psql -U postgres -f infrastructure/postgres/migrations/init.sql
+psql -U postgres -f infrastructure/postgres/migrations/server/000_create_thinktank_db.sql
+psql -U postgres -d thinktank -f infrastructure/postgres/migrations/server/002_schema.sql
+# ... (apply remaining server migrations in order)
+
 # Bootstrap notebook server with sample data
 python3 bootstrap/bootstrap_notebook.py --port 8723 --data ./notebook-data
 ```
+
+**Migration Structure:**
+- `admin/` — Admin panel database migrations (notebook_admin)
+- `server/` — Backend/notebook database migrations (thinktank)
+- `init.sql` — PostgreSQL extension setup (Apache AGE)
 
 ---
 
@@ -135,6 +158,9 @@ cyber/
 │   └── postgres/
 │       ├── init-thinktank.sh        # Database initialization
 │       └── migrations/              # Database migrations
+│           ├── admin/               # Admin panel DB (notebook_admin)
+│           ├── server/              # Backend DB (thinktank)
+│           └── init.sql             # PostgreSQL extension setup
 │
 ├── frontend/                        # .NET Blazor Server UI (current)
 │   └── admin/
@@ -233,8 +259,8 @@ cyber/
 │  ┌────────────────────────────────────────────┐  │
 │  │ Dashboard, Users, Quotas, Notebooks        │  │
 │  │ Organizations, Groups, Audit Trail         │  │
-│  │ (Phase 0-1: User management with search,   │  │
-│  │  filtering, quotas visualization)          │  │
+│  │ (Phase 0-2: User management, search,       │  │
+│  │  filtering, quota visualization & defaults)│  │
 │  └────────────────────────────────────────────┘  │
 ├──────────────────────────────────────────────────┤
 │  Backend (Production: Rust v1)                   │
@@ -260,10 +286,11 @@ as a future replacement for the Rust backend.
 - 🔎 **Full-Text Search** — Tantivy-powered semantic indexing
 - 📊 **Entropy Metrics** — Integration cost and friction tracking
 - 🔐 **Security** — Classification levels, compartments, clearances
-- 👥 **Organizations** — Hierarchical group management
+- 👥 **Organizations** — Hierarchical group management with quota defaults
 - 📋 **Audit Trail** — Complete action history with filtering
 - 🤖 **Worker Queue** — Job distribution for LLM processing
 - 👤 **User Management** — Search, filter, quota tracking, lock reasons (Phase 1)
+- 💾 **Quota Management** — Organization-level defaults with inheritance (Phase 2)
 
 ---
 
@@ -356,5 +383,5 @@ cd backend && dotnet format
 
 ---
 
-**Last Updated:** February 2026
-**Status:** Active Development (v2 - .NET Backend)
+**Last Updated:** February 22, 2026 (Phase 2: Quota Monitoring)
+**Status:** Active Development (Admin Panel Phase 2 ✅, .NET Backend v2 in progress)
