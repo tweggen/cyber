@@ -51,6 +51,7 @@ builder.Services.AddScoped<CurrentUserService>();
 builder.Services.AddScoped<UsageAggregationService>();
 builder.Services.AddScoped<UserExportService>();
 builder.Services.AddScoped<UserImportService>();
+builder.Services.AddScoped<AuditService>();
 
 // Add Razor Components with Server interactivity
 builder.Services.AddRazorComponents()
