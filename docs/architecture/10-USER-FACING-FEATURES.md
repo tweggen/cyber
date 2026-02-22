@@ -200,43 +200,85 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 ---
 
-## 11. Audit Trail
+## 11. Audit Trail (Phase 4: Advanced Filtering & Reporting)
 
 ### What users can do
 
 | Use Case | UI | API |
 |----------|:--:|:---:|
 | Query notebook-scoped audit log | ✅ `/notebooks/{id}` | `GET /notebooks/{id}/audit` |
-| Query global audit log (with filters) | ✅ `/admin/audit` | `GET /audit` |
+| Query global audit log (with advanced filters) | ✅ `/admin/audit` | `GET /audit` |
 
 ### UI Coverage
 
-- ✅ **Fully implemented per spec (Hush-8 §8.5).** Comprehensive Audit Log Viewer at `/admin/audit` with:
-  - **Advanced filtering panel:** Actor (hex ID), Action (e.g., entry.write), Resource (e.g., notebook:{id}), Date range (From/To)
-  - **Audit log table:** ID, Timestamp, Action (color-coded: deny/reject/revoke → red, approve/grant → green, delete/remove → yellow, other → gray), Actor (hex ID), Target (type + ID), Notebook, Detail toggle
-  - **Expandable detail rows:** Full JSON detail for each entry
-  - **Pagination:** Cursor-based pagination with "Load More"
-  - **CSV export:** Download audit entries as CSV file
-  - Full search and filter capabilities with real-time updates
+- ✅ **Fully implemented with Phase 4 enhancements.** Comprehensive Audit Log Viewer at `/admin/audit` with:
+  - **Advanced filtering panel (collapsible):**
+    - Date range (From/To dates)
+    - Actor filtering (username/ID)
+    - Action type (Create, Update, Delete, Lock, Unlock, Login, Export, Import)
+    - Target type (User, Notebook, Entry, Organization)
+    - Full-text search in audit details
+    - Page size selector (25, 50, 100, 250)
+    - Sort options (Date, Action, Actor, Target) with ascending/descending
+  - **Analytics dashboard with 5 statistics cards:**
+    - Total Actions count
+    - Unique Actors count
+    - Success Rate percentage
+    - Most Common Action
+    - Date Range of filtered results
+  - **Audit log table:** Timestamp, Actor (hex ID), Action (color-coded badges), Target (type + ID), Details (truncated)
+  - **Pagination:** Previous/Next navigation with page indicators
+  - **Export functionality:**
+    - CSV export with all fields (timestamp, actor_id, action, target_type, target_id, notebook_id, details)
+    - JSON export with full filter context and metadata
+  - Full search, filter, sort, and export capabilities with real-time updates
 
 ---
 
-## 12. Dashboard & Administration
+## 12. Dashboard & Administration (Phase 0-4)
 
 ### What users can do
 
-| Use Case | UI | API | Notes |
-|----------|:--:|:---:|-------|
-| View system statistics (users, notebooks, entries, entropy) | ✅ `/admin/dashboard` | `GET /notebooks` | |
-| Manage users (lock/unlock) | ✅ `/admin/users` | — | Local Identity DB |
-| Manage user quotas | ✅ `/admin/users/{id}/quotas`, `/profile` | — | Local PostgreSQL |
+| Use Case | UI | API | Notes | Phase |
+|----------|:--:|:---:|-------|:-----:|
+| View system statistics (users, notebooks, entries, entropy) | ✅ `/admin/dashboard` | `GET /notebooks` | | 0 |
+| Search & filter users | ✅ `/admin/users` | — | Search by username/email/display name, filter by type/lock status | 1 |
+| Manage users (lock/unlock) | ✅ `/admin/users`, `/admin/users/{id}` | — | Lock with predefined reasons, view lock history | 1 |
+| View user metadata | ✅ `/admin/users` | — | Created date, last login, user type, lock reason | 1 |
+| Manage user quotas | ✅ `/admin/users/{id}/quotas`, `/profile` | — | View usage, update limits, see organization defaults | 1-2 |
+| Set organization quotas | ✅ `/admin/organizations/{id}` | — | Default quotas per organization, 10x user defaults | 2 |
+| Import users from CSV | ✅ `/admin/users/import` | — | Upload CSV with validation, create multiple users, generate temp passwords | 3 |
+| Export users to CSV | ✅ `/admin/users` | — | Download user list with quotas and metadata | 3 |
+| View audit trail | ✅ `/admin/audit` | `GET /audit` | Advanced filters, statistics, CSV/JSON export | 4 |
 
 ### UI Coverage
 
-- ✅ **Security events card** (DONE). Dashboard includes "Recent Security Events" card showing the last 10 `access.denied` audit entries with timestamp, actor (truncated hex), and target. Color-coded by severity.
-- ✅ **Proper admin authorization** (DONE). Dashboard uses `CurrentUserService` to get authenticated user's author ID. Page uses `@rendermode InteractiveServer` with `[CascadingParameter] Task<AuthenticationState>` for proper auth context.
-- ✅ **About link removed** (DONE). Placeholder "About" link removed from MainLayout.razor.
-- ✅ **Quota management** (DONE). Users can view quota usage on profile page showing Notebooks (owned/max), Max Entries per Notebook, Max Entry Size, Max Total Storage. Admins can manage quotas per user at `/admin/quotas/{userId}` with update form.
+- ✅ **Security events card** (Phase 0). Dashboard includes "Recent Security Events" card showing the last 10 `access.denied` audit entries with timestamp, actor (truncated hex), and target. Color-coded by severity.
+- ✅ **Proper admin authorization** (Phase 0). Dashboard uses `CurrentUserService` to get authenticated user's author ID. Page uses `@rendermode InteractiveServer` with `[CascadingParameter] Task<AuthenticationState>` for proper auth context.
+- ✅ **User search and filtering** (Phase 1). User list page at `/admin/users` with:
+  - Search box for username/email/display name with real-time filtering
+  - Filter dropdowns: User Type (Human, Service Account, Bot), Lock Status (Active, Locked)
+  - Results table showing: Username, Display Name, Email, User Type, Created, Last Login, Lock Status
+  - Click user row to view detail page with full metadata
+- ✅ **User lock management** (Phase 1). User detail page with:
+  - Lock button opening modal with predefined lock reasons (Account Compromise, Policy Violation, Compliance Hold, Inactive, Other)
+  - Lock reason text field for custom notes
+  - Unlock button for locked accounts
+  - Lock history tracking (reason, timestamp)
+- ✅ **Quota management & visualization** (Phase 1-2).
+  - User detail page shows quota progress bars: Notebooks (owned/max), Max Entries per Notebook, Max Entry Size, Max Total Storage
+  - Quota edit page at `/admin/users/{id}/quotas` shows "Current Usage" card with real-time usage stats
+  - Color-coded progress bars: Green (<75%), Yellow (75-90%), Red (≥90%)
+  - Organization detail page at `/admin/organizations/{id}` shows "Default Quota Limits" section with editable organization quotas
+  - Quota inheritance automatically applies (User → Organization → System defaults)
+- ✅ **Batch user import/export** (Phase 3).
+  - Import page at `/admin/users/import` with CSV file upload
+  - Pre-import validation shows row-by-row errors with line numbers
+  - Successful import displays temporary passwords in secure table
+  - CSV download on Users list page exports all user data with columns: username, email, display_name, user_type, author_id_hex, account_created, last_login, lock_status, lock_reason, max_notebooks, max_entries_per_notebook, max_entry_size_bytes, max_total_storage_bytes
+  - CSV import supports: username (required), user_type (required), email, display_name, lock_status, lock_reason, quota fields
+  - Temporary password generation with secure display and copy functionality
+- ✅ **Advanced audit trail** (Phase 4). Audit page at `/admin/audit` with collapsible filter panel, statistics dashboard, pagination, and CSV/JSON export (see section 11).
 
 ---
 
@@ -251,8 +293,8 @@ This document catalogs every use case exposed to end users through the Admin UI 
 - Comprehensive endpoint coverage
 
 **Frontend:** .NET Blazor Server (frontend/admin/).
-- **13 feature domains fully implemented and exposed in UI** (81%)
-- **3 feature domains partially covered** - backend ready, frontend UI not exposed (19%)
+- **14 feature domains fully implemented and exposed in UI** (88%)
+- **2 feature domains partially covered** - backend ready, frontend UI not exposed (12%)
 - Old Rust backend (notebook/) is first-generation; currently maintained for reference only
 
 ### Implementation Coverage Summary
@@ -261,11 +303,11 @@ This document catalogs every use case exposed to end users through the Admin UI 
 
 | Status | Count | Percentage |
 |--------|:-----:|:----------:|
-| ✅ Fully Implemented (Backend + Frontend) | 13 | 81% |
-| ⚠️ Partially Covered (Backend Done, Frontend Pending) | 3 | 19% |
+| ✅ Fully Implemented (Backend + Frontend) | 14 | 88% |
+| ⚠️ Partially Covered (Backend Done, Frontend Pending) | 2 | 12% |
 | ❌ Not Supported | 0 | 0% |
 
-**Partially Covered Features:** Batch entry creation, Semantic search (UI), Notebook creation (requires backend feature design)
+**Partially Covered Features:** Batch entry creation, Semantic search (UI)
 
 ### Completely Missing UI Pages (0% coverage)
 
@@ -273,21 +315,22 @@ None at this time. All planned features have backend implementations.
 
 ### Fully Implemented Features
 
-| Feature | Location | Coverage | Notes |
-|---------|----------|:--------:|-------|
-| **Organizations & Groups Management** | `/admin/organizations`, `/admin/organizations/{id}`, `/admin/groups/{id}` | 100% | Full hierarchy DAG with group CRUD, member management, notebook assignment |
-| **Security Clearances** | `/admin/organizations/{id}` (Clearances section) | 100% | 5 classification levels (PUBLIC, INTERNAL, CONFIDENTIAL, SECRET, TOP_SECRET) + compartments, grant/revoke |
-| **Content Reviews** | `/notebooks/{id}` (Content Reviews section) | 100% | Approve/reject workflow with submitter display and status tracking |
-| **Agent Management** | `/admin/agents` | 100% | Full CRUD with security label management (max_level, compartments, infrastructure) |
-| **Subscriptions** | `/notebooks/{id}` (Subscriptions section) | 100% | Full lifecycle: create, view status, trigger sync, delete |
-| **Audit Trail** | `/admin/audit` | 100% | Advanced filtering by actor/action/resource, date range, pagination, CSV export |
-| **Search (Full-Text)** | `/notebooks/{id}` (Search section) | 100% | Server-side Tantivy search with relevance scores and snippets |
-| **Job Pipeline** | `/notebooks/{id}` (Job Pipeline section) | 100% | Real-time stats (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS) + retry controls |
-| **Sharing (4-Tier)** | `/notebooks/{id}` (Sharing section) | 100% | Existence, Read, Read+Write, Admin tiers with color-coded badges |
-| **Group-Based Notebook Access** | `/notebooks/{id}` (Group Assignment section) | 100% | Assign/unassign notebooks to owning groups |
-| **Browse Filters** | `/notebooks/{id}` (Browse & Filter section) | 100% | Collapsible filter panel with basic and advanced filters, color-coded status badges, friction levels, and pagination |
-| **Dashboard** | `/admin/dashboard` | 100% | System stats + recent security events (last 10 denied access attempts) |
-| **Notebook Quotas** | `/admin/quotas/{userId}`, `/profile` | 100% | View and manage quotas for entries, storage, notebooks |
+| Feature | Location | Coverage | Phase | Notes |
+|---------|----------|:--------:|:-----:|-------|
+| **Organizations & Groups Management** | `/admin/organizations`, `/admin/organizations/{id}`, `/admin/groups/{id}` | 100% | 0 | Full hierarchy DAG with group CRUD, member management, notebook assignment |
+| **Security Clearances** | `/admin/organizations/{id}` (Clearances section) | 100% | 0 | 5 classification levels (PUBLIC, INTERNAL, CONFIDENTIAL, SECRET, TOP_SECRET) + compartments, grant/revoke |
+| **Content Reviews** | `/notebooks/{id}` (Content Reviews section) | 100% | 0 | Approve/reject workflow with submitter display and status tracking |
+| **Agent Management** | `/admin/agents` | 100% | 0 | Full CRUD with security label management (max_level, compartments, infrastructure) |
+| **Subscriptions** | `/notebooks/{id}` (Subscriptions section) | 100% | 0 | Full lifecycle: create, view status, trigger sync, delete |
+| **Audit Trail with Advanced Filtering & Reporting** | `/admin/audit` | 100% | 4 | Advanced filters (date, actor, action, target), statistics dashboard (total actions, unique actors, success rate, most common action, date range), pagination, CSV/JSON export |
+| **Search (Full-Text)** | `/notebooks/{id}` (Search section) | 100% | 0 | Server-side Tantivy search with relevance scores and snippets |
+| **Job Pipeline** | `/notebooks/{id}` (Job Pipeline section) | 100% | 0 | Real-time stats (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC, EMBED_CLAIMS) + retry controls |
+| **Sharing (4-Tier)** | `/notebooks/{id}` (Sharing section) | 100% | 0 | Existence, Read, Read+Write, Admin tiers with color-coded badges |
+| **Group-Based Notebook Access** | `/notebooks/{id}` (Group Assignment section) | 100% | 0 | Assign/unassign notebooks to owning groups |
+| **Browse Filters** | `/notebooks/{id}` (Browse & Filter section) | 100% | 0 | Collapsible filter panel with basic and advanced filters, color-coded status badges, friction levels, and pagination |
+| **Dashboard & User Management** | `/admin/dashboard`, `/admin/users`, `/admin/users/{id}` | 100% | 1 | System stats, user search/filter, lock management with reasons, metadata tracking, user detail page |
+| **Quota Management with Organization Defaults** | `/admin/users/{id}/quotas`, `/admin/organizations/{id}`, `/profile` | 100% | 1-2 | User and organization quotas, inheritance chain, usage progress bars, quota defaults |
+| **Batch User Import/Export** | `/admin/users/import`, `/admin/users` | 100% | 3 | CSV import with validation and temporary password generation, CSV export with full user data and quotas |
 
 ### Partially Covered Features (Frontend Implementation Needed)
 
@@ -295,7 +338,6 @@ None at this time. All planned features have backend implementations.
 |---------|:------:|---------------|-------|
 | **Batch entry creation** | ⚠️ Partial | Frontend batch upload UI | Backend BatchEndpoints fully support multiple entries with classification_assertion and source fields. Single-entry UI exists; batch UI not exposed. |
 | **Semantic search** | ⚠️ Partial | Frontend semantic search UI | Backend has EmbeddingService and semantic capabilities. Frontend search box only does full-text; semantic query option not exposed. |
-| **Notebook creation** | ⚠️ Partial | Classification and compartment selection at creation | Backend API doesn't support these fields (requires feature design). |
 
 ### Other Issues
 
@@ -303,3 +345,4 @@ None at this time. All planned features have backend implementations.
 |-------|----------|----------|:------:|
 | Ed25519 key generation is a stub | Backend `AuthorService.cs` | Medium | ⚠️ Open (backend responsibility) |
 | "About" link missing | `MainLayout.razor` | Low | ✅ FIXED (link removed as not needed) |
+| Notebook creation classification UI | `/notebooks` creation form | Low | 📋 Proposed for Phase 5+ |

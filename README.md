@@ -8,9 +8,9 @@ A platform for building externalized memory substrates that enable persistent, e
 
 ## 📊 Admin Panel Status
 
-**Current Phase: Phase 2 (Quota Monitoring)** ✅ COMPLETE
+**Current Phase: Phase 4 (Advanced Audit Filtering)** ✅ COMPLETE
 
-The admin panel provides a comprehensive management interface for system administrators:
+The admin panel provides a comprehensive management interface for system administrators with complete user management, quota control, batch operations, and audit reporting capabilities.
 
 ### ✅ Phase 0: Admin Panel Shell (Complete)
 - Unified admin navigation with role-based access
@@ -34,24 +34,40 @@ The admin panel provides a comprehensive management interface for system adminis
 - **Organization Quota UI** — Edit default quotas for all users in an organization
 - **Database Schema** — OrganizationQuotas table with migration tracking
 
-### 🔮 Phase 3+: Future Enhancements
-- User batch import/export (CSV)
-- Advanced audit filtering and reporting
+### ✅ Phase 3: Batch Import/Export (Complete)
+- **CSV Export** — Export all users with quotas, lock status, and metadata in standardized CSV format
+- **CSV Import** — Bulk create users from CSV with validation, error reporting, and temporary password generation
+- **File Validation** — Row-level validation with detailed error messages before import
+- **Temporary Passwords** — Secure password generation with display after successful import
+- **Quota Assignment** — Support quota assignment during import
+- **User Interface** — Dedicated UserImport.razor page with upload, validation, and results display
+
+### ✅ Phase 4: Advanced Audit Filtering & Reporting (Complete)
+- **Advanced Filters** — Filter by date range, actor, action type, target type, notebook, and full-text search
+- **Statistics Dashboard** — Real-time analytics: total actions, unique actors, success rate, most common action, date range
+- **Pagination** — Configurable page size (25, 50, 100, 250) with previous/next navigation
+- **Sorting Options** — Sort by timestamp, action, actor, or target
+- **Export Functionality** — Export filtered results to CSV or JSON formats
+- **Collapsible UI** — Advanced filter panel that can be hidden to save screen space
+
+### 🔮 Phase 5+: Future Enhancements
+- Saved audit filters (store and reuse filter combinations)
 - Email notifications for account events
-- Bulk user operations
+- Bulk user operations (lock/unlock multiple users)
 - Custom quota templates
 - API rate limiting UI
+- Advanced user analytics (activity heatmaps, trends)
 
 ---
 
 ## 📊 Backend Feature Coverage
 
-**Frontend Implementation Status: 81% Complete** (13 of 16 feature domains fully implemented)
+**Frontend Implementation Status: 88% Complete** (14 of 16 feature domains fully implemented)
 
 | Status | Count | Features |
 |--------|:-----:|----------|
-| ✅ Fully Implemented | 13 | Organizations, Groups, Security Clearances, Agent Management, Subscriptions, Audit Trail, Content Reviews, Full-Text Search, **Browse Filters**, Job Pipeline, Sharing, Group Access, Quotas |
-| ⚠️ Partially Covered | 3 | Batch Entry Creation, Semantic Search UI, Notebook Classification |
+| ✅ Fully Implemented | 14 | Organizations, Groups, Security Clearances, Agent Management, Subscriptions, Audit Trail, Content Reviews, Full-Text Search, **Browse Filters**, **Audit Filtering & Reporting**, Job Pipeline, Sharing, Group Access, **Batch Import/Export**, Quotas |
+| ⚠️ Partially Covered | 2 | Batch Entry Creation, Semantic Search UI |
 | ❌ Not Supported | 0 | — |
 
 For detailed feature documentation, see [USER-FACING-FEATURES.md](docs/architecture/10-USER-FACING-FEATURES.md)
@@ -117,9 +133,8 @@ cd legacy/notebook
 docker compose -f deploy/docker-compose.yml up -d
 
 # Run database migrations
-# Admin panel database
+# Admin panel database (EF Core auto-migrates in app startup)
 psql -U postgres -f infrastructure/postgres/migrations/admin/000_create_admin_db.sql
-psql -U postgres -d notebook_admin -f infrastructure/postgres/migrations/admin/022_admin_organization_quotas.sql
 
 # Backend database
 psql -U postgres -f infrastructure/postgres/migrations/init.sql
@@ -210,7 +225,10 @@ cyber/
 │           ├── 01-SCHEMA-AND-TYPES.md
 │           ├── 02-BATCH-WRITE-AND-CLAIMS-API.md
 │           ├── 03-JOB-QUEUE.md
-│           └── 04-FILTERED-BROWSE-AND-SEARCH.md
+│           ├── 04-FILTERED-BROWSE-AND-SEARCH.md
+│           ├── 05-ADMIN-PANEL-PHASE-2-QUOTA-MONITORING.md
+│           ├── 07-ADMIN-PANEL-PHASE-3-BATCH-IMPORT-EXPORT.md
+│           └── 08-ADMIN-PANEL-PHASE-4-ADVANCED-AUDIT-FILTERING.md
 │
 └── legacy/                          # Production backend & reference code
     └── notebook/                    # Rust v1 backend (PRODUCTION)
@@ -259,8 +277,9 @@ cyber/
 │  ┌────────────────────────────────────────────┐  │
 │  │ Dashboard, Users, Quotas, Notebooks        │  │
 │  │ Organizations, Groups, Audit Trail         │  │
-│  │ (Phase 0-2: User management, search,       │  │
-│  │  filtering, quota visualization & defaults)│  │
+│  │ Phase 0-4: User management, search,        │  │
+│  │ filtering, quotas, batch import/export,    │  │
+│  │ advanced audit reporting with analytics    │  │
 │  └────────────────────────────────────────────┘  │
 ├──────────────────────────────────────────────────┤
 │  Backend (Production: Rust v1)                   │
@@ -274,6 +293,7 @@ cyber/
 │  - Graph for cross-references & causal history   │
 │  - Job queue, audit log                          │
 │  - User management (accounts, quotas, locks)     │
+│  - Organization quotas with inheritance          │
 └──────────────────────────────────────────────────┘
 
 Note: .NET v2 backend (backend/src/Notebook.Server) is in development
@@ -287,10 +307,12 @@ as a future replacement for the Rust backend.
 - 📊 **Entropy Metrics** — Integration cost and friction tracking
 - 🔐 **Security** — Classification levels, compartments, clearances
 - 👥 **Organizations** — Hierarchical group management with quota defaults
-- 📋 **Audit Trail** — Complete action history with filtering
+- 📋 **Audit Trail** — Advanced filtering, reporting, and export (Phase 4)
 - 🤖 **Worker Queue** — Job distribution for LLM processing
 - 👤 **User Management** — Search, filter, quota tracking, lock reasons (Phase 1)
 - 💾 **Quota Management** — Organization-level defaults with inheritance (Phase 2)
+- 📥 **Batch Import/Export** — CSV user import with validation, CSV export (Phase 3)
+- 📈 **Analytics Dashboard** — Audit statistics with action counts, success rates, trends (Phase 4)
 
 ---
 
@@ -383,5 +405,5 @@ cd backend && dotnet format
 
 ---
 
-**Last Updated:** February 22, 2026 (Phase 2: Quota Monitoring)
-**Status:** Active Development (Admin Panel Phase 2 ✅, .NET Backend v2 in progress)
+**Last Updated:** February 22, 2026 (Phase 4: Advanced Audit Filtering & Reporting)
+**Status:** Active Development (Admin Panel Phase 0-4 ✅, .NET Backend v2 in progress, Worker Infrastructure planned)
