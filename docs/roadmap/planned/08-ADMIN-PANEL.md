@@ -1,4 +1,6 @@
-# Admin Panel — Draft Plan
+# Admin Panel Implementation Plan
+
+**Status:** Phase 0 ✅ COMPLETE | Phase 1 ✅ COMPLETE | Phase 2-7 🔮 PLANNED
 
 ## Motivation
 
@@ -144,16 +146,18 @@ Audit, Crawlers). There is no grouped "Admin" section or sub-navigation.
 
 ## Proposed Implementation
 
-### Phase 0: Admin Panel Shell
+### Phase 0: Admin Panel Shell ✅ COMPLETE
 
 **Goal:** Create a unified admin section with its own layout and sub-navigation.
 
-| File | Change |
-|------|--------|
-| `Components/Layout/AdminLayout.razor` | New layout with admin sidebar |
-| `Components/Pages/Admin/Index.razor` | `/admin` landing page redirecting to dashboard |
+**Status:** Completed Feb 22, 2026 — Commit 7f67107
 
-The admin sidebar groups existing pages:
+| File | Status | Notes |
+|------|--------|-------|
+| `Components/Layout/AdminLayout.razor` | ✅ Complete | Unified admin layout with sidebar navigation |
+| `Components/Pages/Admin/Index.razor` | ✅ Complete | `/admin` landing page |
+
+**Implemented Navigation:**
 
 ```
 Admin Panel
@@ -164,28 +168,48 @@ Admin Panel
   Organizations    /admin/organizations
   ─── Infrastructure ───
   Agents           /admin/agents
-  Crawlers         /admin/crawlers        (new overview)
+  Crawlers         /admin/crawlers
   ─── Monitoring ───
   Audit Trail      /admin/audit
-  System Health    /admin/health           (new)
   ─── Cross-Org ───
-  Subscriptions    /admin/subscriptions    (new)
+  Subscriptions    /admin/subscriptions
 ```
 
-**Effort:** Small — layout + nav restructuring, no new data.
+**Effort:** Small (2 hours) — layout + nav restructuring, no new data.
 
-### Phase 1: User Management Enhancements
+### Phase 1: User Management Enhancements ✅ COMPLETE
 
-**Goal:** Close the gaps in Workflow 1 (Chapter 8).
+**Goal:** Close the gaps in Workflow 1 (Chapter 8) — User Management.
 
-| Feature | Change |
-|---------|--------|
-| Search/filter users | Add search bar + status filter to `Users.razor` |
-| Lock with reason | Add `LockReason` string to `ApplicationUser`, migration, dropdown in `UserDetail.razor` |
-| Created/last-login dates | Add `CreatedAt`, `LastLoginAt` to `ApplicationUser`, migration, display in user list and detail |
-| User type badge | Add `UserType` enum to `ApplicationUser`, migration, badge display |
+**Status:** Completed Feb 22, 2026 — Commit e66265c
 
-**Effort:** Medium — 1 migration, model changes, UI updates.
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Search/filter users | ✅ Complete | Real-time search + 3 independent filters |
+| Lock with reason | ✅ Complete | Modal with predefined reasons + notes |
+| Created/last-login dates | ✅ Complete | Displayed in list, detail, and sortable |
+| User type badge | ✅ Complete | Color-coded badges (blue/purple/orange) |
+| Quota usage visualization | ✅ Complete | Progress bars with color-coded utilization |
+| Database migration | ✅ Complete | Migration 20260222085328 with indexes |
+
+**Database Changes:**
+- `CreatedAt` (timestamp with UTC default)
+- `LastLoginAt` (nullable timestamp, updated on successful auth)
+- `LockReason` (text field for audit/compliance)
+- `UserType` (varchar(50) with values: user, service_account, bot)
+- Indexes on all four columns for efficient filtering/sorting
+
+**UI Enhancements:**
+- **Users List:** Search by username/email/display name, filter by type/status, sort by date/login/name
+- **User Detail:** Display created date, last login, edit user type, show lock reason in status card
+- **Lock Modal:** Predefined reasons (Security violation, Policy violation, Inactive, Suspicious, User request, Admin hold, Other), optional notes, silent lock option
+- **Quota Card:** Real-time aggregation from Notebook API, progress bars, color-coded (green <75%, yellow 75-90%, red ≥90%)
+
+**Service Layer:**
+- New `UsageAggregationService` — aggregates quota usage from API
+- Returns `UserUsageStats` record with notebook count, total entries, estimated storage
+
+**Effort:** Medium (~6 hours) — 1 migration, model changes, UI updates, new service, filtering/sorting logic.
 
 ### Phase 2: Quota Monitoring
 
@@ -265,16 +289,18 @@ API methods already exist: `ListSubscriptionsAsync`, `CreateSubscriptionAsync`,
 
 ---
 
-## Priority Recommendation
+## Implementation Timeline
 
-| Priority | Phase | Rationale |
-|----------|-------|-----------|
-| Now | Phase 0 | Low effort, improves discoverability of existing features |
-| Now | Phase 1 | User search/filter is the most impactful UX gap |
-| Soon | Phase 2 | Quotas without usage data are hard to manage |
-| Soon | Phase 3 | Crawler overview is a pain point at scale |
-| Later | Phase 4 | Subscriptions APIs exist but the workflow is less common |
-| Later | Phase 5-7 | Require backend work or new infrastructure |
+| Status | Phase | Target | Rationale |
+|--------|-------|--------|-----------|
+| ✅ Done | Phase 0 | Feb 22, 2026 | Unified admin layout with navigation |
+| ✅ Done | Phase 1 | Feb 22, 2026 | User search, filters, metadata tracking, quota visualization |
+| 🔮 Planned | Phase 2 | Q1 2026 | Org-level quota defaults, enforcement policies |
+| 🔮 Planned | Phase 3 | Q2 2026 | Fleet-wide crawler health dashboard |
+| 🔮 Planned | Phase 4 | Q2 2026 | Subscriptions management (Cross-Org Coordinator workflows) |
+| 🔮 Planned | Phase 5 | Q3 2026 | System health monitoring (requires backend metrics) |
+| 🔮 Planned | Phase 6 | Q3 2026 | Agent fleet management (requires backend API additions) |
+| 🔮 Planned | Phase 7 | Q4 2026 | Compliance & reporting tools |
 
 ---
 
