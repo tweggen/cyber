@@ -51,6 +51,16 @@ Fully implemented and deployed features. These were successfully completed with 
 
 Approved features with implementation plans, ready to start work.
 
+### Admin Panel Features
+- **07-ADMIN-PANEL-PHASE-3-BATCH-IMPORT-EXPORT.md** — User bulk import/export (CSV)
+  - Export users to CSV with metadata and quotas
+  - Import users from CSV with validation
+  - Batch creation with error reporting
+  - Support for quota assignment and lock status
+  - Status: 📋 Plan ready, implementation pending
+  - Estimated effort: 6-8 hours
+  - Complexity: Medium
+
 ### Worker Infrastructure
 - **05-ROBOT-WORKERS.md** — Stateless LLM worker processes
   - Claim distillation (extract key statements)
@@ -102,11 +112,11 @@ Features under consideration, not yet formally planned.
 | State | Count | Status |
 |-------|:-----:|--------|
 | ✅ Done | 5 | Complete implementations with deployed features |
-| 🔄 Planned | 2 | Approved, ready to implement |
+| 🔄 Planned | 3 | Approved, ready to implement |
 | 💡 Proposed | 5 | Ideas under evaluation |
 
 **Overall Feature Coverage:** 13/16 domains fully implemented (81%)
-**Admin Panel:** Phase 0-2 complete (User Management, Search/Filter, Quotas & Inheritance)
+**Admin Panel:** Phase 0-2 complete, Phase 3 plan ready (User Management, Quotas, Batch Import/Export)
 
 ---
 
@@ -141,5 +151,5 @@ Features under consideration, not yet formally planned.
 
 ---
 
-**Last Updated:** February 22, 2026 (Phase 2 Quota Monitoring)
-**Current Status:** 5 done (4 backend + 1 admin panel), 2 planned, 5 proposed
+**Last Updated:** February 22, 2026 (Phase 3 Plan: Batch Import/Export)
+**Current Status:** 5 done (4 backend + 1 admin panel), 3 planned, 5 proposed
