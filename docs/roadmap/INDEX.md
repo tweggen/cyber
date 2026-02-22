@@ -18,10 +18,19 @@ Fully implemented and deployed features. These were successfully completed with 
   - Quota inheritance: User → Organization → System defaults
   - Usage visualization with progress bars
   - Organization quota editing UI
-  - Status: ✅ Complete (Feb 2026)
+  - Status: ✅ Complete (Feb 22, 2026)
   - **Phase 0** (User Management Shell) ✅
   - **Phase 1** (User Search/Filter/Metadata/Quotas) ✅
   - **Phase 2** (Organization Quotas & Inheritance) ✅
+
+- **07-ADMIN-PANEL-PHASE-3-BATCH-IMPORT-EXPORT.md** — User batch import/export with CSV
+  - UserExportService: Generate CSV with user data and quotas
+  - UserImportService: Parse, validate, and bulk create users
+  - UserImport.razor: File upload with validation and progress
+  - Support for quota assignment and lock status
+  - Temporary password generation for imported users
+  - Status: ✅ Complete (Feb 22, 2026)
+  - **Phase 3** (Batch Import/Export) ✅
 
 ### Core Backend Infrastructure
 - **01-SCHEMA-AND-TYPES.md** — Database schema, domain types, migrations
@@ -50,16 +59,6 @@ Fully implemented and deployed features. These were successfully completed with 
 ## 🔄 PLANNED (Ready for Implementation)
 
 Approved features with implementation plans, ready to start work.
-
-### Admin Panel Features
-- **07-ADMIN-PANEL-PHASE-3-BATCH-IMPORT-EXPORT.md** — User bulk import/export (CSV)
-  - Export users to CSV with metadata and quotas
-  - Import users from CSV with validation
-  - Batch creation with error reporting
-  - Support for quota assignment and lock status
-  - Status: 📋 Plan ready, implementation pending
-  - Estimated effort: 6-8 hours
-  - Complexity: Medium
 
 ### Worker Infrastructure
 - **05-ROBOT-WORKERS.md** — Stateless LLM worker processes
@@ -111,12 +110,12 @@ Features under consideration, not yet formally planned.
 
 | State | Count | Status |
 |-------|:-----:|--------|
-| ✅ Done | 5 | Complete implementations with deployed features |
-| 🔄 Planned | 3 | Approved, ready to implement |
+| ✅ Done | 6 | Complete implementations with deployed features |
+| 🔄 Planned | 2 | Approved, ready to implement |
 | 💡 Proposed | 5 | Ideas under evaluation |
 
 **Overall Feature Coverage:** 13/16 domains fully implemented (81%)
-**Admin Panel:** Phase 0-2 complete, Phase 3 plan ready (User Management, Quotas, Batch Import/Export)
+**Admin Panel:** Phase 0-3 complete (User Management, Quotas, Batch Import/Export)
 
 ---
 
@@ -151,5 +150,5 @@ Features under consideration, not yet formally planned.
 
 ---
 
-**Last Updated:** February 22, 2026 (Phase 3 Plan: Batch Import/Export)
-**Current Status:** 5 done (4 backend + 1 admin panel), 3 planned, 5 proposed
+**Last Updated:** February 22, 2026 (Phase 3 Complete: Batch Import/Export)
+**Current Status:** 6 done (4 backend + 2 admin panels), 2 planned, 5 proposed
