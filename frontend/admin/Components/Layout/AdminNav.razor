@@ -1,0 +1,104 @@
+@using Microsoft.AspNetCore.Components.Authorization
+
+<div class="top-row ps-3 navbar navbar-dark">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="">Admin Panel</a>
+    </div>
+</div>
+
+<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+
+<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    <nav class="nav flex-column">
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+                <span class="bi bi-arrow-left-nav-menu" aria-hidden="true"></span> Back to Home
+            </NavLink>
+        </div>
+
+        <AuthorizeView>
+            <Authorized>
+                <!-- Overview Section -->
+                <div class="nav-section-header">Overview</div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/dashboard">
+                        <span class="bi bi-speedometer-nav-menu" aria-hidden="true"></span> Dashboard
+                    </NavLink>
+                </div>
+
+                <!-- Identity & Access Section -->
+                <div class="nav-section-header">Identity &amp; Access</div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/users">
+                        <span class="bi bi-people-nav-menu" aria-hidden="true"></span> Users
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/organizations">
+                        <span class="bi bi-diagram-3-fill" aria-hidden="true"></span> Organizations
+                    </NavLink>
+                </div>
+
+                <!-- Infrastructure Section -->
+                <div class="nav-section-header">Infrastructure</div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/agents">
+                        <span class="bi bi-robot" aria-hidden="true"></span> Agents
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/crawlers">
+                        <span class="bi bi-cloud-download" aria-hidden="true"></span> Crawlers
+                    </NavLink>
+                </div>
+
+                <!-- Monitoring Section -->
+                <div class="nav-section-header">Monitoring</div>
+
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="admin/audit">
+                        <span class="bi bi-journal-text" aria-hidden="true"></span> Audit Trail
+                    </NavLink>
+                </div>
+
+                <div class="nav-item px-3">
+                    <a href="javascript:void(0)" class="nav-link disabled" title="Coming in Phase 4">
+                        <span class="bi bi-heart-pulse-nav-menu" aria-hidden="true"></span> System Health
+                        <span class="badge bg-secondary ms-2" style="font-size: 0.65rem;">Soon</span>
+                    </a>
+                </div>
+
+                <!-- Cross-Organization Section -->
+                <div class="nav-section-header">Cross-Organization</div>
+
+                <div class="nav-item px-3">
+                    <a href="javascript:void(0)" class="nav-link disabled" title="Coming in Phase 5">
+                        <span class="bi bi-credit-card-nav-menu" aria-hidden="true"></span> Subscriptions
+                        <span class="badge bg-secondary ms-2" style="font-size: 0.65rem;">Soon</span>
+                    </a>
+                </div>
+
+                <div class="nav-item px-3">
+                    <form method="post" action="/auth/logout">
+                        <button type="submit" class="nav-link btn btn-link">
+                            Logout
+                        </button>
+                    </form>
+                </div>
+            </Authorized>
+        </AuthorizeView>
+    </nav>
+
+    <div class="theme-switcher" onclick="event.stopPropagation()">
+        <label for="theme-select">Theme</label>
+        <select id="theme-select" onchange="setTheme(this.value)">
+            <option value="crt">Amber CRT</option>
+            <option value="twm">X11 TWM</option>
+        </select>
+    </div>
+</div>

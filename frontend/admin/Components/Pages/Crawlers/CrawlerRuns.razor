@@ -1,4 +1,5 @@
-@page "/crawlers/{NotebookId:guid}/runs"
+@page "/admin/crawlers/{NotebookId:guid}/runs"
+@layout AdminLayout
 @using Microsoft.AspNetCore.Components.Authorization
 @attribute [Authorize]
 @using NotebookAdmin.Models
@@ -11,7 +12,7 @@
 <PageTitle>Crawler Run History</PageTitle>
 
 <div class="mb-3">
-    <a href="/crawlers/configure" class="btn btn-outline-secondary btn-sm">
+    <a href="/admin/crawlers" class="btn btn-outline-secondary btn-sm">
         <span class="bi bi-arrow-left"></span> Back to Configuration
     </a>
     <button class="btn btn-outline-primary btn-sm ms-2" @onclick="RefreshRuns" disabled="@isLoading">
@@ -43,7 +44,7 @@
         else if (runs == null || runs.Count == 0)
         {
             <div class="alert alert-info">
-                No crawler runs have been executed yet. <a href="/crawlers/configure">Configure and run a crawler</a>.
+                No crawler runs have been executed yet. <a href="/admin/crawlers">Configure and run a crawler</a>.
             </div>
         }
         else
