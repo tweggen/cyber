@@ -1,4 +1,4 @@
-# Install notebook MCP server for Claude Code (Windows PowerShell)
+# Install thinktank MCP server for Claude Code (Windows PowerShell)
 # Usage: .\install.ps1 -NotebookId <id> -Token <token> [-Url <url>] [-Author <author>]
 
 param(
@@ -24,24 +24,24 @@ if (-not (Test-Path $CyberDir)) {
     New-Item -ItemType Directory -Path $CyberDir | Out-Null
 }
 
-$Source = Join-Path $ScriptDir "mcp\notebook_mcp.py"
-$Dest = Join-Path $CyberDir "notebook_mcp.py"
+$Source = Join-Path $ScriptDir "..\backend\mcp\thinktank_mcp.py"
+$Dest = Join-Path $CyberDir "thinktank_mcp.py"
 Copy-Item -Path $Source -Destination $Dest -Force
-Write-Host "Copied notebook_mcp.py to $CyberDir\"
+Write-Host "Copied thinktank_mcp.py to $CyberDir\"
 
 # Use forward slashes in the JSON config (Python handles both on Windows)
-$McpScript = "$CyberDir/notebook_mcp.py" -replace '\\', '/'
+$McpScript = "$CyberDir/thinktank_mcp.py" -replace '\\', '/'
 
 # Build the JSON config
 $Json = @"
-{"type":"stdio","command":"python","args":["$McpScript"],"env":{"NOTEBOOK_URL":"$Url","NOTEBOOK_ID":"$NotebookId","NOTEBOOK_TOKEN":"$Token","AUTHOR":"$Author"}}
+{"type":"stdio","command":"python","args":["$McpScript"],"env":{"THINKTANK_URL":"$Url","NOTEBOOK_ID":"$NotebookId","NOTEBOOK_TOKEN":"$Token","AUTHOR":"$Author"}}
 "@
 
 # Register with Claude Code
-claude mcp add-json notebook-mcp $Json
+claude mcp add-json thinktank-mcp $Json
 
 Write-Host ""
-Write-Host "Done! MCP server 'notebook-mcp' registered with Claude Code."
+Write-Host "Done! MCP server 'thinktank-mcp' registered with Claude Code."
 Write-Host "  Notebook: $NotebookId"
 Write-Host "  URL:      $Url"
 Write-Host "  Author:   $Author"

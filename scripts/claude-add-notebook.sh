@@ -1,2 +1,3 @@
 #!/bin/sh
-claude mcp add-json notebook-mcp '{"type":"stdio","command":"python","args":["/Users/tweggen/coding/github/cyber/mcp/notebook_mcp.py"],"env":{"NOTEBOOK_URL":"https://notebook.nassau-records.de","NOTEBOOK_ID":"b161ff3d-baa0-4b83-b9d2-97aa41b56745","NOTEBOOK_TOKEN":"","AUTHOR":"claude-code"}}'
+# Quick-add thinktank MCP to Claude Code — edit the path/token/notebook-id before running
+claude mcp add-json thinktank-mcp '{"type":"stdio","command":"python","args":["/path/to/cyber/backend/mcp/thinktank_mcp.py"],"env":{"THINKTANK_URL":"https://notebook.nassau-records.de","NOTEBOOK_ID":"your-notebook-uuid","NOTEBOOK_TOKEN":"your-jwt-token","AUTHOR":"claude-code"}}'

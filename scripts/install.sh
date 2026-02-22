@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Install notebook MCP server for Claude Code (Mac / Linux / WSL)
+# Install thinktank MCP server for Claude Code (Mac / Linux / WSL)
 # Usage: ./install.sh <notebook-id> <token> [--url <url>] [--author <author>]
 
 DEFAULT_URL="https://notebook.nassau-records.de"
@@ -64,21 +64,21 @@ fi
 # Create ~/.cyber/ and copy the MCP script
 CYBER_DIR="$HOME/.cyber"
 mkdir -p "$CYBER_DIR"
-cp "$SCRIPT_DIR/mcp/notebook_mcp.py" "$CYBER_DIR/notebook_mcp.py"
-echo "Copied notebook_mcp.py to $CYBER_DIR/"
+cp "$SCRIPT_DIR/../backend/mcp/thinktank_mcp.py" "$CYBER_DIR/thinktank_mcp.py"
+echo "Copied thinktank_mcp.py to $CYBER_DIR/"
 
 # Build the JSON config
-MCP_SCRIPT="$CYBER_DIR/notebook_mcp.py"
+MCP_SCRIPT="$CYBER_DIR/thinktank_mcp.py"
 JSON=$(cat <<EOF
-{"type":"stdio","command":"$PYTHON","args":["$MCP_SCRIPT"],"env":{"NOTEBOOK_URL":"$URL","NOTEBOOK_ID":"$NOTEBOOK_ID","NOTEBOOK_TOKEN":"$TOKEN","AUTHOR":"$AUTHOR"}}
+{"type":"stdio","command":"$PYTHON","args":["$MCP_SCRIPT"],"env":{"THINKTANK_URL":"$URL","NOTEBOOK_ID":"$NOTEBOOK_ID","NOTEBOOK_TOKEN":"$TOKEN","AUTHOR":"$AUTHOR"}}
 EOF
 )
 
 # Register with Claude Code (remove first in case it already exists)
-claude mcp remove notebook-mcp 2>/dev/null || true
-claude mcp add-json notebook-mcp "$JSON"
+claude mcp remove thinktank-mcp 2>/dev/null || true
+claude mcp add-json thinktank-mcp "$JSON"
 
-echo "Done! MCP server 'notebook-mcp' registered with Claude Code."
+echo "Done! MCP server 'thinktank-mcp' registered with Claude Code."
 echo "  Notebook: $NOTEBOOK_ID"
 echo "  URL:      $URL"
 echo "  Author:   $AUTHOR"
