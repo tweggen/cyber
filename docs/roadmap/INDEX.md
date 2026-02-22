@@ -62,23 +62,28 @@ Fully implemented and deployed features. These were successfully completed with 
   - **Search Status:** ✅ Complete (Server Search UI implemented)
   - Status: ✅ Fully Complete
 
+### Worker Infrastructure
+- **05-ROBOT-WORKERS.md** — Stateless LLM worker processes
+  - robot.py: Main worker loop pulling jobs from queue, processing with Claude Haiku, submitting results
+  - prompts.py: Prompt builders and result parsers for 3 job types (DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC)
+  - test_prompts.py: 24 comprehensive unit tests for all job types
+  - README.md: Complete usage documentation with examples
+  - Support for parallel workers, job type filtering, configurable polling
+  - Stateless design enabling horizontal scaling
+  - Status: ✅ Complete (Feb 22, 2026)
+
 ---
 
 ## 🔄 PLANNED (Ready for Implementation)
 
 Approved features with implementation plans, ready to start work.
 
-### Worker Infrastructure
-- **05-ROBOT-WORKERS.md** — Stateless LLM worker processes
-  - Claim distillation (extract key statements)
-  - Claim comparison (entropy/friction scoring)
-  - Topic classification
-  - Status: 📋 Plan ready, implementation pending
-
 ### MCP Integration
 - **06-MCP-UPDATES.md** — Claude Desktop MCP server integration
-  - Expose new batch, search, and claims operations
-  - Update MCP tool definitions
+  - Expose batch operations (batch entry creation with classification)
+  - Expose search capabilities (full-text and filtered browse)
+  - Expose claims operations (distillation and comparison results)
+  - Update MCP tool definitions for notebook_mcp.py
   - Status: 📋 Plan ready, implementation pending
 
 ---
@@ -118,12 +123,13 @@ Features under consideration, not yet formally planned.
 
 | State | Count | Status |
 |-------|:-----:|--------|
-| ✅ Done | 7 | Complete implementations with deployed features |
-| 🔄 Planned | 2 | Approved, ready to implement |
+| ✅ Done | 8 | Complete implementations with deployed features |
+| 🔄 Planned | 1 | Approved, ready to implement |
 | 💡 Proposed | 5 | Ideas under evaluation |
 
-**Overall Feature Coverage:** 14/16 domains fully implemented (88%)
+**Overall Feature Coverage:** 15/16 domains fully implemented (94%)
 **Admin Panel:** Phase 0-4 complete (User Management, Quotas, Batch Import/Export, Advanced Audit Filtering)
+**Worker Infrastructure:** Phase 5 complete (Robot Workers with claim distillation, comparison, and classification)
 
 ---
 
@@ -158,5 +164,5 @@ Features under consideration, not yet formally planned.
 
 ---
 
-**Last Updated:** February 22, 2026 (Phase 4 Complete: Advanced Audit Filtering & Reporting)
-**Current Status:** 7 done (4 backend + 3 admin panels), 2 planned, 5 proposed
+**Last Updated:** February 22, 2026 (Phase 5 Complete: Robot Workers Infrastructure)
+**Current Status:** 8 done (4 backend + 3 admin panels + 1 worker), 1 planned (MCP), 5 proposed

@@ -282,10 +282,18 @@ cyber/
 │  │ advanced audit reporting with analytics    │  │
 │  └────────────────────────────────────────────┘  │
 ├──────────────────────────────────────────────────┤
+│  Robot Workers (Phase 5)                         │
+│  - Claim distillation (DISTILL_CLAIMS jobs)     │
+│  - Claim comparison (COMPARE_CLAIMS jobs)        │
+│  - Topic classification (CLASSIFY_TOPIC jobs)    │
+│  - Stateless, horizontally scalable              │
+│  - Python HTTP clients using Claude Haiku        │
+├──────────────────────────────────────────────────┤
 │  Backend (Production: Rust v1)                   │
 │  - Axum HTTP API (entries, notebooks, sharing)   │
 │  - Integration cost engine (entropy metrics)     │
 │  - Full-text search via Tantivy                  │
+│  - Job queue distribution to workers             │
 │  - MCP: notebook_mcp.py for Claude Desktop       │
 ├──────────────────────────────────────────────────┤
 │  PostgreSQL + Apache AGE Graph DB                │
@@ -308,7 +316,8 @@ as a future replacement for the Rust backend.
 - 🔐 **Security** — Classification levels, compartments, clearances
 - 👥 **Organizations** — Hierarchical group management with quota defaults
 - 📋 **Audit Trail** — Advanced filtering, reporting, and export (Phase 4)
-- 🤖 **Worker Queue** — Job distribution for LLM processing
+- 🤖 **Robot Workers** — Stateless LLM processors for claim distillation, comparison, classification (Phase 5)
+- 🧠 **Worker Queue** — Job distribution: DISTILL_CLAIMS, COMPARE_CLAIMS, CLASSIFY_TOPIC
 - 👤 **User Management** — Search, filter, quota tracking, lock reasons (Phase 1)
 - 💾 **Quota Management** — Organization-level defaults with inheritance (Phase 2)
 - 📥 **Batch Import/Export** — CSV user import with validation, CSV export (Phase 3)
@@ -405,5 +414,5 @@ cd backend && dotnet format
 
 ---
 
-**Last Updated:** February 22, 2026 (Phase 4: Advanced Audit Filtering & Reporting)
-**Status:** Active Development (Admin Panel Phase 0-4 ✅, .NET Backend v2 in progress, Worker Infrastructure planned)
+**Last Updated:** February 22, 2026 (Phase 5: Robot Workers Infrastructure)
+**Status:** Active Development (Admin Panel Phase 0-4 ✅, Robot Workers Phase 5 ✅, MCP Integration Phase 6 planned, .NET Backend v2 in progress)
