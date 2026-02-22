@@ -1,0 +1,505 @@
+@page "/admin/users/{UserId}"
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Identity
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@using System.Security.Cryptography
+@inject UserManager<ApplicationUser> UserManager
+@inject QuotaService QuotaService
+@inject NotebookApiClient ApiClient
+@inject CurrentUserService CurrentUser
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>User Detail</PageTitle>
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/users">Users</a></li>
+        <li class="breadcrumb-item active">@(user?.UserName ?? UserId)</li>
+    </ol>
+</nav>
+
+@if (user == null && errorMessage == null)
+{
+    <p>Loading...</p>
+}
+else if (errorMessage != null && user == null)
+{
+    <div class="alert alert-danger">@errorMessage</div>
+}
+else if (user != null)
+{
+    <h3>@(user.DisplayName ?? user.UserName)</h3>
+
+    @if (errorMessage != null)
+    {
+        <div class="alert alert-danger alert-dismissible">
+            @errorMessage
+            <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+        </div>
+    }
+    @if (successMessage != null)
+    {
+        <div class="alert alert-success alert-dismissible">
+            @successMessage
+            <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+        </div>
+    }
+
+    <div class="row">
+        <!-- Left Column -->
+        <div class="col-lg-8">
+            <!-- Profile Card -->
+            <div class="card mb-3">
+                <div class="card-header">Profile</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input class="form-control" value="@user.UserName" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Author ID</label>
+                        <input class="form-control font-monospace" value="@user.AuthorIdHex" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input class="form-control" @bind="editEmail" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Display Name</label>
+                        <input class="form-control" @bind="editDisplayName" />
+                    </div>
+                    <button class="btn btn-primary" @onclick="SaveProfile" disabled="@isSubmitting">Save Profile</button>
+                </div>
+            </div>
+
+            <!-- Notebooks Card -->
+            <div class="card mb-3">
+                <div class="card-header">Notebooks</div>
+                <div class="card-body">
+                    @if (userNotebooks == null)
+                    {
+                        <p class="text-muted">Loading notebooks...</p>
+                    }
+                    else if (userNotebooks.Count == 0)
+                    {
+                        <p class="text-muted">No notebooks.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Entries</th>
+                                    <th>Entropy</th>
+                                    <th>Access</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var nb in userNotebooks)
+                                {
+                                    <tr>
+                                        <td>@nb.Name</td>
+                                        <td>@nb.TotalEntries</td>
+                                        <td>@nb.TotalEntropy.ToString("F2")</td>
+                                        <td>
+                                            @if (nb.IsOwner) { <span class="badge bg-primary">Owner</span> }
+                                            else if (nb.Permissions.Write) { <span class="badge bg-success">Write</span> }
+                                            else { <span class="badge bg-secondary">Read</span> }
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+
+            <!-- Recent Activity Card -->
+            <div class="card mb-3">
+                <div class="card-header">Recent Activity</div>
+                <div class="card-body">
+                    @if (auditEntries == null)
+                    {
+                        <p class="text-muted">Loading activity...</p>
+                    }
+                    else if (auditEntries.Count == 0)
+                    {
+                        <p class="text-muted">No activity recorded.</p>
+                    }
+                    else
+                    {
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Time</th>
+                                    <th>Action</th>
+                                    <th>Target</th>
+                                    <th>Notebook</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var entry in auditEntries)
+                                {
+                                    <tr>
+                                        <td><small>@entry.Timestamp.ToString("g")</small></td>
+                                        <td><span class="badge bg-info text-dark">@entry.Action</span></td>
+                                        <td><small>@(entry.TargetType ?? "-")</small></td>
+                                        <td><small>@(entry.NotebookId?.ToString()[..8] ?? "-")</small></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Column -->
+        <div class="col-lg-4">
+            <!-- Account Status Card -->
+            <div class="card mb-3">
+                <div class="card-header">Account Status</div>
+                <div class="card-body">
+                    @if (isLocked)
+                    {
+                        <span class="badge bg-danger mb-2">Locked</span>
+                    }
+                    else
+                    {
+                        <span class="badge bg-success mb-2">Active</span>
+                    }
+                    <div class="mt-2">
+                        @if (isSelf)
+                        {
+                            <button class="btn btn-sm btn-outline-secondary" disabled title="Cannot lock your own account">
+                                @(isLocked ? "Unlock" : "Lock")
+                            </button>
+                        }
+                        else if (isLocked)
+                        {
+                            <button class="btn btn-sm btn-outline-success" @onclick="UnlockUser" disabled="@isSubmitting">Unlock</button>
+                        }
+                        else
+                        {
+                            <button class="btn btn-sm btn-outline-warning" @onclick="LockUser" disabled="@isSubmitting">Lock</button>
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quotas Card -->
+            <div class="card mb-3">
+                <div class="card-header">Quotas</div>
+                <div class="card-body">
+                    @if (quota == null)
+                    {
+                        <p class="text-muted">Loading...</p>
+                    }
+                    else
+                    {
+                        <ul class="list-unstyled mb-2">
+                            <li>Notebooks: <strong>@quota.MaxNotebooks</strong></li>
+                            <li>Entries/notebook: <strong>@quota.MaxEntriesPerNotebook</strong></li>
+                            <li>Entry size: <strong>@FormatBytes(quota.MaxEntrySizeBytes)</strong></li>
+                            <li>Total storage: <strong>@FormatBytes(quota.MaxTotalStorageBytes)</strong></li>
+                        </ul>
+                        <a href="/admin/users/@UserId/quotas" class="btn btn-sm btn-outline-secondary">Edit Quotas</a>
+                    }
+                </div>
+            </div>
+
+            <!-- Actions Card -->
+            <div class="card mb-3 border-danger">
+                <div class="card-header text-danger">Actions</div>
+                <div class="card-body">
+                    <!-- Reset Password -->
+                    <div class="mb-3">
+                        <button class="btn btn-sm btn-outline-warning" @onclick="ResetPassword" disabled="@isSubmitting">Reset Password</button>
+                        @if (generatedPassword != null)
+                        {
+                            <div class="alert alert-warning mt-2 p-2">
+                                <small>Temporary password:</small>
+                                <code class="d-block user-select-all">@generatedPassword</code>
+                            </div>
+                        }
+                    </div>
+
+                    <hr />
+
+                    <!-- Delete Account -->
+                    @if (isSelf)
+                    {
+                        <button class="btn btn-sm btn-outline-secondary" disabled title="Cannot delete your own account">Delete Account</button>
+                    }
+                    else if (!confirmingDelete)
+                    {
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => confirmingDelete = true" disabled="@isSubmitting">Delete Account</button>
+                    }
+                    else
+                    {
+                        <div class="alert alert-danger p-2">
+                            <strong>Are you sure?</strong> This will permanently delete the user account. Notebook data is not affected.
+                            <div class="mt-2">
+                                <button class="btn btn-sm btn-danger me-1" @onclick="DeleteUser" disabled="@isSubmitting">Yes, Delete Account</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="() => confirmingDelete = false">Cancel</button>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public string UserId { get; set; } = string.Empty;
+
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthState { get; set; }
+
+    private ApplicationUser? user;
+    private UserQuota? quota;
+    private List<NotebookSummary>? userNotebooks;
+    private List<AuditLogEntryDto>? auditEntries;
+
+    private string editDisplayName = string.Empty;
+    private string editEmail = string.Empty;
+
+    private string? adminAuthorId;
+    private bool isLocked;
+    private bool isSelf;
+    private bool isSubmitting;
+    private bool confirmingDelete;
+    private string? generatedPassword;
+    private string? errorMessage;
+    private string? successMessage;
+
+    protected override async Task OnInitializedAsync()
+    {
+        // Get admin's author ID for API calls
+        if (AuthState != null)
+        {
+            var authState = await AuthState;
+            adminAuthorId = await CurrentUser.GetAuthorIdHexAsync(authState.User);
+        }
+
+        // Load the target user
+        user = await UserManager.FindByIdAsync(UserId);
+        if (user == null)
+        {
+            errorMessage = "User not found.";
+            return;
+        }
+
+        // Initialize edit fields
+        editDisplayName = user.DisplayName ?? string.Empty;
+        editEmail = user.Email ?? string.Empty;
+        isLocked = user.LockoutEnd > DateTimeOffset.UtcNow;
+        isSelf = user.AuthorIdHex == adminAuthorId;
+
+        // Load quota, notebooks, and audit in parallel
+        var quotaTask = LoadQuota();
+        var notebooksTask = LoadNotebooks();
+        var auditTask = LoadAudit();
+        await Task.WhenAll(quotaTask, notebooksTask, auditTask);
+    }
+
+    private async Task LoadQuota()
+    {
+        try
+        {
+            quota = await QuotaService.GetOrCreateDefaultAsync(UserId);
+        }
+        catch { /* quota card will show loading state */ }
+    }
+
+    private async Task LoadNotebooks()
+    {
+        if (adminAuthorId == null) return;
+        try
+        {
+            var response = await ApiClient.ListNotebooksAsync(user!.AuthorIdHex);
+            userNotebooks = response?.Notebooks ?? [];
+        }
+        catch
+        {
+            userNotebooks = [];
+        }
+    }
+
+    private async Task LoadAudit()
+    {
+        if (adminAuthorId == null) return;
+        try
+        {
+            var response = await ApiClient.QueryGlobalAuditAsync(adminAuthorId, actor: user!.AuthorIdHex, limit: 20);
+            auditEntries = response?.Entries ?? [];
+        }
+        catch
+        {
+            auditEntries = [];
+        }
+    }
+
+    private async Task SaveProfile()
+    {
+        if (user == null) return;
+        isSubmitting = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            user.DisplayName = string.IsNullOrWhiteSpace(editDisplayName) ? null : editDisplayName.Trim();
+            user.Email = string.IsNullOrWhiteSpace(editEmail) ? null : editEmail.Trim();
+            var result = await UserManager.UpdateAsync(user);
+            if (result.Succeeded)
+            {
+                successMessage = "Profile updated.";
+            }
+            else
+            {
+                errorMessage = $"Failed to update profile: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task LockUser()
+    {
+        if (user == null) return;
+        isSubmitting = true;
+        errorMessage = null;
+        successMessage = null;
+
+        var result = await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
+        if (result.Succeeded)
+        {
+            isLocked = true;
+            successMessage = $"User {user.UserName} locked.";
+        }
+        else
+        {
+            errorMessage = $"Failed to lock user: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+        }
+        isSubmitting = false;
+    }
+
+    private async Task UnlockUser()
+    {
+        if (user == null) return;
+        isSubmitting = true;
+        errorMessage = null;
+        successMessage = null;
+
+        var result = await UserManager.SetLockoutEndDateAsync(user, null);
+        if (result.Succeeded)
+        {
+            isLocked = false;
+            successMessage = $"User {user.UserName} unlocked.";
+        }
+        else
+        {
+            errorMessage = $"Failed to unlock user: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+        }
+        isSubmitting = false;
+    }
+
+    private async Task ResetPassword()
+    {
+        if (user == null) return;
+        isSubmitting = true;
+        errorMessage = null;
+        successMessage = null;
+        generatedPassword = null;
+
+        try
+        {
+            var tempPassword = GenerateTemporaryPassword();
+            var token = await UserManager.GeneratePasswordResetTokenAsync(user);
+            var result = await UserManager.ResetPasswordAsync(user, token, tempPassword);
+            if (result.Succeeded)
+            {
+                generatedPassword = tempPassword;
+                successMessage = "Password has been reset.";
+            }
+            else
+            {
+                errorMessage = $"Failed to reset password: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private async Task DeleteUser()
+    {
+        if (user == null) return;
+        isSubmitting = true;
+        errorMessage = null;
+
+        try
+        {
+            var result = await UserManager.DeleteAsync(user);
+            if (result.Succeeded)
+            {
+                Navigation.NavigateTo("/admin/users");
+            }
+            else
+            {
+                errorMessage = $"Failed to delete user: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+                confirmingDelete = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+            confirmingDelete = false;
+        }
+        finally
+        {
+            isSubmitting = false;
+        }
+    }
+
+    private static string GenerateTemporaryPassword()
+    {
+        // Satisfies: RequireDigit=true, RequireLowercase=true, RequireUppercase=false,
+        // RequireNonAlphanumeric=false, RequiredLength=8
+        Span<byte> bytes = stackalloc byte[12];
+        RandomNumberGenerator.Fill(bytes);
+
+        var chars = new char[12];
+        for (int i = 0; i < 8; i++)
+            chars[i] = (char)('a' + (bytes[i] % 26));
+        for (int i = 8; i < 12; i++)
+            chars[i] = (char)('0' + (bytes[i] % 10));
+
+        return new string(chars);
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes} B";
+    }
+}

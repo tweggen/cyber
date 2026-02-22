@@ -11,7 +11,13 @@
 
 <h3>Quota Management</h3>
 
-<a href="/admin/users" class="btn btn-sm btn-outline-secondary mb-3">Back to Users</a>
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/users">Users</a></li>
+        <li class="breadcrumb-item"><a href="/admin/users/@UserId">@(user?.UserName ?? UserId)</a></li>
+        <li class="breadcrumb-item active">Quotas</li>
+    </ol>
+</nav>
 
 @if (user != null)
 {
