@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 namespace NotebookAdmin.Models;
 
 /// <summary>
-/// DTO for notebook summary from Rust API.
+/// DTO for notebook summary from notebook API.
 /// </summary>
 public class NotebookSummary
 {
@@ -51,7 +51,7 @@ public class ListNotebooksResponse
 }
 
 /// <summary>
-/// DTO for creating a notebook via Rust API.
+/// DTO for creating a notebook via notebook API.
 /// </summary>
 public class CreateNotebookRequest
 {
@@ -75,7 +75,7 @@ public class CreateNotebookResponse
 }
 
 /// <summary>
-/// DTO for creating an entry via Rust API.
+/// DTO for creating an entry via notebook API.
 /// </summary>
 public class CreateEntryRequest
 {
@@ -126,7 +126,7 @@ public class IntegrationCost
 }
 
 /// <summary>
-/// DTO for browse response from Rust API.
+/// DTO for browse response from notebook API.
 /// </summary>
 public class BrowseResponse
 {
@@ -162,7 +162,7 @@ public class ClusterSummary
 }
 
 /// <summary>
-/// DTO for filtered browse response from .NET API.
+/// DTO for filtered browse response from notebook API.
 /// </summary>
 public class BrowseFilteredResponse
 {
@@ -210,7 +210,7 @@ public class BrowseEntryDto
 }
 
 /// <summary>
-/// DTO for observe response from Rust API.
+/// DTO for observe response from notebook API.
 /// </summary>
 public class ObserveResponse
 {
@@ -256,7 +256,7 @@ public class ChangeEntry
 // ============================================================================
 
 /// <summary>
-/// DTO for revising an entry via Rust API.
+/// DTO for revising an entry via notebook API.
 /// </summary>
 public class ReviseEntryRequest
 {
@@ -559,7 +559,7 @@ public class ParticipantDto
 }
 
 /// <summary>
-/// DTO for renaming a notebook via Rust API.
+/// DTO for renaming a notebook via notebook API.
 /// </summary>
 public class RenameNotebookRequest
 {
@@ -593,7 +593,7 @@ public class DeleteNotebookResponse
 // ============================================================================
 
 /// <summary>
-/// DTO for author registration via Rust API.
+/// DTO for author registration via notebook API.
 /// </summary>
 public class RegisterAuthorRequest
 {

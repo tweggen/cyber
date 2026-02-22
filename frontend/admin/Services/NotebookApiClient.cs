@@ -5,7 +5,7 @@ using NotebookAdmin.Models;
 namespace NotebookAdmin.Services;
 
 /// <summary>
-/// HttpClient wrapper for the Rust notebook API.
+/// HttpClient wrapper for the notebook API.
 /// Authenticates via JWT Bearer tokens signed by TokenService.
 /// </summary>
 public class NotebookApiClient
@@ -30,7 +30,7 @@ public class NotebookApiClient
     };
 
     /// <summary>
-    /// Register a new author with the Rust API.
+    /// Register a new author with the notebook API.
     /// Called during user creation. No auth needed for author registration.
     /// </summary>
     public async Task<RegisterAuthorResponse?> RegisterAuthorAsync(string publicKeyHex)

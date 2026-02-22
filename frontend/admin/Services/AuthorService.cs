@@ -4,7 +4,7 @@ using NotebookAdmin.Models;
 namespace NotebookAdmin.Services;
 
 /// <summary>
-/// Manages author registration via the Rust API during user creation.
+/// Manages author registration via the notebook API during user creation.
 /// </summary>
 public class AuthorService
 {
@@ -18,11 +18,11 @@ public class AuthorService
     }
 
     /// <summary>
-    /// Generate a new Ed25519-like keypair and register it with the Rust API.
+    /// Generate a new Ed25519-like keypair and register it with the notebook API.
     /// Returns the AuthorId (hex) and public key bytes.
     /// </summary>
     /// <remarks>
-    /// For simplicity, we generate a random 32-byte "public key" and let the Rust API
+    /// For simplicity, we generate a random 32-byte "public key" and let the notebook API
     /// compute the AuthorId as BLAKE3(public_key). In production, this should use
     /// proper Ed25519 key generation.
     /// </remarks>

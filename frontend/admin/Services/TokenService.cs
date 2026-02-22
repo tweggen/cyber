@@ -6,7 +6,7 @@ using Org.BouncyCastle.Crypto.Signers;
 namespace NotebookAdmin.Services;
 
 /// <summary>
-/// Issues EdDSA-signed JWTs for authenticating with the Rust notebook API.
+/// Issues EdDSA-signed JWTs for authenticating with the notebook API.
 /// Uses Ed25519 via BouncyCastle for signing.
 /// </summary>
 public class TokenService

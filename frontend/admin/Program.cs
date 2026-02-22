@@ -34,7 +34,7 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/auth/access-denied";
 });
 
-// Add JWT token service (EdDSA signing for Rust API auth)
+// Add JWT token service (EdDSA signing for notebook API auth)
 builder.Services.AddSingleton<TokenService>();
 
 // Add Notebook API client
@@ -170,7 +170,7 @@ app.MapPost("/auth/register", async (
     if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
         return Results.BadRequest(new { error = "Username and password are required" });
 
-    // Register author with the Rust notebook API
+    // Register author with the notebook API
     var (authorIdHex, authorIdBytes) = await authorService.RegisterNewAuthorAsync();
 
     var user = new ApplicationUser

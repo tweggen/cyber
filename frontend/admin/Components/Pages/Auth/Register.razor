@@ -74,7 +74,7 @@
             return;
         }
 
-        // Register author with the Rust notebook API
+        // Register author with the notebook API
         var (authorIdHex, authorIdBytes) = await AuthorService.RegisterNewAuthorAsync();
 
         var user = new ApplicationUser
