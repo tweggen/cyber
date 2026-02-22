@@ -1,7 +1,7 @@
 -- Create OrganizationQuotas table for admin panel
 -- Organization-level default resource quotas for notebook platform
 
-CREATE TABLE admin."OrganizationQuotas" (
+CREATE TABLE public."OrganizationQuotas" (
     "OrganizationId" uuid NOT NULL,
     "MaxNotebooks" integer NOT NULL,
     "MaxEntriesPerNotebook" integer NOT NULL,
