@@ -593,6 +593,28 @@ public class NotebookApiClient
     }
 
     // =========================================================================
+    // Semantic Search
+    // =========================================================================
+
+    public async Task<SemanticSearchResponse?> SemanticSearchAsync(
+        string authorIdHex, Guid notebookId, string query,
+        int topK = 10, double minSimilarity = 0.3)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post,
+            $"/notebooks/{notebookId}/semantic-search");
+        AddAuthHeader(request, authorIdHex);
+        request.Content = JsonContent.Create(new
+        {
+            query,
+            top_k = topK,
+            min_similarity = minSimilarity
+        }, options: JsonOptions);
+        var response = await _httpClient.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<SemanticSearchResponse>(JsonOptions);
+    }
+
+    // =========================================================================
     // Job Stats
     // =========================================================================
 

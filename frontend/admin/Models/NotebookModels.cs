@@ -1043,6 +1043,40 @@ public class LexicalSearchResponse
 }
 
 // ============================================================================
+// Semantic Search DTOs
+// ============================================================================
+
+public class SemanticSearchResultDto
+{
+    [JsonPropertyName("entry_id")]
+    public Guid EntryId { get; set; }
+
+    [JsonPropertyName("topic")]
+    public string? Topic { get; set; }
+
+    [JsonPropertyName("similarity")]
+    public double Similarity { get; set; }
+
+    [JsonPropertyName("claims")]
+    public List<string>? Claims { get; set; }
+
+    [JsonPropertyName("claims_status")]
+    public string? ClaimsStatus { get; set; }
+
+    [JsonPropertyName("max_friction")]
+    public double? MaxFriction { get; set; }
+
+    [JsonPropertyName("integration_status")]
+    public string? IntegrationStatus { get; set; }
+}
+
+public class SemanticSearchResponse
+{
+    [JsonPropertyName("results")]
+    public List<SemanticSearchResultDto> Results { get; set; } = [];
+}
+
+// ============================================================================
 // Job Stats DTOs
 // ============================================================================
 

@@ -263,13 +263,24 @@ else if (browseResult != null)
             </select>
         </div>
         <div class="col-auto">
+            <select class="form-select form-select-sm" style="width: auto;" @bind="searchMode">
+                <option value="lexical">Lexical</option>
+                <option value="semantic">Semantic</option>
+            </select>
+        </div>
+        <div class="col-auto">
             <button class="btn btn-sm btn-outline-info"
                     @onclick="RunServerSearch"
                     disabled="@(string.IsNullOrWhiteSpace(searchQuery) || isServerSearching)"
-                    title="Full-text search via API">
-                @(isServerSearching ? "Searching..." : "Server Search")
+                    title="@(searchMode == "semantic" ? "Embedding-based semantic search" : "Full-text search via API")">
+                @if (isServerSearching)
+                { <text>Searching...</text> }
+                else if (searchMode == "semantic")
+                { <text>Semantic Search</text> }
+                else
+                { <text>Search</text> }
             </button>
-            @if (serverSearchResults != null)
+            @if (serverSearchResults != null || semanticSearchResults != null)
             {
                 <button class="btn btn-sm btn-outline-secondary ms-1" @onclick="ClearServerSearch">Clear</button>
             }
@@ -278,7 +289,9 @@ else if (browseResult != null)
         {
             <div class="col-auto">
                 <span class="text-muted small">
-                    @if (serverSearchResults != null)
+                    @if (semanticSearchResults != null)
+                    { <text>@semanticSearchResults.Count semantic result(s)</text> }
+                    else if (serverSearchResults != null)
                     { <text>@serverSearchResults.Count server result(s)</text> }
                     else
                     { <text>@filteredEntries.Count local result(s)</text> }
@@ -312,6 +325,43 @@ else if (browseResult != null)
                                 <td><a href="/notebooks/@NotebookId/entries/@r.EntryId">@(r.Topic ?? r.EntryId.ToString()[..8] + "…")</a></td>
                                 <td class="small text-muted">@r.Snippet</td>
                                 <td class="small">@r.RelevanceScore.ToString("F2")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    }
+
+    @if (semanticSearchResults != null)
+    {
+        <div class="card mb-3 border-info">
+            <div class="card-header bg-info bg-opacity-10 small py-1">Semantic search results for "<em>@searchQuery</em>"</div>
+            @if (semanticSearchResults.Count == 0)
+            {
+                <div class="card-body py-2"><p class="text-muted mb-0">No results found.</p></div>
+            }
+            else
+            {
+                <table class="table table-sm mb-0">
+                    <thead>
+                        <tr>
+                            <th>Topic</th>
+                            <th>Similarity</th>
+                            <th>Claims Status</th>
+                            <th>Integration</th>
+                            <th>Friction</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var r in semanticSearchResults)
+                        {
+                            <tr>
+                                <td><a href="/notebooks/@NotebookId/entries/@r.EntryId">@(r.Topic ?? r.EntryId.ToString()[..8] + "…")</a></td>
+                                <td class="small">@((r.Similarity * 100).ToString("F1"))%</td>
+                                <td class="small text-muted">@(r.ClaimsStatus ?? "—")</td>
+                                <td class="small text-muted">@(r.IntegrationStatus ?? "—")</td>
+                                <td class="small">@(r.MaxFriction?.ToString("F2") ?? "—")</td>
                             </tr>
                         }
                     </tbody>
@@ -988,6 +1038,8 @@ else if (browseResult != null)
 
     // Server search state
     private List<SearchResultDto>? serverSearchResults;
+    private List<SemanticSearchResultDto>? semanticSearchResults;
+    private string searchMode = "lexical";
     private bool isServerSearching;
 
     // Filtered browse state
@@ -1196,13 +1248,31 @@ else if (browseResult != null)
         isServerSearching = true;
         try
         {
-            var result = await ApiClient.ServerSearchAsync(authorIdHex, NotebookId, searchQuery.Trim());
-            serverSearchResults = result?.Results ?? [];
+            if (searchMode == "semantic")
+            {
+                serverSearchResults = null;
+                var result = await ApiClient.SemanticSearchAsync(authorIdHex, NotebookId, searchQuery.Trim());
+                semanticSearchResults = result?.Results ?? [];
+            }
+            else
+            {
+                semanticSearchResults = null;
+                var result = await ApiClient.ServerSearchAsync(authorIdHex, NotebookId, searchQuery.Trim());
+                serverSearchResults = result?.Results ?? [];
+            }
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.ServiceUnavailable)
+        {
+            errorMessage = "Semantic search unavailable — the embedding service is not running.";
+            semanticSearchResults = [];
         }
         catch (Exception ex)
         {
-            errorMessage = $"Server search failed: {ex.Message}";
-            serverSearchResults = [];
+            errorMessage = $"Search failed: {ex.Message}";
+            if (searchMode == "semantic")
+                semanticSearchResults = [];
+            else
+                serverSearchResults = [];
         }
         finally
         {
@@ -1213,6 +1283,7 @@ else if (browseResult != null)
     private void ClearServerSearch()
     {
         serverSearchResults = null;
+        semanticSearchResults = null;
     }
 
     // ===== Filtered Browse =====

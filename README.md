@@ -50,6 +50,13 @@ The admin panel provides a comprehensive management interface for system adminis
 - **Export Functionality** — Export filtered results to CSV or JSON formats
 - **Collapsible UI** — Advanced filter panel that can be hidden to save screen space
 
+### ✅ Semantic Search UI (Complete)
+- **Search Mode Toggle** — Switch between lexical and semantic search on notebook view
+- **Embedding-Based Search** — Cosine similarity via Ollama/OpenAI embeddings
+- **Semantic Results** — Similarity scores, claims status, integration status, friction
+- **MCP Tool** — `thinktank_semantic_search` for Claude Desktop
+- **Graceful Degradation** — User-friendly error when embedding service unavailable
+
 ### 🔮 Phase 5+: Future Enhancements
 - Saved audit filters (store and reuse filter combinations)
 - Email notifications for account events

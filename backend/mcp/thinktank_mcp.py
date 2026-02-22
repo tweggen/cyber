@@ -160,6 +160,18 @@ def tool_search(query: str, search_in: str = "both", topic_prefix: str = "", max
     return api_request("GET", f"/notebooks/{NOTEBOOK_ID}/search{params}")
 
 
+def tool_semantic_search(query: str, top_k: int = 10, min_similarity: float = 0.3) -> dict:
+    """Semantic search using embeddings (cosine similarity)."""
+    if not NOTEBOOK_ID:
+        return {"error": "NOTEBOOK_ID not configured"}
+
+    return api_request("POST", f"/notebooks/{NOTEBOOK_ID}/semantic-search", {
+        "query": query,
+        "top_k": top_k,
+        "min_similarity": min_similarity,
+    })
+
+
 def tool_job_stats() -> dict:
     """Get job queue statistics."""
     if not NOTEBOOK_ID:
@@ -410,6 +422,28 @@ TOOLS = [
                 "max_results": {
                     "type": "integer",
                     "description": "Maximum results to return (default: 20)",
+                },
+            },
+            "required": ["query"],
+        },
+    },
+    {
+        "name": "thinktank_semantic_search",
+        "description": "Semantic search using embeddings (cosine similarity). Requires an embedding service (Ollama or OpenAI) to be running. Returns entries ranked by semantic similarity to the query.",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "Natural language search query",
+                },
+                "top_k": {
+                    "type": "integer",
+                    "description": "Maximum results to return (default: 10)",
+                },
+                "min_similarity": {
+                    "type": "number",
+                    "description": "Minimum cosine similarity threshold (default: 0.3)",
                 },
             },
             "required": ["query"],
@@ -687,6 +721,12 @@ def handle_request(request: dict) -> dict:
                 search_in=arguments.get("search_in", "both"),
                 topic_prefix=arguments.get("topic_prefix", ""),
                 max_results=arguments.get("max_results", 20),
+            )
+        elif tool_name == "thinktank_semantic_search":
+            result = tool_semantic_search(
+                query=arguments.get("query", ""),
+                top_k=arguments.get("top_k", 10),
+                min_similarity=arguments.get("min_similarity", 0.3),
             )
         elif tool_name == "thinktank_job_stats":
             result = tool_job_stats()

@@ -137,9 +137,12 @@ Model Context Protocol server exposing the six operations as tools for Claude De
 - **Phase 1** ✅ — User search/filter, metadata (created date, last login), lock reason tracking, quota usage visualization
 - **Phase 2** ✅ — Organization quota defaults, quota inheritance (User → Org → System), usage progress bars on quota edit
 
+**Semantic Search UI** ✅ COMPLETE:
+- Search mode toggle (Lexical/Semantic) on notebook view
+- Embedding-based cosine similarity search via backend
+- MCP tool: `thinktank_semantic_search`
+
 **Phase 3+** (Planned):
-- User batch import/export (CSV)
-- Advanced audit filtering and reporting
 - Email notifications for account events
 - Bulk user operations
 - Custom quota templates

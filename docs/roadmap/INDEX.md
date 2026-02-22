@@ -82,6 +82,16 @@ Fully implemented and deployed features. These were successfully completed with 
   - Full integration with Claude Desktop for knowledge work
   - Status: ✅ Complete (Feb 22, 2026)
 
+### Semantic Search
+- **09-SEMANTIC-SEARCH-UI.md** — Frontend and MCP integration for embedding-based search
+  - SemanticSearchResultDto and SemanticSearchResponse DTOs
+  - SemanticSearchAsync API client method (POST /semantic-search)
+  - Search mode toggle (Lexical/Semantic) on notebook view page
+  - Semantic results table with similarity scores, claims status, friction
+  - Graceful 503 handling when embedding service unavailable
+  - thinktank_semantic_search MCP tool
+  - Status: ✅ Complete (Feb 22, 2026)
+
 ---
 
 ## 🔄 PLANNED (Ready for Implementation)
@@ -95,11 +105,6 @@ Approved features with implementation plans, ready to start work.
 ## 💡 PROPOSED (Ideas Being Evaluated)
 
 Features under consideration, not yet formally planned.
-
-- **Semantic Search UI** — Frontend interface for vector-based similarity search
-  - Requires backend EmbeddingService integration
-  - Ollama-based embeddings
-  - Status: 💭 Proposed (backend ready, UI pending)
 
 - **Batch Entry Creation UI** — Web interface for multi-entry uploads
   - File upload support (CSV, JSON, markdown)
@@ -127,14 +132,15 @@ Features under consideration, not yet formally planned.
 
 | State | Count | Status |
 |-------|:-----:|--------|
-| ✅ Done | 9 | Complete implementations with deployed features |
+| ✅ Done | 10 | Complete implementations with deployed features |
 | 🔄 Planned | 0 | Approved, ready to implement |
-| 💡 Proposed | 5 | Ideas under evaluation |
+| 💡 Proposed | 4 | Ideas under evaluation |
 
 **Overall Feature Coverage:** 16/16 domains fully implemented (100%) 🎉
 **Admin Panel:** Phases 0-4 complete (User Management, Quotas, Batch Import/Export, Advanced Audit Filtering)
 **Worker Infrastructure:** Phase 5 complete (Robot Workers with claim distillation, comparison, and classification)
 **MCP Integration:** Phase 6 complete (Claude Desktop MCP server with batch write, search, browse, job stats)
+**Semantic Search:** UI and MCP integration complete (embedding-based cosine similarity search)
 
 ---
 
@@ -169,6 +175,6 @@ Features under consideration, not yet formally planned.
 
 ---
 
-**Last Updated:** February 22, 2026 (Phase 6 Complete: MCP Integration — ALL PLANNED PHASES DONE!)
-**Current Status:** 9 done (4 backend + 3 admin panels + 1 worker + 1 MCP), 0 planned, 5 proposed
+**Last Updated:** February 22, 2026 (Semantic Search UI complete)
+**Current Status:** 10 done (4 backend + 3 admin panels + 1 worker + 1 MCP + 1 semantic search), 0 planned, 4 proposed
 **Completion:** 100% of planned roadmap phases (Phases 1-6 ✅)
