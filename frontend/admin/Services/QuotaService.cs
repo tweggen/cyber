@@ -94,4 +94,75 @@ public class QuotaService
             return true;
         }
     }
+
+    /// <summary>
+    /// Get the quota for an organization, creating a default one if it doesn't exist.
+    /// </summary>
+    public async Task<OrganizationQuota> GetOrCreateOrgDefaultAsync(Guid orgId)
+    {
+        var quota = await _db.OrganizationQuotas.FindAsync(orgId);
+        if (quota != null)
+            return quota;
+
+        quota = new OrganizationQuota { OrganizationId = orgId };
+        _db.OrganizationQuotas.Add(quota);
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Created default quota for organization {OrgId}", orgId);
+        return quota;
+    }
+
+    /// <summary>
+    /// Update quota values for an organization (admin operation).
+    /// </summary>
+    public async Task<OrganizationQuota> UpdateOrgQuotaAsync(Guid orgId, OrganizationQuota updated)
+    {
+        var quota = await GetOrCreateOrgDefaultAsync(orgId);
+        quota.MaxNotebooks = updated.MaxNotebooks;
+        quota.MaxEntriesPerNotebook = updated.MaxEntriesPerNotebook;
+        quota.MaxEntrySizeBytes = updated.MaxEntrySizeBytes;
+        quota.MaxTotalStorageBytes = updated.MaxTotalStorageBytes;
+        quota.UpdatedAt = DateTime.UtcNow;
+        await _db.SaveChangesAsync();
+        _logger.LogInformation("Updated quota for organization {OrgId}", orgId);
+        return quota;
+    }
+
+    /// <summary>
+    /// Resolve effective quota for a user with inheritance:
+    /// 1. User-specific quota (highest priority)
+    /// 2. Organization quota (if user has orgId)
+    /// 3. System defaults (fallback)
+    ///
+    /// This method does NOT write to database for inherited values.
+    /// </summary>
+    public async Task<UserQuota> GetEffectiveQuotaAsync(string userId, Guid? orgId = null)
+    {
+        // Try user-specific quota first
+        var userQuota = await _db.UserQuotas.FindAsync(userId);
+        if (userQuota != null)
+            return userQuota;
+
+        // Try organization quota
+        if (orgId.HasValue)
+        {
+            var orgQuota = await _db.OrganizationQuotas.FindAsync(orgId.Value);
+            if (orgQuota != null)
+            {
+                // Convert org quota to user quota structure (without saving)
+                return new UserQuota
+                {
+                    UserId = userId,
+                    MaxNotebooks = orgQuota.MaxNotebooks,
+                    MaxEntriesPerNotebook = orgQuota.MaxEntriesPerNotebook,
+                    MaxEntrySizeBytes = orgQuota.MaxEntrySizeBytes,
+                    MaxTotalStorageBytes = orgQuota.MaxTotalStorageBytes,
+                    CreatedAt = orgQuota.CreatedAt,
+                    UpdatedAt = orgQuota.UpdatedAt
+                };
+            }
+        }
+
+        // Fall back to system defaults
+        return new UserQuota { UserId = userId };
+    }
 }

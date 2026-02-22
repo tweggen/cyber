@@ -6,6 +6,7 @@
 @using NotebookAdmin.Services
 @inject UserManager<ApplicationUser> UserManager
 @inject QuotaService QuotaService
+@inject UsageAggregationService UsageService
 @rendermode InteractiveServer
 
 <PageTitle>Quota Management</PageTitle>
@@ -40,6 +41,62 @@
 }
 else if (quota != null)
 {
+    <!-- Current Usage Card -->
+    <div class="card mb-3">
+        <div class="card-header">Current Usage</div>
+        <div class="card-body">
+            @if (usageStats == null)
+            {
+                <p class="text-muted">Loading usage statistics...</p>
+            }
+            else
+            {
+                <!-- Notebooks Usage -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Notebooks</small>
+                        <small class="text-muted">@usageStats.NotebookCount / @quota.MaxNotebooks</small>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar @GetProgressBarClass(usageStats.NotebookCount, quota.MaxNotebooks)"
+                             role="progressbar"
+                             style="width: @GetProgressPercentage(usageStats.NotebookCount, quota.MaxNotebooks)%"
+                             aria-valuenow="@usageStats.NotebookCount"
+                             aria-valuemin="0"
+                             aria-valuemax="@quota.MaxNotebooks">
+                            @GetProgressPercentage(usageStats.NotebookCount, quota.MaxNotebooks)%
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Entries Usage -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Total Entries</small>
+                        <small class="text-muted">@usageStats.TotalEntries.ToString("N0")</small>
+                    </div>
+                    <p class="text-muted small mb-0">Limit: @quota.MaxEntriesPerNotebook per notebook</p>
+                </div>
+
+                <!-- Storage Usage (Estimated) -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <small class="text-muted">Storage (Estimated)</small>
+                        <small class="text-muted">@FormatBytes(usageStats.EstimatedStorageBytes) / @FormatBytes(quota.MaxTotalStorageBytes)</small>
+                    </div>
+                    <div class="progress" style="height: 20px;">
+                        <div class="progress-bar @GetProgressBarClass(usageStats.EstimatedStorageBytes, quota.MaxTotalStorageBytes)"
+                             role="progressbar"
+                             style="width: @GetProgressPercentage(usageStats.EstimatedStorageBytes, quota.MaxTotalStorageBytes)%">
+                            @GetProgressPercentage(usageStats.EstimatedStorageBytes, quota.MaxTotalStorageBytes)%
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-1">Note: Storage is estimated (1KB per entry). Exact usage requires backend enhancement.</small>
+                </div>
+            }
+        </div>
+    </div>
+
     <EditForm Model="quota" OnValidSubmit="SaveQuota" FormName="quotaEdit">
         <div class="mb-3">
             <label class="form-label">Max Notebooks</label>
@@ -73,6 +130,7 @@ else if (quota != null)
 
     private ApplicationUser? user;
     private UserQuota? quota;
+    private UserUsageStats? usageStats;
     private string? errorMessage;
     private string? successMessage;
 
@@ -86,6 +144,19 @@ else if (quota != null)
         }
 
         quota = await QuotaService.GetOrCreateDefaultAsync(UserId);
+
+        // Load usage stats
+        if (user?.AuthorIdHex != null)
+        {
+            try
+            {
+                usageStats = await UsageService.GetUserUsageAsync(user.AuthorIdHex);
+            }
+            catch
+            {
+                usageStats = new UserUsageStats();
+            }
+        }
     }
 
     private async Task SaveQuota()
@@ -103,5 +174,28 @@ else if (quota != null)
         {
             errorMessage = $"Failed to save quotas: {ex.Message}";
         }
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        if (bytes >= 1_073_741_824) return $"{bytes / 1_073_741_824.0:F1} GB";
+        if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
+        if (bytes >= 1024) return $"{bytes / 1024.0:F1} KB";
+        return $"{bytes} B";
+    }
+
+    private static string GetProgressBarClass(long current, long max)
+    {
+        if (max == 0) return "bg-success";
+        double percentage = (double)current / max * 100;
+        return percentage >= 90 ? "bg-danger" :
+               percentage >= 75 ? "bg-warning" :
+               "bg-success";
+    }
+
+    private static int GetProgressPercentage(long current, long max)
+    {
+        if (max == 0) return 0;
+        return Math.Min((int)((double)current / max * 100), 100);
     }
 }

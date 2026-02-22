@@ -17,6 +17,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<UserQuota> UserQuotas => Set<UserQuota>();
 
+    public DbSet<OrganizationQuota> OrganizationQuotas => Set<OrganizationQuota>();
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
@@ -64,6 +66,11 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithOne()
                 .HasForeignKey<UserQuota>(e => e.UserId)
                 .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        builder.Entity<OrganizationQuota>(entity =>
+        {
+            entity.HasKey(e => e.OrganizationId);
         });
     }
 }
