@@ -12,6 +12,17 @@ PROPOSED (Ideas)  →  PLANNED (Approved)  →  DONE (Completed)
 
 Fully implemented and deployed features. These were successfully completed with both backend and frontend work.
 
+### Admin Panel Features
+- **05-ADMIN-PANEL-PHASE-2-QUOTA-MONITORING.md** — Organization-level quota defaults with inheritance
+  - OrganizationQuota model and SQL migration
+  - Quota inheritance: User → Organization → System defaults
+  - Usage visualization with progress bars
+  - Organization quota editing UI
+  - Status: ✅ Complete (Feb 2026)
+  - **Phase 0** (User Management Shell) ✅
+  - **Phase 1** (User Search/Filter/Metadata/Quotas) ✅
+  - **Phase 2** (Organization Quotas & Inheritance) ✅
+
 ### Core Backend Infrastructure
 - **01-SCHEMA-AND-TYPES.md** — Database schema, domain types, migrations
   - Entry types, Claim model, Job queue types, Fragment support
@@ -90,11 +101,12 @@ Features under consideration, not yet formally planned.
 
 | State | Count | Status |
 |-------|:-----:|--------|
-| ✅ Done | 4 | Complete implementations with deployed features |
+| ✅ Done | 5 | Complete implementations with deployed features |
 | 🔄 Planned | 2 | Approved, ready to implement |
 | 💡 Proposed | 5 | Ideas under evaluation |
 
 **Overall Feature Coverage:** 13/16 domains fully implemented (81%)
+**Admin Panel:** Phase 0-2 complete (User Management, Search/Filter, Quotas & Inheritance)
 
 ---
 
@@ -129,5 +141,5 @@ Features under consideration, not yet formally planned.
 
 ---
 
-**Last Updated:** February 2026
-**Current Status:** 4 done, 2 planned, 5 proposed
+**Last Updated:** February 22, 2026 (Phase 2 Quota Monitoring)
+**Current Status:** 5 done (4 backend + 1 admin panel), 2 planned, 5 proposed
