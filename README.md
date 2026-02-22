@@ -113,17 +113,19 @@ cargo run --bin notebook-server
 
 ### MCP Servers for Claude Desktop
 
-**Current Production MCP:**
+**Current MCP Server (.NET v2 Backend):**
 ```bash
-# Rust-based MCP (production use)
-cd legacy/notebook/mcp
-python3 notebook_mcp.py
+# Run the thinktank MCP for current .NET v2 backend
+cd backend/mcp
+python3 thinktank_mcp.py
 # Configure in Claude Desktop's claude_desktop_config.json
 ```
 
-**Future MCP Servers (not yet in production):**
-- `backend/mcp/thinktank_mcp.py` — MCP for .NET v2 backend (in development)
-- `backend/mcp/wild_mcp.py` — Claims-aware retrieval MCP (in development)
+**Legacy MCP (Rust v1 Backend - Reference Only):**
+- `legacy/notebook/mcp/notebook_mcp.py` — Rust v1 backend MCP (reference/legacy use)
+
+**Future MCP Servers (in development):**
+- `backend/mcp/wild_mcp.py` — Claims-aware retrieval MCP (Phase 6+)
 
 ### Database & Infrastructure
 
@@ -294,7 +296,11 @@ cyber/
 │  - Integration cost engine (entropy metrics)     │
 │  - Full-text search via Tantivy                  │
 │  - Job queue distribution to workers             │
-│  - MCP: notebook_mcp.py for Claude Desktop       │
+│  - Legacy MCP: notebook_mcp.py (reference only)  │
+├──────────────────────────────────────────────────┤
+│  Backend v2 (.NET, in development)               │
+│  - HTTP API with same notebook semantics         │
+│  - MCP: thinktank_mcp.py for Claude Desktop      │
 ├──────────────────────────────────────────────────┤
 │  PostgreSQL + Apache AGE Graph DB                │
 │  - Entry storage with metadata                   │

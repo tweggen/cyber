@@ -4,13 +4,15 @@
 
 ## Goal
 
-Expose the new v2 operations through the MCP server so Claude Desktop instances can use batch write, filtered browse, search, and job stats. The existing MCP server is at `mcp/notebook_mcp.py`.
+Expose the new v2 operations through the MCP server so Claude Desktop instances can use batch write, filtered browse, search, and job stats. The current MCP server for .NET v2 backend is at `backend/mcp/thinktank_mcp.py`.
 
 > **Note:** The MCP server is a Python HTTP client — it works identically regardless of whether the backend is Rust or C# ASP.NET Core. The API contract is the same. The only change is the default server port (5000 for Kestrel instead of 3000 for Axum).
+>
+> **Legacy Reference:** The original Rust backend MCP is at `legacy/notebook/mcp/notebook_mcp.py` (no longer in active development).
 
 ## 6.1 — New MCP Tools
 
-Add these tool implementations and definitions to `mcp/notebook_mcp.py`.
+Add these tool implementations and definitions to `backend/mcp/thinktank_mcp.py`.
 
 ### tool_batch_write
 
@@ -96,7 +98,7 @@ def tool_browse(
 
 ## 6.2 — Tool Definitions
 
-Add to the `TOOLS` list in `notebook_mcp.py`:
+Add to the `TOOLS` list in `backend/mcp/thinktank_mcp.py`:
 
 ```python
 {
@@ -337,7 +339,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
   NOTEBOOK_URL=http://localhost:5000 \
   NOTEBOOK_ID=test \
   NOTEBOOK_TOKEN=test \
-  python mcp/notebook_mcp.py 2>/dev/null | \
+  python backend/mcp/thinktank_mcp.py 2>/dev/null | \
   python -m json.tool
 
 # Should list all original tools plus notebook_batch_write, notebook_search, notebook_job_stats
@@ -350,7 +352,7 @@ echo '{"jsonrpc":"2.0","id":1,"method":"tools/list"}' | \
 3. Ask Claude: "Search for entries about authentication" — should call `notebook_search`
 4. Ask Claude: "Show me entries that need review" — should call `notebook_browse` with `needs_review=true`
 
-## Summary of Changes to `notebook_mcp.py`
+## Summary of Changes to `backend/mcp/thinktank_mcp.py`
 
 | Change | Type |
 |--------|------|

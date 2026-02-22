@@ -83,7 +83,7 @@ Approved features with implementation plans, ready to start work.
   - Expose batch operations (batch entry creation with classification)
   - Expose search capabilities (full-text and filtered browse)
   - Expose claims operations (distillation and comparison results)
-  - Update MCP tool definitions for notebook_mcp.py
+  - Update MCP tool definitions for thinktank_mcp.py
   - Status: 📋 Plan ready, implementation pending
 
 ---
