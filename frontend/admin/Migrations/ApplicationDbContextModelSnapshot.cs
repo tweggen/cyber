@@ -259,35 +259,6 @@ namespace NotebookAdmin.Migrations
                     b.ToTable("AspNetUsers", (string)null);
                 });
 
-            modelBuilder.Entity("NotebookAdmin.Models.OrganizationQuota", b =>
-                {
-                    b.Property<Guid>("OrganizationId")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<int>("MaxEntriesPerNotebook")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("MaxEntrySizeBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<int>("MaxNotebooks")
-                        .HasColumnType("integer");
-
-                    b.Property<long>("MaxTotalStorageBytes")
-                        .HasColumnType("bigint");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("OrganizationId");
-
-                    b.ToTable("OrganizationQuotas");
-                });
-
             modelBuilder.Entity("NotebookAdmin.Models.UserQuota", b =>
                 {
                     b.Property<string>("UserId")
