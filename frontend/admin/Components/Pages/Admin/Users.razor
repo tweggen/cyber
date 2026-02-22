@@ -13,7 +13,10 @@
 
 @if (statusMessage != null)
 {
-    <div class="alert @(statusIsError ? "alert-danger" : "alert-success")">@statusMessage</div>
+    <div class="alert @(statusIsError ? "alert-danger" : "alert-success") alert-dismissible">
+        @statusMessage
+        <button type="button" class="btn-close" @onclick="() => statusMessage = null"></button>
+    </div>
 }
 
 @if (users == null)
@@ -22,47 +25,179 @@
 }
 else
 {
-    <table class="table table-striped mt-3">
-        <thead>
-            <tr>
-                <th>Username</th>
-                <th>Display Name</th>
-                <th>Author ID</th>
-                <th>Locked</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach (var user in users)
-            {
-                <tr>
-                    <td><a href="/admin/users/@user.Id">@user.UserName</a></td>
-                    <td>@(user.DisplayName ?? "-")</td>
-                    <td><code>@(user.AuthorIdHex[..16])...</code></td>
-                    <td>@(user.LockoutEnd > DateTimeOffset.UtcNow ? "Yes" : "No")</td>
-                    <td>
-                        @if (user.LockoutEnd > DateTimeOffset.UtcNow)
-                        {
-                            <button class="btn btn-sm btn-outline-success"
-                                @onclick="() => UnlockUser(user)">Unlock</button>
-                        }
-                        else
-                        {
-                            <button class="btn btn-sm btn-outline-warning"
-                                @onclick="() => LockUser(user)">Lock</button>
-                        }
-                        <a href="/admin/users/@user.Id" class="btn btn-sm btn-outline-primary ms-1">Edit</a>
-                        <a href="/admin/users/@user.Id/quotas" class="btn btn-sm btn-outline-secondary ms-1">Quotas</a>
-                    </td>
-                </tr>
-            }
-        </tbody>
-    </table>
+    <!-- Filters Section -->
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" placeholder="Username, email, or display name..."
+                           @bind="searchTerm" @bind:event="oninput" />
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">User Type</label>
+                    <select class="form-select" @bind="userTypeFilter">
+                        <option value="">All Types</option>
+                        <option value="user">User</option>
+                        <option value="service_account">Service Account</option>
+                        <option value="bot">Bot</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Status</label>
+                    <select class="form-select" @bind="lockStatusFilter">
+                        <option value="">All Status</option>
+                        <option value="active">Active</option>
+                        <option value="locked">Locked</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Sort By</label>
+                    <select class="form-select" @bind="sortBy">
+                        <option value="username">Username</option>
+                        <option value="created">Created Date</option>
+                        <option value="lastlogin">Last Login</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">&nbsp;</label>
+                    <button class="btn btn-outline-secondary w-100" @onclick="ResetFilters">Reset Filters</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    @if (users.Count == 0)
+    <!-- Users Table -->
+    @if (FilteredAndSortedUsers.Count() == 0)
     {
-        <p class="text-muted">No users registered yet.</p>
+        <div class="alert alert-info">No users found matching the current filters.</div>
     }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-striped mt-3">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Display Name</th>
+                        <th>Type</th>
+                        <th>Created</th>
+                        <th>Last Login</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in FilteredAndSortedUsers)
+                    {
+                        <tr>
+                            <td><a href="/admin/users/@user.Id">@user.UserName</a></td>
+                            <td>@(user.DisplayName ?? "-")</td>
+                            <td>
+                                <span class="badge @GetUserTypeBadgeClass(user.UserType)">
+                                    @FormatUserType(user.UserType)
+                                </span>
+                            </td>
+                            <td class="text-muted small">@user.CreatedAt.ToString("yyyy-MM-dd")</td>
+                            <td class="text-muted small">
+                                @(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm") ?? "Never")
+                            </td>
+                            <td>
+                                @if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                                {
+                                    <span class="badge bg-danger" title="@(user.LockReason ?? "No reason provided")">
+                                        🔒 Locked
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-success">✅ Active</span>
+                                }
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    @if (user.LockoutEnd.HasValue && user.LockoutEnd.Value > DateTimeOffset.UtcNow)
+                                    {
+                                        <button class="btn btn-outline-success" @onclick="() => UnlockUser(user)"
+                                                title="Unlock account">
+                                            Unlock
+                                        </button>
+                                    }
+                                    else
+                                    {
+                                        <button class="btn btn-outline-warning" @onclick="() => ShowLockModal(user)"
+                                                title="Lock account with reason">
+                                            Lock
+                                        </button>
+                                    }
+                                    <a href="/admin/users/@user.Id" class="btn btn-outline-primary">Edit</a>
+                                    <a href="/admin/users/@user.Id/quotas" class="btn btn-outline-secondary">Quotas</a>
+                                </div>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+
+    <p class="text-muted mt-3">Showing @FilteredAndSortedUsers.Count() of @users.Count() users</p>
+}
+
+<!-- Lock Modal -->
+@if (showLockModal && selectedUser != null)
+{
+    <div class="modal show d-block" tabindex="-1" style="background-color: rgba(0,0,0,0.5);">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Lock User Account</h5>
+                    <button type="button" class="btn-close" @onclick="HideLockModal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Lock user: <strong>@selectedUser.UserName</strong></p>
+
+                    <div class="mb-3">
+                        <label class="form-label">Reason for Lock <span class="text-danger">*</span></label>
+                        <select class="form-select" @bind="lockReason">
+                            <option value="">-- Select Reason --</option>
+                            <option value="Security violation">Security violation</option>
+                            <option value="Policy violation">Policy violation</option>
+                            <option value="Inactive account">Inactive account</option>
+                            <option value="Suspicious activity">Suspicious activity</option>
+                            <option value="User request">User request</option>
+                            <option value="Administrative hold">Administrative hold</option>
+                            <option value="Other">Other (specify below)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Additional Notes</label>
+                        <textarea class="form-control" rows="3" @bind="lockReasonNotes"
+                                  placeholder="Optional: Provide additional context..."></textarea>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" @bind="silentLock" id="silentLock">
+                        <label class="form-check-label" for="silentLock">
+                            Silent lock (do not notify user via email)
+                        </label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" @onclick="HideLockModal">Cancel</button>
+                    <button type="button" class="btn btn-danger" @onclick="LockUserWithReason"
+                            disabled="@(string.IsNullOrEmpty(lockReason) || isSubmitting)">
+                        @if (isSubmitting)
+                        {
+                            <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        }
+                        Lock Account
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 }
 
 @code {
@@ -70,26 +205,104 @@ else
     private string? statusMessage;
     private bool statusIsError;
 
+    // Filter state
+    private string searchTerm = "";
+    private string userTypeFilter = "";
+    private string lockStatusFilter = "";
+    private string sortBy = "username";
+
+    // Lock modal state
+    private bool showLockModal = false;
+    private ApplicationUser? selectedUser;
+    private string lockReason = "";
+    private string lockReasonNotes = "";
+    private bool silentLock = false;
+    private bool isSubmitting = false;
+
+    private IEnumerable<ApplicationUser> FilteredAndSortedUsers =>
+        users?
+            .Where(u => string.IsNullOrEmpty(searchTerm) ||
+                        u.UserName!.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        u.Email!.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ||
+                        (u.DisplayName?.Contains(searchTerm, StringComparison.OrdinalIgnoreCase) ?? false))
+            .Where(u => string.IsNullOrEmpty(userTypeFilter) || u.UserType == userTypeFilter)
+            .Where(u => string.IsNullOrEmpty(lockStatusFilter) ||
+                        (lockStatusFilter == "locked" && u.LockoutEnd.HasValue && u.LockoutEnd.Value > DateTimeOffset.UtcNow) ||
+                        (lockStatusFilter == "active" && (!u.LockoutEnd.HasValue || u.LockoutEnd.Value <= DateTimeOffset.UtcNow)))
+            .OrderBy(u => sortBy switch
+            {
+                "created" => u.CreatedAt.Ticks,
+                "lastlogin" => u.LastLoginAt?.Ticks ?? 0,
+                _ => 0
+            })
+            .ThenBy(u => u.UserName)
+            ?? Enumerable.Empty<ApplicationUser>();
+
     protected override async Task OnInitializedAsync()
     {
         users = await UserManager.Users.ToListAsync();
     }
 
-    private async Task LockUser(ApplicationUser user)
+    private void ShowLockModal(ApplicationUser user)
     {
+        selectedUser = user;
+        lockReason = "";
+        lockReasonNotes = "";
+        silentLock = false;
+        showLockModal = true;
+    }
+
+    private void HideLockModal()
+    {
+        showLockModal = false;
+        selectedUser = null;
+        lockReason = "";
+        lockReasonNotes = "";
+        silentLock = false;
+    }
+
+    private async Task LockUserWithReason()
+    {
+        if (selectedUser == null || string.IsNullOrEmpty(lockReason))
+            return;
+
+        isSubmitting = true;
         statusMessage = null;
-        var result = await UserManager.SetLockoutEndDateAsync(user, DateTimeOffset.UtcNow.AddYears(100));
-        if (result.Succeeded)
+
+        try
         {
-            statusMessage = $"User {user.UserName} locked.";
-            statusIsError = false;
+            // Combine reason and notes
+            string fullReason = lockReason;
+            if (!string.IsNullOrWhiteSpace(lockReasonNotes))
+            {
+                fullReason += $" - {lockReasonNotes}";
+            }
+
+            selectedUser.LockReason = fullReason;
+            var result = await UserManager.SetLockoutEndDateAsync(selectedUser, DateTimeOffset.UtcNow.AddYears(100));
+
+            if (result.Succeeded)
+            {
+                statusMessage = $"User {selectedUser.UserName} locked with reason: {lockReason}";
+                statusIsError = false;
+                HideLockModal();
+                users = await UserManager.Users.ToListAsync();
+            }
+            else
+            {
+                statusMessage = $"Failed to lock user: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+                statusIsError = true;
+            }
         }
-        else
+        catch (Exception ex)
         {
-            statusMessage = $"Failed to lock user: {string.Join(", ", result.Errors.Select(e => e.Description))}";
+            statusMessage = $"Error: {ex.Message}";
             statusIsError = true;
         }
-        users = await UserManager.Users.ToListAsync();
+        finally
+        {
+            isSubmitting = false;
+        }
     }
 
     private async Task UnlockUser(ApplicationUser user)
@@ -108,4 +321,26 @@ else
         }
         users = await UserManager.Users.ToListAsync();
     }
+
+    private void ResetFilters()
+    {
+        searchTerm = "";
+        userTypeFilter = "";
+        lockStatusFilter = "";
+        sortBy = "username";
+    }
+
+    private string GetUserTypeBadgeClass(string userType) => userType switch
+    {
+        "service_account" => "bg-purple",
+        "bot" => "bg-orange",
+        _ => "bg-blue"
+    };
+
+    private string FormatUserType(string userType) => userType switch
+    {
+        "service_account" => "Service Account",
+        "bot" => "Bot",
+        _ => "User"
+    };
 }

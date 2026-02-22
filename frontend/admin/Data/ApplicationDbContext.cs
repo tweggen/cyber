@@ -34,8 +34,26 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.Property(e => e.DisplayName)
                 .HasMaxLength(256);
 
+            entity.Property(e => e.CreatedAt)
+                .IsRequired()
+                .HasDefaultValueSql("NOW() AT TIME ZONE 'UTC'");
+
+            entity.Property(e => e.LastLoginAt);
+
+            entity.Property(e => e.LockReason)
+                .HasColumnType("text");
+
+            entity.Property(e => e.UserType)
+                .HasMaxLength(50)
+                .IsRequired()
+                .HasDefaultValue("user");
+
             entity.HasIndex(e => e.AuthorIdHex)
                 .IsUnique();
+
+            entity.HasIndex(e => e.CreatedAt);
+            entity.HasIndex(e => e.LastLoginAt);
+            entity.HasIndex(e => e.UserType);
         });
 
         builder.Entity<UserQuota>(entity =>

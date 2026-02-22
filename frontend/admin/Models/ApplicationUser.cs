@@ -21,4 +21,24 @@ public class ApplicationUser : IdentityUser
     /// Display name for the user.
     /// </summary>
     public string? DisplayName { get; set; }
+
+    /// <summary>
+    /// Timestamp when the account was created (UTC).
+    /// </summary>
+    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+    /// <summary>
+    /// Timestamp of the user's last successful login (UTC).
+    /// </summary>
+    public DateTime? LastLoginAt { get; set; }
+
+    /// <summary>
+    /// Reason for account lock (for audit/compliance purposes).
+    /// </summary>
+    public string? LockReason { get; set; }
+
+    /// <summary>
+    /// User type classification: user, service_account, or bot.
+    /// </summary>
+    public string UserType { get; set; } = "user";
 }

@@ -10,6 +10,7 @@
 @inject NotebookApiClient ApiClient
 @inject CurrentUserService CurrentUser
 @inject NavigationManager Navigation
+@inject UsageAggregationService UsageService
 @rendermode InteractiveServer
 
 <PageTitle>User Detail</PageTitle>
@@ -70,6 +71,22 @@ else if (user != null)
                     <div class="mb-3">
                         <label class="form-label">Display Name</label>
                         <input class="form-control" @bind="editDisplayName" />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">User Type</label>
+                        <select class="form-select" @bind="editUserType">
+                            <option value="user">User</option>
+                            <option value="service_account">Service Account</option>
+                            <option value="bot">Bot</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Account Created</label>
+                        <input class="form-control" value="@user.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss") UTC" readonly />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Last Login</label>
+                        <input class="form-control" value="@(user.LastLoginAt?.ToString("yyyy-MM-dd HH:mm:ss") ?? "Never") UTC" readonly />
                     </div>
                     <button class="btn btn-primary" @onclick="SaveProfile" disabled="@isSubmitting">Save Profile</button>
                 </div>
@@ -166,11 +183,17 @@ else if (user != null)
                 <div class="card-body">
                     @if (isLocked)
                     {
-                        <span class="badge bg-danger mb-2">Locked</span>
+                        <div class="alert alert-danger mb-2">
+                            <strong>🔒 Account Locked</strong>
+                            @if (!string.IsNullOrEmpty(user?.LockReason))
+                            {
+                                <p class="mb-0"><small><strong>Reason:</strong> @user.LockReason</small></p>
+                            }
+                        </div>
                     }
                     else
                     {
-                        <span class="badge bg-success mb-2">Active</span>
+                        <span class="badge bg-success mb-2">✅ Active</span>
                     }
                     <div class="mt-2">
                         @if (isSelf)
@@ -185,7 +208,7 @@ else if (user != null)
                         }
                         else
                         {
-                            <button class="btn btn-sm btn-outline-warning" @onclick="LockUser" disabled="@isSubmitting">Lock</button>
+                            <button class="btn btn-sm btn-outline-warning" @onclick="LockUser" disabled="@isSubmitting">Lock (use list for lock with reason)</button>
                         }
                     </div>
                 </div>
@@ -193,7 +216,7 @@ else if (user != null)
 
             <!-- Quotas Card -->
             <div class="card mb-3">
-                <div class="card-header">Quotas</div>
+                <div class="card-header">Quota Limits</div>
                 <div class="card-body">
                     @if (quota == null)
                     {
@@ -208,6 +231,66 @@ else if (user != null)
                             <li>Total storage: <strong>@FormatBytes(quota.MaxTotalStorageBytes)</strong></li>
                         </ul>
                         <a href="/admin/users/@UserId/quotas" class="btn btn-sm btn-outline-secondary">Edit Quotas</a>
+                    }
+                </div>
+            </div>
+
+            <!-- Quota Usage Card -->
+            <div class="card mb-3">
+                <div class="card-header">Quota Usage</div>
+                <div class="card-body">
+                    @if (usageStats == null)
+                    {
+                        <p class="text-muted">Loading usage statistics...</p>
+                    }
+                    else if (quota == null)
+                    {
+                        <p class="text-muted">No quota defined for this user.</p>
+                    }
+                    else
+                    {
+                        <!-- Notebooks Usage -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="text-muted">Notebooks</small>
+                                <small class="text-muted">@usageStats.NotebookCount / @quota.MaxNotebooks</small>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar @GetProgressBarClass(usageStats.NotebookCount, quota.MaxNotebooks)"
+                                     role="progressbar"
+                                     style="width: @GetProgressPercentage(usageStats.NotebookCount, quota.MaxNotebooks)%"
+                                     aria-valuenow="@usageStats.NotebookCount"
+                                     aria-valuemin="0"
+                                     aria-valuemax="@quota.MaxNotebooks">
+                                    @GetProgressPercentage(usageStats.NotebookCount, quota.MaxNotebooks)%
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Total Entries Usage -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="text-muted">Total Entries</small>
+                                <small class="text-muted">@usageStats.TotalEntries.ToString("N0")</small>
+                            </div>
+                            <p class="text-muted small mb-0">Limit: @quota.MaxEntriesPerNotebook per notebook</p>
+                        </div>
+
+                        <!-- Storage Usage (Estimated) -->
+                        <div class="mb-3">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="text-muted">Storage (Estimated)</small>
+                                <small class="text-muted">@FormatBytes(usageStats.EstimatedStorageBytes) / @FormatBytes(quota.MaxTotalStorageBytes)</small>
+                            </div>
+                            <div class="progress" style="height: 20px;">
+                                <div class="progress-bar @GetProgressBarClass(usageStats.EstimatedStorageBytes, quota.MaxTotalStorageBytes)"
+                                     role="progressbar"
+                                     style="width: @GetProgressPercentage(usageStats.EstimatedStorageBytes, quota.MaxTotalStorageBytes)%">
+                                    @GetProgressPercentage(usageStats.EstimatedStorageBytes, quota.MaxTotalStorageBytes)%
+                                </div>
+                            </div>
+                            <small class="text-muted d-block mt-1">Note: Storage is estimated (1KB per entry). Exact usage requires backend enhancement.</small>
+                        </div>
                     }
                 </div>
             </div>
@@ -266,9 +349,11 @@ else if (user != null)
     private UserQuota? quota;
     private List<NotebookSummary>? userNotebooks;
     private List<AuditLogEntryDto>? auditEntries;
+    private UserUsageStats? usageStats;
 
     private string editDisplayName = string.Empty;
     private string editEmail = string.Empty;
+    private string editUserType = string.Empty;
 
     private string? adminAuthorId;
     private bool isLocked;
@@ -299,14 +384,16 @@ else if (user != null)
         // Initialize edit fields
         editDisplayName = user.DisplayName ?? string.Empty;
         editEmail = user.Email ?? string.Empty;
+        editUserType = user.UserType;
         isLocked = user.LockoutEnd > DateTimeOffset.UtcNow;
         isSelf = user.AuthorIdHex == adminAuthorId;
 
-        // Load quota, notebooks, and audit in parallel
+        // Load quota, notebooks, audit, and usage stats in parallel
         var quotaTask = LoadQuota();
         var notebooksTask = LoadNotebooks();
         var auditTask = LoadAudit();
-        await Task.WhenAll(quotaTask, notebooksTask, auditTask);
+        var usageTask = LoadUsageStats();
+        await Task.WhenAll(quotaTask, notebooksTask, auditTask, usageTask);
     }
 
     private async Task LoadQuota()
@@ -346,6 +433,19 @@ else if (user != null)
         }
     }
 
+    private async Task LoadUsageStats()
+    {
+        if (user?.AuthorIdHex == null) return;
+        try
+        {
+            usageStats = await UsageService.GetUserUsageAsync(user.AuthorIdHex);
+        }
+        catch
+        {
+            usageStats = new UserUsageStats();
+        }
+    }
+
     private async Task SaveProfile()
     {
         if (user == null) return;
@@ -357,6 +457,7 @@ else if (user != null)
         {
             user.DisplayName = string.IsNullOrWhiteSpace(editDisplayName) ? null : editDisplayName.Trim();
             user.Email = string.IsNullOrWhiteSpace(editEmail) ? null : editEmail.Trim();
+            user.UserType = editUserType;
             var result = await UserManager.UpdateAsync(user);
             if (result.Succeeded)
             {
@@ -502,5 +603,20 @@ else if (user != null)
         if (bytes >= 1_048_576) return $"{bytes / 1_048_576.0:F1} MB";
         if (bytes >= 1024) return $"{bytes / 1024.0:F1} KB";
         return $"{bytes} B";
+    }
+
+    private static string GetProgressBarClass(long current, long max)
+    {
+        if (max == 0) return "bg-success";
+        double percentage = (double)current / max * 100;
+        return percentage >= 90 ? "bg-danger" :
+               percentage >= 75 ? "bg-warning" :
+               "bg-success";
+    }
+
+    private static int GetProgressPercentage(long current, long max)
+    {
+        if (max == 0) return 0;
+        return Math.Min((int)((double)current / max * 100), 100);
     }
 }

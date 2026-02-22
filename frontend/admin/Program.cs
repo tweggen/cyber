@@ -48,6 +48,7 @@ builder.Services.AddHttpClient<NotebookApiClient>(client =>
 builder.Services.AddScoped<AuthorService>();
 builder.Services.AddScoped<QuotaService>();
 builder.Services.AddScoped<CurrentUserService>();
+builder.Services.AddScoped<UsageAggregationService>();
 
 // Add Razor Components with Server interactivity
 builder.Services.AddRazorComponents()
@@ -115,6 +116,8 @@ using (var scope = app.Services.CreateScope())
                     DisplayName = "Admin",
                     AuthorId = authorIdBytes,
                     AuthorIdHex = authorIdHex,
+                    CreatedAt = DateTime.UtcNow,
+                    UserType = "user",
                 };
 
                 var result = await userManager.CreateAsync(user, adminPass);
@@ -179,6 +182,8 @@ app.MapPost("/auth/register", async (
         DisplayName = request.DisplayName,
         AuthorId = authorIdBytes,
         AuthorIdHex = authorIdHex,
+        CreatedAt = DateTime.UtcNow,
+        UserType = "user",
     };
 
     var result = await userManager.CreateAsync(user, request.Password);
@@ -208,6 +213,10 @@ app.MapPost("/auth/token", async (
     var result = await signInManager.CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: false);
     if (!result.Succeeded)
         return Results.Unauthorized();
+
+    // Update LastLoginAt on successful authentication
+    user.LastLoginAt = DateTime.UtcNow;
+    await userManager.UpdateAsync(user);
 
     var token = tokenService.GenerateToken(user.AuthorIdHex);
     var expiryMinutes = int.TryParse(

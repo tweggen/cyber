@@ -1,0 +1,17 @@
+/* User Type Badges */
+.bg-blue {
+    background-color: #0d6efd !important;
+}
+
+.bg-purple {
+    background-color: #6f42c1 !important;
+}
+
+.bg-orange {
+    background-color: #fd7e14 !important;
+}
+
+/* Modal backdrop for users page */
+.modal.show {
+    backdrop-filter: blur(4px);
+}
