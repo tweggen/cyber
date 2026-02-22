@@ -35,7 +35,7 @@ else
             @foreach (var user in users)
             {
                 <tr>
-                    <td>@user.UserName</td>
+                    <td><a href="/admin/users/@user.Id">@user.UserName</a></td>
                     <td>@(user.DisplayName ?? "-")</td>
                     <td><code>@(user.AuthorIdHex[..16])...</code></td>
                     <td>@(user.LockoutEnd > DateTimeOffset.UtcNow ? "Yes" : "No")</td>
