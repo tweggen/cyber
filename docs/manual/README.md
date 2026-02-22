@@ -55,6 +55,41 @@ manual/
     └── manual-template.html     # Pandoc HTML template (TODO)
 ```
 
+## Admin Panel Implementation Status
+
+**Phase 1: User Management Enhancements** ✅ LIVE
+
+The following features are now implemented in the Admin Panel (`/admin` section):
+
+✅ **User List Page**
+- Search by username, email, or display name
+- Filter by user type (User, Service Account, Bot)
+- Filter by lock status (Active, Locked)
+- Sort by username, created date, or last login
+- View user metadata (created date, last login, type badge)
+- Lock/Unlock users directly from list
+
+✅ **Lock with Reason Modal**
+- Predefined lock reasons (Security violation, Policy violation, Inactive, etc.)
+- Optional notes for additional context
+- Silent lock option (UI ready, email integration in Phase 2)
+
+✅ **User Detail Page**
+- View created date and last login timestamp
+- Edit user type (User, Service Account, Bot)
+- View lock reason in account status card
+- Display quota usage with color-coded progress bars (green/yellow/red)
+- Estimate storage usage based on entry count
+
+✅ **Database Changes**
+- New columns: `CreatedAt`, `LastLoginAt`, `LockReason`, `UserType`
+- Automatic indexes for efficient filtering and sorting
+- Migration file: `20260222085328_AddUserManagementFields`
+
+**Features documented in:** [Chapter 8: System Administrator](chapters/08-system-administrator.md) — Workflow 1: User Management
+
+---
+
 ## Content Status
 
 ### Part I: Introduction ✓ COMPLETE
@@ -67,7 +102,7 @@ manual/
 - [ ] Chapter 5: Organization Administrator (4 workflows, ~2500 words)
 - [ ] Chapter 6: Notebook Owner (5 workflows, ~3000 words)
 - [ ] Chapter 7: Auditor/Compliance Officer (3 workflows, ~1800 words)
-- [ ] Chapter 8: System Administrator (4 workflows, ~2500 words)
+- [x] Chapter 8: System Administrator (Phase 1 features implemented, workflows ~2500 words) — **User Management features documented and live**
 - [ ] Chapter 9: ThinkerAgent Operator (3 workflows, ~1800 words)
 - [ ] Chapter 10: Cross-Organization Coordinator (3 workflows, ~1800 words)
 
@@ -332,6 +367,7 @@ Questions about the manual itself?
 
 ---
 
-**Last updated:** February 21, 2026
-**Manual version:** 1.0.0 (Beta)
+**Last updated:** February 22, 2026
+**Manual version:** 1.0.1 (Beta) — Added Phase 1 user management implementation notes
 **Platform version:** 2.1.0
+**Admin Panel Phases:** Phase 0 (shell) ✅, Phase 1 (user management) ✅, Phase 2 (advanced features) 🔮

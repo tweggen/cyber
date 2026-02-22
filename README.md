@@ -6,7 +6,38 @@ A platform for building externalized memory substrates that enable persistent, e
 
 ---
 
-## 📊 Feature Coverage
+## 📊 Admin Panel Status
+
+**Current Phase: Phase 1 (User Management Enhancements)** ✅ COMPLETE
+
+The admin panel provides a comprehensive management interface for system administrators:
+
+### ✅ Phase 0: Admin Panel Shell (Complete)
+- Unified admin navigation with role-based access
+- Dashboard with activity summaries
+- User list and detail pages with basic management
+- Quota management interface
+- Notebook browsing and management
+
+### ✅ Phase 1: User Management Enhancements (Complete)
+- **Search & Filtering** — Search by username/email/display name, filter by user type and lock status
+- **User Metadata** — Track created date, last login, user type (Human, Service Account, Bot)
+- **Lock Reason Tracking** — Document why accounts are locked for compliance/audit
+- **Quota Usage Visualization** — Real-time progress bars showing resource utilization
+- **Enhanced Lock Modal** — Lock accounts with predefined reasons and notes
+- **Database Migration** — New columns and indexes for efficient queries
+
+### 🔮 Phase 2: Planned Enhancements
+- User batch import/export (CSV)
+- Advanced audit filtering and reporting
+- Email notifications for account events
+- Bulk user operations
+- Custom quota templates
+- API rate limiting UI
+
+---
+
+## 📊 Backend Feature Coverage
 
 **Frontend Implementation Status: 81% Complete** (13 of 16 feature domains fully implemented)
 
@@ -199,10 +230,12 @@ cyber/
 ```
 ┌──────────────────────────────────────────────────┐
 │  Admin UI (.NET Blazor Server)                   │
-│  - Notebook management, filtering, search        │
-│  - Organization & group hierarchy                │
-│  - Access control, audit trails                  │
-│  - Agent & security management                   │
+│  ┌────────────────────────────────────────────┐  │
+│  │ Dashboard, Users, Quotas, Notebooks        │  │
+│  │ Organizations, Groups, Audit Trail         │  │
+│  │ (Phase 0-1: User management with search,   │  │
+│  │  filtering, quotas visualization)          │  │
+│  └────────────────────────────────────────────┘  │
 ├──────────────────────────────────────────────────┤
 │  Backend (Production: Rust v1)                   │
 │  - Axum HTTP API (entries, notebooks, sharing)   │
@@ -214,6 +247,7 @@ cyber/
 │  - Entry storage with metadata                   │
 │  - Graph for cross-references & causal history   │
 │  - Job queue, audit log                          │
+│  - User management (accounts, quotas, locks)     │
 └──────────────────────────────────────────────────┘
 
 Note: .NET v2 backend (backend/src/Notebook.Server) is in development
@@ -229,6 +263,7 @@ as a future replacement for the Rust backend.
 - 👥 **Organizations** — Hierarchical group management
 - 📋 **Audit Trail** — Complete action history with filtering
 - 🤖 **Worker Queue** — Job distribution for LLM processing
+- 👤 **User Management** — Search, filter, quota tracking, lock reasons (Phase 1)
 
 ---
 
