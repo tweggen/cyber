@@ -15,41 +15,6 @@
 
 <h3>Dashboard</h3>
 
-<div class="row mt-4">
-    <div class="col-md-3">
-        <div class="card text-bg-primary">
-            <div class="card-body">
-                <h5 class="card-title">Total Users</h5>
-                <p class="card-text display-4">@userCount</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-bg-success">
-            <div class="card-body">
-                <h5 class="card-title">Notebooks</h5>
-                <p class="card-text display-4">@notebookCount</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-bg-info">
-            <div class="card-body">
-                <h5 class="card-title">Total Entries</h5>
-                <p class="card-text display-4">@totalEntries</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card text-bg-warning">
-            <div class="card-body">
-                <h5 class="card-title">System Entropy</h5>
-                <p class="card-text display-4">@systemEntropy.ToString("F1")</p>
-            </div>
-        </div>
-    </div>
-</div>
-
 @if (apiError != null)
 {
     <div class="alert alert-warning mt-3">
@@ -57,16 +22,147 @@
     </div>
 }
 
-<div class="row mt-4">
+@* Row 1: Stat Cards *@
+<div class="row row-cols-2 row-cols-md-3 row-cols-xl-5 g-3 mt-2">
+    <div class="col">
+        <div class="card text-bg-primary h-100">
+            <div class="card-body">
+                <h5 class="card-title">Total Users</h5>
+                <p class="card-text display-4">@userCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-bg-success h-100">
+            <div class="card-body">
+                <h5 class="card-title">Notebooks</h5>
+                <p class="card-text display-4">@notebookCount</p>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-bg-info h-100">
+            <div class="card-body">
+                <h5 class="card-title">Total Entries</h5>
+                <p class="card-text display-4">@totalEntries</p>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card text-bg-secondary h-100">
+            <div class="card-body">
+                <h5 class="card-title">Pending Jobs</h5>
+                <p class="card-text display-4">@(jobStats != null ? TotalPendingJobs.ToString() : "…")</p>
+            </div>
+        </div>
+    </div>
+    <div class="col">
+        <div class="card h-100 @(apiError == null ? "text-bg-warning" : "text-bg-danger")">
+            <div class="card-body">
+                <h5 class="card-title">Health</h5>
+                <p class="card-text display-4">@(apiError == null ? "UP" : "DOWN")</p>
+                @if (apiError == null)
+                {
+                    <small class="opacity-75">Entropy: @systemEntropy.ToString("F1")</small>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Row 2: Recent Activity + Your Notebooks *@
+<div class="row mt-4 g-3">
     <div class="col-md-6">
-        <div class="card">
+        <div class="card h-100">
             <div class="card-header bg-light">
-                <h6 class="mb-0">Recent Security Events</h6>
+                <h6 class="mb-0">Your Recent Activity</h6>
+            </div>
+            <div class="card-body p-0">
+                @if (activityError != null)
+                {
+                    <div class="alert alert-warning mb-0 m-2">@activityError</div>
+                }
+                else if (recentActivity == null)
+                {
+                    <p class="p-3 mb-0 text-muted small">Loading...</p>
+                }
+                else if (recentActivity.Count == 0)
+                {
+                    <p class="p-3 mb-0 text-muted small">No recent activity.</p>
+                }
+                else
+                {
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th style="font-size: 0.85rem;">When</th>
+                                <th style="font-size: 0.85rem;">Action</th>
+                                <th style="font-size: 0.85rem;">Target</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var evt in recentActivity)
+                            {
+                                <tr>
+                                    <td class="small text-muted">@evt.Timestamp.ToString("MM-dd HH:mm")</td>
+                                    <td><span class="badge @ActionBadgeClass(evt.Action)">@ActionLabel(evt.Action)</span></td>
+                                    <td class="small">@evt.TargetType @(evt.TargetId != null && evt.TargetId.Length >= 8 ? evt.TargetId[..8] + "…" : evt.TargetId ?? "")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">Your Notebooks</h6>
+            </div>
+            <div class="card-body p-0">
+                @if (notebooks == null || notebooks.Count == 0)
+                {
+                    <p class="p-3 mb-0 text-muted small">No notebooks found.</p>
+                }
+                else
+                {
+                    <table class="table table-sm table-striped mb-0">
+                        <thead>
+                            <tr>
+                                <th style="font-size: 0.85rem;">Name</th>
+                                <th style="font-size: 0.85rem;">Entries</th>
+                                <th style="font-size: 0.85rem;">Access</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var nb in notebooks.OrderByDescending(n => n.LastActivitySequence).Take(5))
+                            {
+                                <tr>
+                                    <td class="small"><a href="/admin/notebooks/@nb.Id">@nb.Name</a></td>
+                                    <td class="small text-muted">@nb.TotalEntries</td>
+                                    <td><span class="badge bg-light text-dark">@AccessLabel(nb)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@* Row 3: Security Events + Recommended Actions *@
+<div class="row mt-4 g-3">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">Security Events <small class="text-muted">(last 7 days)</small></h6>
             </div>
             <div class="card-body p-0">
                 @if (eventsError != null)
                 {
-                    <div class="alert alert-warning mb-0">@eventsError</div>
+                    <div class="alert alert-warning mb-0 m-2">@eventsError</div>
                 }
                 else if (securityEvents == null)
                 {
@@ -74,7 +170,7 @@
                 }
                 else if (securityEvents.Count == 0)
                 {
-                    <p class="p-3 mb-0 text-muted small">No access denied events.</p>
+                    <p class="p-3 mb-0 text-muted small">No access denied events in the last 7 days.</p>
                 }
                 else
                 {
@@ -91,8 +187,8 @@
                             {
                                 <tr>
                                     <td class="small text-muted">@evt.Timestamp.ToString("MM-dd HH:mm")</td>
-                                    <td class="font-monospace small">@(evt.AuthorId?[..8] ?? "system")…</td>
-                                    <td class="small">@evt.TargetType @(evt.TargetId?[..8] ?? "")…</td>
+                                    <td class="font-monospace small">@(evt.AuthorId != null && evt.AuthorId.Length >= 8 ? evt.AuthorId[..8] + "…" : evt.AuthorId ?? "system")</td>
+                                    <td class="small">@evt.TargetType @(evt.TargetId != null && evt.TargetId.Length >= 8 ? evt.TargetId[..8] + "…" : evt.TargetId ?? "")</td>
                                 </tr>
                             }
                         </tbody>
@@ -101,14 +197,109 @@
             </div>
         </div>
     </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-light">
+                <h6 class="mb-0">Recommended Actions</h6>
+            </div>
+            <div class="card-body">
+                @if (notebooks == null)
+                {
+                    <p class="text-muted small mb-0">Loading...</p>
+                }
+                else
+                {
+                    <ul class="list-group list-group-flush">
+                        @if (pendingReviewCount > 0)
+                        {
+                            <li class="list-group-item px-0">
+                                <span class="badge bg-warning text-dark me-2">@pendingReviewCount</span>
+                                Pending review@(pendingReviewCount != 1 ? "s" : "") awaiting your attention
+                            </li>
+                        }
+                        @if (totalFailedJobs > 0)
+                        {
+                            <li class="list-group-item px-0">
+                                <span class="badge bg-danger me-2">@totalFailedJobs</span>
+                                Failed job@(totalFailedJobs != 1 ? "s" : "") need investigation
+                            </li>
+                        }
+                        @if (notebookCount == 0)
+                        {
+                            <li class="list-group-item px-0">
+                                <span class="badge bg-info me-2">Setup</span>
+                                <a href="/admin/notebooks/create">Create your first notebook</a> to get started
+                            </li>
+                        }
+                        @if (pendingReviewCount == 0 && totalFailedJobs == 0 && notebookCount > 0)
+                        {
+                            <li class="list-group-item px-0 text-muted small">
+                                All caught up — no actions needed.
+                            </li>
+                        }
+                    </ul>
+                }
+            </div>
+        </div>
+    </div>
 </div>
 
-<div class="mt-4">
-    <p class="text-muted">
-        The dashboard connects to the notebook API for notebook statistics.
-        Ensure the notebook server is running at the configured base URL.
-    </p>
-</div>
+@* Row 4: Job Breakdown (conditional) *@
+@if (jobStats != null && TotalPendingJobs > 0)
+{
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0">Job Queue Breakdown</h6>
+                </div>
+                <div class="card-body p-0">
+                    <table class="table table-sm mb-0">
+                        <thead>
+                            <tr>
+                                <th style="font-size: 0.85rem;">Job Type</th>
+                                <th style="font-size: 0.85rem;">Pending</th>
+                                <th style="font-size: 0.85rem;">In Progress</th>
+                                <th style="font-size: 0.85rem;">Completed</th>
+                                <th style="font-size: 0.85rem;">Failed</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td class="small">Distill Claims</td>
+                                <td class="small">@aggregateJobStats.DistillClaims.Pending</td>
+                                <td class="small">@aggregateJobStats.DistillClaims.InProgress</td>
+                                <td class="small">@aggregateJobStats.DistillClaims.Completed</td>
+                                <td class="small @(aggregateJobStats.DistillClaims.Failed > 0 ? "text-danger fw-bold" : "")">@aggregateJobStats.DistillClaims.Failed</td>
+                            </tr>
+                            <tr>
+                                <td class="small">Compare Claims</td>
+                                <td class="small">@aggregateJobStats.CompareClaims.Pending</td>
+                                <td class="small">@aggregateJobStats.CompareClaims.InProgress</td>
+                                <td class="small">@aggregateJobStats.CompareClaims.Completed</td>
+                                <td class="small @(aggregateJobStats.CompareClaims.Failed > 0 ? "text-danger fw-bold" : "")">@aggregateJobStats.CompareClaims.Failed</td>
+                            </tr>
+                            <tr>
+                                <td class="small">Classify Topic</td>
+                                <td class="small">@aggregateJobStats.ClassifyTopic.Pending</td>
+                                <td class="small">@aggregateJobStats.ClassifyTopic.InProgress</td>
+                                <td class="small">@aggregateJobStats.ClassifyTopic.Completed</td>
+                                <td class="small @(aggregateJobStats.ClassifyTopic.Failed > 0 ? "text-danger fw-bold" : "")">@aggregateJobStats.ClassifyTopic.Failed</td>
+                            </tr>
+                            <tr>
+                                <td class="small">Embed Claims</td>
+                                <td class="small">@aggregateJobStats.EmbedClaims.Pending</td>
+                                <td class="small">@aggregateJobStats.EmbedClaims.InProgress</td>
+                                <td class="small">@aggregateJobStats.EmbedClaims.Completed</td>
+                                <td class="small @(aggregateJobStats.EmbedClaims.Failed > 0 ? "text-danger fw-bold" : "")">@aggregateJobStats.EmbedClaims.Failed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @code {
     [CascadingParameter]
@@ -121,9 +312,35 @@
     private string? apiError;
     private string? authorIdHex;
 
+    // Notebooks list (shared across sections)
+    private List<NotebookSummary>? notebooks;
+
+    // Job stats state
+    private List<JobStatsResponse>? jobStats;
+    private JobStatsResponse aggregateJobStats = new();
+
+    // Recent activity state
+    private List<AuditLogEntryDto>? recentActivity;
+    private string? activityError;
+
     // Security events state
     private List<AuditLogEntryDto>? securityEvents;
     private string? eventsError;
+
+    // Reviews state
+    private int pendingReviewCount;
+
+    private long TotalPendingJobs =>
+        aggregateJobStats.DistillClaims.Pending +
+        aggregateJobStats.CompareClaims.Pending +
+        aggregateJobStats.ClassifyTopic.Pending +
+        aggregateJobStats.EmbedClaims.Pending;
+
+    private long totalFailedJobs =>
+        aggregateJobStats.DistillClaims.Failed +
+        aggregateJobStats.CompareClaims.Failed +
+        aggregateJobStats.ClassifyTopic.Failed +
+        aggregateJobStats.EmbedClaims.Failed;
 
     protected override async Task OnInitializedAsync()
     {
@@ -138,35 +355,105 @@
             return;
         }
 
-        // Try to get notebook stats from the notebook API
+        // Load notebooks synchronously — multiple sections depend on this
         try
         {
             var response = await ApiClient.ListNotebooksAsync(authorIdHex);
             if (response != null)
             {
-                notebookCount = response.Notebooks.Count;
-                totalEntries = response.Notebooks.Sum(n => n.TotalEntries);
-                systemEntropy = response.Notebooks.Sum(n => n.TotalEntropy);
+                notebooks = response.Notebooks;
+                notebookCount = notebooks.Count;
+                totalEntries = notebooks.Sum(n => n.TotalEntries);
+                systemEntropy = notebooks.Sum(n => n.TotalEntropy);
+            }
+            else
+            {
+                notebooks = [];
             }
         }
         catch (Exception ex)
         {
             apiError = ex.Message;
+            notebooks = [];
         }
 
-        // Load security events in parallel
+        // Fire parallel loaders
+        _ = LoadJobStatsAsync();
+        _ = LoadRecentActivityAsync();
         _ = LoadSecurityEventsAsync();
+        _ = LoadPendingReviewsAsync();
+    }
+
+    private async Task LoadJobStatsAsync()
+    {
+        try
+        {
+            if (notebooks == null || notebooks.Count == 0)
+            {
+                jobStats = [];
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            var tasks = notebooks.Select(nb =>
+                ApiClient.QueryJobStatsAsync(authorIdHex!, nb.Id)).ToArray();
+            var results = await Task.WhenAll(tasks);
+            jobStats = results.Where(r => r != null).Select(r => r!).ToList();
+
+            // Aggregate across all notebooks
+            aggregateJobStats = new JobStatsResponse
+            {
+                DistillClaims = Aggregate(jobStats, r => r.DistillClaims),
+                CompareClaims = Aggregate(jobStats, r => r.CompareClaims),
+                ClassifyTopic = Aggregate(jobStats, r => r.ClassifyTopic),
+                EmbedClaims = Aggregate(jobStats, r => r.EmbedClaims),
+            };
+        }
+        catch
+        {
+            jobStats = [];
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static JobTypeStats Aggregate(List<JobStatsResponse> stats, Func<JobStatsResponse, JobTypeStats> selector) =>
+        new()
+        {
+            Pending = stats.Sum(s => selector(s).Pending),
+            InProgress = stats.Sum(s => selector(s).InProgress),
+            Completed = stats.Sum(s => selector(s).Completed),
+            Failed = stats.Sum(s => selector(s).Failed),
+        };
+
+    private async Task LoadRecentActivityAsync()
+    {
+        try
+        {
+            var result = await ApiClient.QueryGlobalAuditAsync(
+                authorIdHex!,
+                actor: authorIdHex,
+                limit: 10);
+            recentActivity = result?.Entries ?? [];
+        }
+        catch (Exception ex)
+        {
+            activityError = $"Could not load activity: {ex.Message}";
+            recentActivity = [];
+        }
+
+        await InvokeAsync(StateHasChanged);
     }
 
     private async Task LoadSecurityEventsAsync()
     {
         try
         {
-            // Query audit trail for recent access.denied events (last 10)
             var result = await ApiClient.QueryGlobalAuditAsync(
                 authorIdHex!,
                 action: "access.denied",
-                limit: 10);
+                from: DateTimeOffset.UtcNow.AddDays(-7),
+                limit: 20);
             securityEvents = result?.Entries ?? [];
         }
         catch (Exception ex)
@@ -174,5 +461,74 @@
             eventsError = $"Could not load security events: {ex.Message}";
             securityEvents = [];
         }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async Task LoadPendingReviewsAsync()
+    {
+        try
+        {
+            if (notebooks == null || notebooks.Count == 0)
+            {
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            var ownedNotebooks = notebooks.Where(n => n.IsOwner).ToList();
+            if (ownedNotebooks.Count == 0)
+            {
+                await InvokeAsync(StateHasChanged);
+                return;
+            }
+
+            var tasks = ownedNotebooks.Select(nb =>
+                ApiClient.ListReviewsAsync(authorIdHex!, nb.Id, status: "pending")).ToArray();
+            var results = await Task.WhenAll(tasks);
+            pendingReviewCount = results.Where(r => r != null).Sum(r => r!.PendingCount);
+        }
+        catch
+        {
+            // Silently ignore — recommended actions section just won't show reviews
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private static string ActionLabel(string action) => action switch
+    {
+        "entry.write" => "Write",
+        "entry.revise" => "Revise",
+        "entry.read" => "Read",
+        "entry.delete" => "Delete",
+        "notebook.create" => "Create",
+        "notebook.share" => "Share",
+        "access.denied" => "Denied",
+        "review.submit" => "Review",
+        "review.approve" => "Approve",
+        "review.reject" => "Reject",
+        _ => action,
+    };
+
+    private static string ActionBadgeClass(string action) => action switch
+    {
+        "entry.write" or "entry.revise" => "bg-success",
+        "entry.read" => "bg-info",
+        "entry.delete" => "bg-danger",
+        "notebook.create" => "bg-primary",
+        "notebook.share" => "bg-primary",
+        "access.denied" => "bg-danger",
+        "review.submit" => "bg-warning text-dark",
+        "review.approve" => "bg-success",
+        "review.reject" => "bg-danger",
+        _ => "bg-secondary",
+    };
+
+    private static string AccessLabel(NotebookSummary nb)
+    {
+        if (nb.IsOwner) return "Owner";
+        if (nb.Permissions.Read && nb.Permissions.Write) return "Read+Write";
+        if (nb.Permissions.Read) return "Read";
+        return "Existence";
     }
 }
