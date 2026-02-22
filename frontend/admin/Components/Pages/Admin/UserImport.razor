@@ -1,0 +1,248 @@
+@page "/admin/users/import"
+@layout AdminLayout
+@attribute [Authorize]
+@using Microsoft.AspNetCore.Components.Forms
+@using NotebookAdmin.Models
+@using NotebookAdmin.Services
+@inject UserImportService ImportService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<PageTitle>Import Users</PageTitle>
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/admin/users">Users</a></li>
+        <li class="breadcrumb-item active">Import</li>
+    </ol>
+</nav>
+
+<h3>Import Users from CSV</h3>
+
+@if (successMessage != null)
+{
+    <div class="alert alert-success alert-dismissible">
+        @successMessage
+        <button type="button" class="btn-close" @onclick="() => successMessage = null"></button>
+    </div>
+}
+
+@if (errorMessage != null)
+{
+    <div class="alert alert-danger alert-dismissible">
+        @errorMessage
+        <button type="button" class="btn-close" @onclick="() => errorMessage = null"></button>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-header">Select CSV File</div>
+    <div class="card-body">
+        <p class="text-muted">
+            Upload a CSV file with user data. <strong>Required columns:</strong> username, user_type.
+            <strong>Optional columns:</strong> email, display_name, lock_status, lock_reason, quota fields.
+        </p>
+
+        <div class="mb-3">
+            <label class="form-label">CSV File</label>
+            <InputFile @ref="fileInput" OnChange="HandleFileSelected" accept=".csv" disabled="@(isValidating || isImporting)" />
+            @if (selectedFileName != null)
+            {
+                <small class="text-muted d-block mt-1">Selected: @selectedFileName</small>
+            }
+        </div>
+
+        @if (validationErrors?.Any() == true)
+        {
+            <div class="alert alert-warning">
+                <strong>@validationErrors.Count validation error(s) found:</strong>
+                <ul class="mt-2 mb-0">
+                    @foreach (var error in validationErrors.Take(10))
+                    {
+                        <li>Row @error.RowNumber (@error.Username): @error.Message</li>
+                    }
+                    @if (validationErrors.Count > 10)
+                    {
+                        <li><em>... and @(validationErrors.Count - 10) more errors</em></li>
+                    }
+                </ul>
+            </div>
+        }
+
+        <div>
+            <button class="btn btn-primary me-2" @onclick="ValidateFile"
+                    disabled="@(selectedFile == null || isValidating || isImporting)">
+                @(isValidating ? "Validating..." : "Validate")
+            </button>
+            <button class="btn btn-success" @onclick="ImportFile"
+                    disabled="@(selectedFile == null || validationErrors?.Any() == true || isImporting)">
+                @(isImporting ? "Importing..." : "Import")
+            </button>
+            <a href="/admin/users" class="btn btn-outline-secondary">Cancel</a>
+        </div>
+    </div>
+</div>
+
+@if (importResult != null)
+{
+    <div class="card">
+        <div class="card-header">Import Summary</div>
+        <div class="card-body">
+            <p>
+                <strong>Success:</strong> @importResult.SuccessCount users created<br />
+                <strong>Errors:</strong> @importResult.ErrorCount users failed
+            </p>
+
+            @if (importResult.CreatedPasswords?.Any() == true)
+            {
+                <div class="alert alert-info mb-3">
+                    <strong>Temporary Passwords:</strong>
+                    <p class="mb-2 text-muted small">
+                        Save these passwords and send to users. They will be prompted to set their own passwords on first login.
+                    </p>
+                    <div style="max-height: 200px; overflow-y: auto;">
+                        <table class="table table-sm mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>Temporary Password</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var kvp in importResult.CreatedPasswords)
+                                {
+                                    <tr>
+                                        <td><code>@kvp.Key</code></td>
+                                        <td><code class="user-select-all">@kvp.Value</code></td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            }
+
+            @if (importResult.Errors.Any())
+            {
+                <h6>Error Details:</h6>
+                <div style="max-height: 300px; overflow-y: auto;">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Row</th>
+                                <th>Username</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var error in importResult.Errors)
+                            {
+                                <tr>
+                                    <td>@error.RowNumber</td>
+                                    <td>@error.Username</td>
+                                    <td><small>@error.Message</small></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+
+            <div class="mt-3">
+                <button class="btn btn-primary" @onclick="ReturnToUsers">
+                    Back to Users
+                </button>
+                <button class="btn btn-outline-secondary" @onclick="ResetForm">
+                    Import Another File
+                </button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private InputFile? fileInput;
+    private IBrowserFile? selectedFile;
+    private string? selectedFileName;
+    private List<ImportError>? validationErrors;
+    private ImportResult? importResult;
+    private bool isValidating;
+    private bool isImporting;
+    private string? successMessage;
+    private string? errorMessage;
+
+    private async Task HandleFileSelected(InputFileChangeEventArgs e)
+    {
+        selectedFile = e.File;
+        selectedFileName = selectedFile.Name;
+        validationErrors = null;
+        importResult = null;
+    }
+
+    private async Task ValidateFile()
+    {
+        if (selectedFile == null) return;
+
+        isValidating = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 10_000_000); // 10 MB max
+            var (isValid, errors) = await ImportService.ValidateImportAsync(stream);
+            validationErrors = errors;
+
+            if (isValid)
+                successMessage = $"Validation passed for {selectedFileName}";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Validation failed: {ex.Message}";
+            validationErrors = new List<ImportError>();
+        }
+        finally
+        {
+            isValidating = false;
+        }
+    }
+
+    private async Task ImportFile()
+    {
+        if (selectedFile == null) return;
+
+        isImporting = true;
+        errorMessage = null;
+        successMessage = null;
+
+        try
+        {
+            using var stream = selectedFile.OpenReadStream(maxAllowedSize: 10_000_000);
+            importResult = await ImportService.ImportAsync(stream);
+            successMessage = $"Import complete: {importResult.SuccessCount} users created, {importResult.ErrorCount} errors";
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Import failed: {ex.Message}";
+        }
+        finally
+        {
+            isImporting = false;
+        }
+    }
+
+    private void ResetForm()
+    {
+        selectedFile = null;
+        selectedFileName = null;
+        validationErrors = null;
+        importResult = null;
+        errorMessage = null;
+        successMessage = null;
+    }
+
+    private void ReturnToUsers()
+    {
+        Navigation.NavigateTo("/admin/users");
+    }
+}

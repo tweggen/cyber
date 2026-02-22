@@ -86,3 +86,20 @@ window.downloadBase64File = function (filename, mimeType, base64) {
     link.click();
     document.body.removeChild(link);
 };
+
+/**
+ * Trigger a file download from plain text content.
+ * Used by the Users CSV export.
+ */
+window.triggerFileDownload = function (filename, content) {
+    var blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};

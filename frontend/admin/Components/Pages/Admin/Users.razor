@@ -4,12 +4,26 @@
 @using Microsoft.AspNetCore.Identity
 @using Microsoft.EntityFrameworkCore
 @using NotebookAdmin.Models
+@using NotebookAdmin.Services
 @inject UserManager<ApplicationUser> UserManager
+@inject UserExportService ExportService
+@inject IJSRuntime JS
 @rendermode InteractiveServer
 
 <PageTitle>Users</PageTitle>
 
-<h3>User Management</h3>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3>User Management</h3>
+    <div>
+        <a href="/admin/users/import" class="btn btn-outline-primary me-2">
+            <span class="oi oi-arrow-thick-top me-1"></span>Import
+        </a>
+        <button class="btn btn-outline-secondary" @onclick="ExportUsers" disabled="@isExporting">
+            <span class="oi oi-arrow-thick-bottom me-1"></span>
+            @(isExporting ? "Exporting..." : "Export")
+        </button>
+    </div>
+</div>
 
 @if (statusMessage != null)
 {
@@ -219,6 +233,9 @@ else
     private bool silentLock = false;
     private bool isSubmitting = false;
 
+    // Export state
+    private bool isExporting = false;
+
     private IEnumerable<ApplicationUser> FilteredAndSortedUsers =>
         users?
             .Where(u => string.IsNullOrEmpty(searchTerm) ||
@@ -343,4 +360,28 @@ else
         "bot" => "Bot",
         _ => "User"
     };
+
+    private async Task ExportUsers()
+    {
+        try
+        {
+            isExporting = true;
+            statusMessage = null;
+            var csv = await ExportService.ExportAllUsersAsync();
+            var timestamp = DateTime.UtcNow.ToString("yyyy-MM-dd_HHmmss");
+            var filename = $"users_export_{timestamp}.csv";
+            await JS.InvokeVoidAsync("triggerFileDownload", filename, csv);
+            statusMessage = $"Exported {users?.Count ?? 0} users to {filename}";
+            statusIsError = false;
+        }
+        catch (Exception ex)
+        {
+            statusMessage = $"Export failed: {ex.Message}";
+            statusIsError = true;
+        }
+        finally
+        {
+            isExporting = false;
+        }
+    }
 }
